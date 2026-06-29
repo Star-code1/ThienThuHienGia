@@ -21,7 +21,7 @@ const ROLES = [
 const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 const DIVIDER_THIN = '┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄';
 
-function progressBar(current, max = 30) {
+function progressBar(current, max = 60) {
   const filled = Math.min(current, max);
   const empty = max - filled;
   const pct = max > 0 ? Math.round((filled / max) * 100) : 0;
@@ -33,7 +33,7 @@ function progressBar(current, max = 30) {
  * Tạo embed + components cho một sự kiện điểm danh
  */
 function buildEventMessage(opts) {
-  const { title, date, time, eventId, attendees = [], totalSlots = 30 } = opts;
+  const { title, date, time, eventId, attendees = [], totalSlots = 60 } = opts;
 
   // Đếm theo status
   const present   = attendees.filter(a => a.status === 'present');
