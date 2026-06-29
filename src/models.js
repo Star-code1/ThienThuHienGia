@@ -18,6 +18,7 @@ const attendanceSchema = new mongoose.Schema({
   username: { type: String, required: true },
   displayName: { type: String },
   className: { type: String },        // class đã chọn
+  role: { type: String },              // nhiệm vụ: đánh trụ / đánh người / vật tư
   status: {
     type: String,
     enum: ['present', 'bench', 'late', 'tentative', 'absent'],

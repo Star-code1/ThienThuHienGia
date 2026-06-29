@@ -11,6 +11,13 @@ const CLASSES = [
   { label: 'Thần Tương', value: 'thanTuong', emoji: '🎵' },
 ];
 
+// Danh sách nhiệm vụ
+const ROLES = [
+  { label: 'Đánh trụ',   value: 'danhTru',   emoji: '🏰' },
+  { label: 'Đánh người',  value: 'danhNguoi', emoji: '⚔️' },
+  { label: 'Vật tư',      value: 'vatTu',     emoji: '📦' },
+];
+
 /**
  * Tạo embed + components cho một sự kiện điểm danh
  * @param {object} opts
@@ -18,7 +25,7 @@ const CLASSES = [
  * @param {string} opts.date        - Ngày hiển thị, vd "4 July 2026"
  * @param {string} opts.time        - Giờ, vd "20:00"
  * @param {string} opts.eventId     - ID dùng trong customId
- * @param {object[]} opts.attendees - Mảng { displayName, className, status }
+ * @param {object[]} opts.attendees - Mảng { displayName, className, status, role }
  * @param {number}  opts.totalSlots - Tổng slot (hiển thị "0" nếu chưa ai)
  */
 function buildEventMessage(opts) {
@@ -36,7 +43,8 @@ function buildEventMessage(opts) {
     .setTitle(`📋 ${title}`)
     .setDescription(
       '**Hướng dẫn báo danh**\n' +
-      '• Click vào **Select Your Class** ➜ Chọn class của mình để điểm danh\n' +
+      '• Click vào **Select Your Class** ➜ Chọn class để điểm danh\n' +
+      '• Click vào **Chọn nhiệm vụ** ➜ Chọn nhiệm vụ (Đánh trụ / Đánh người / Vật tư)\n' +
       '• Nếu bận thì bấm **Vắng**'
     )
     .addFields(
@@ -60,7 +68,7 @@ if (present.length > 0) {
     if (!grouped[member.className]) {
       grouped[member.className] = [];
     }
-    grouped[member.className].push(member.displayName);
+    grouped[member.className].push({ name: member.displayName, role: member.role });
   });
 
   // Tạo nội dung
@@ -68,7 +76,11 @@ if (present.length > 0) {
     .filter(c => grouped[c.label].length > 0)
     .map(c => {
       return `${c.emoji} **${c.label} (${grouped[c.label].length})**\n${grouped[c.label]
-        .map(name => `• ${name}`)
+        .map(m => {
+          const roleEmoji = m.role ? (ROLES.find(r => r.label === m.role)?.emoji || '') + ' ' : '';
+          const roleText = m.role ? `[${m.role}]` : '';
+          return `• ${m.name} ${roleEmoji}${roleText}`;
+        })
         .join('\n')}`;
     })
     .join('\n\n');
@@ -120,6 +132,21 @@ if (present.length > 0) {
 
   const row1 = new ActionRowBuilder().addComponents(selectMenu);
 
+  // Select menu chọn nhiệm vụ
+  const roleMenu = new StringSelectMenuBuilder()
+    .setCustomId(`select_role:${eventId}`)
+    .setPlaceholder('Chọn nhiệm vụ')
+    .addOptions(
+      ROLES.map(r =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(r.label)
+          .setValue(r.value)
+          .setEmoji(r.emoji)
+      )
+    );
+
+  const rowRole = new ActionRowBuilder().addComponents(roleMenu);
+
   // Buttons: Bench | Late | Tentative | Absence
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`btn_bench:${eventId}`).setLabel('Dự bị').setStyle(ButtonStyle.Secondary).setEmoji('🪑'),
@@ -132,7 +159,7 @@ if (present.length > 0) {
     new ButtonBuilder().setCustomId(`btn_cancel:${eventId}`).setLabel('Huỷ').setStyle(ButtonStyle.Primary).setEmoji('🔄'),
   );
 
-  return { embeds: [embed], components: [row1, row2, row3] };
+  return { embeds: [embed], components: [row1, rowRole, row2, row3] };
 }
 
-module.exports = { CLASSES, buildEventMessage };
+module.exports = { CLASSES, ROLES, buildEventMessage };

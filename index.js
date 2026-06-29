@@ -20,7 +20,7 @@ dns.setServers(['8.8.8.8', '8.8.4.4']);
 const { Client, GatewayIntentBits, Events } = require('discord.js');
 const mongoose = require('mongoose');
 const { Event, Attendance } = require('./src/models');
-const { CLASSES, buildEventMessage } = require('./src/builder');
+const { CLASSES, ROLES, buildEventMessage } = require('./src/builder');
 
 // ── Khởi động client ──────────────────────────────────────────────────────────
 const client = new Client({
@@ -48,6 +48,7 @@ async function refreshEventMessage(interaction, eventId, messageId) {
       displayName: a.displayName || a.username,
       className:   a.className   || '—',
       status:      a.status,
+      role:        a.role || null,
     })),
   });
 
@@ -61,14 +62,14 @@ async function refreshEventMessage(interaction, eventId, messageId) {
 }
 
 // ── Upsert attendance record ──────────────────────────────────────────────────
-async function upsertAttendance(eventMessageId, user, update) {
+async function upsertAttendance(eventMessageId, user, member, update) {
   return Attendance.findOneAndUpdate(
     { eventId: eventMessageId, userId: user.id },
     {
       eventId:     eventMessageId,
       userId:      user.id,
       username:    user.username,
-      displayName: user.displayName || user.globalName || user.username,
+      displayName: member?.displayName || user.displayName || user.globalName || user.username,
       ...update,
       timestamp:   new Date(),
     },
@@ -137,9 +138,10 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 
     const attendees = await Attendance.find({ eventId: event.messageId });
-    const lines = attendees.map(a =>
-      `• **${a.displayName}** — ${a.className || '—'} (${statusLabel(a.status)})`
-    );
+    const lines = attendees.map(a => {
+      const roleText = a.role ? ` | ${a.role}` : '';
+      return `• **${a.displayName}** — ${a.className || '—'}${roleText} (${statusLabel(a.status)})`;
+    });
 
     await interaction.editReply(
       `**${event.title}**\nTổng: ${attendees.length} người\n\n` +
@@ -177,13 +179,43 @@ client.on(Events.InteractionCreate, async interaction => {
       return;
     }
 
-    await upsertAttendance(eventMessageId, interaction.user, {
+    await upsertAttendance(eventMessageId, interaction.user, interaction.member, {
       className: classObj?.label || chosen,
       status:    'present',
     });
 
     await refreshEventMessage(interaction, eventMessageId, eventMessageId);
     await interaction.editReply(`✅ Đã điểm danh với class **${classObj?.label || chosen}**!`);
+    return;
+  }
+
+  // ── Select role (nhiệm vụ) ────────────────────────────────────────────────
+  if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_role:')) {
+    await interaction.deferReply({ flags: 64 });
+
+    const eventMessageId = interaction.customId.split(':')[1];
+    const chosen = interaction.values[0];
+    const roleObj = ROLES.find(r => r.value === chosen);
+
+    const event = await Event.findOne({ messageId: eventMessageId, active: true });
+    if (!event) {
+      await interaction.editReply('❌ Sự kiện không tồn tại hoặc đã đóng.');
+      return;
+    }
+
+    // Kiểm tra xem user đã điểm danh chưa
+    const existing = await Attendance.findOne({ eventId: eventMessageId, userId: interaction.user.id });
+    if (!existing || existing.status !== 'present') {
+      await interaction.editReply('⚠️ Bạn cần **điểm danh class** trước khi chọn nhiệm vụ!');
+      return;
+    }
+
+    await upsertAttendance(eventMessageId, interaction.user, interaction.member, {
+      role: roleObj?.label || chosen,
+    });
+
+    await refreshEventMessage(interaction, eventMessageId, eventMessageId);
+    await interaction.editReply(`✅ Đã chọn nhiệm vụ **${roleObj?.emoji || ''} ${roleObj?.label || chosen}**!`);
     return;
   }
 
@@ -216,7 +248,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const status = statusMap[action];
     if (!status) return;
 
-    await upsertAttendance(eventMessageId, interaction.user, { status, className: null });
+    await upsertAttendance(eventMessageId, interaction.user, interaction.member, { status, className: null });
     await refreshEventMessage(interaction, eventMessageId, eventMessageId);
     await interaction.editReply(`✅ Đã đánh dấu bạn là **${statusLabel(status)}**.`);
   }
