@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 // Schema lưu sự kiện điểm danh
 const eventSchema = new mongoose.Schema({
   messageId: { type: String, required: true, unique: true },
+  channelId: { type: String, required: true },
   title: { type: String, required: true },
   date: { type: Date, required: true },
   time: { type: String, required: true },

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ChannelType } = require('discord.js');
 
 const commands = [
   new SlashCommandBuilder()
@@ -9,6 +9,9 @@ const commands = [
     )
     .addStringOption(opt =>
       opt.setName('ngay').setDescription('Ngày (vd: 4 July 2026)').setRequired(true)
+    )
+    .addChannelOption(opt =>
+      opt.setName('kenh').setDescription('Kênh gửi thông báo (mặc định: kênh hiện tại)').addChannelTypes(ChannelType.GuildText).setRequired(false)
     )
     .addStringOption(opt =>
       opt.setName('gio').setDescription('Giờ (vd: 20:00)').setRequired(false)

@@ -53,7 +53,7 @@ async function refreshEventMessage(interaction, eventId, messageId) {
   });
 
   try {
-    const channel = await client.channels.fetch(process.env.CHANNEL_ID);
+    const channel = await client.channels.fetch(event.channelId);
     const msg = await channel.messages.fetch(messageId);
     await msg.edit(payload);
   } catch (e) {
@@ -91,24 +91,26 @@ client.on(Events.InteractionCreate, async interaction => {
     const ten  = interaction.options.getString('ten');
     const ngay = interaction.options.getString('ngay');
     const gio  = interaction.options.getString('gio') || '20:00';
+    const channel = interaction.options.getChannel('kenh') || interaction.channel;
 
     const title = `ĐIỂM DANH ${ten.toUpperCase()}`;
 
-    // Gửi message vào channel điểm danh
-    let channel;
+    // Gửi message vào channel đã chọn
+    let targetChannel;
     try {
-      channel = await client.channels.fetch(process.env.CHANNEL_ID);
+      targetChannel = await client.channels.fetch(channel.id);
     } catch (e) {
-      await interaction.editReply('❌ Bot không thể truy cập kênh. Kiểm tra:\n• CHANNEL_ID trong .env đúng chưa?\n• Bot đã có quyền xem kênh chưa?');
+      await interaction.editReply('❌ Bot không thể truy cập kênh. Kiểm tra:\n• Bot đã có quyền xem kênh chưa?');
       return;
     }
-    const msg = await channel.send(
+    const msg = await targetChannel.send(
       buildEventMessage({ title, date: ngay, time: gio, eventId: 'TEMP', attendees: [] })
     );
 
     // Lưu vào DB với messageId thật
     await Event.create({
       messageId:  msg.id,
+      channelId:  channel.id,
       title,
       date:       new Date(ngay),
       time:       gio,
