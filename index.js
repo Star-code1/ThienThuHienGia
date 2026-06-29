@@ -92,7 +92,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const ngay = interaction.options.getString('ngay');
     const gio  = interaction.options.getString('gio') || '20:00';
 
-    const title = `ĐIỂM DANH BANG CHIẾN — ${ten.toUpperCase()}`;
+    const title = `ĐIỂM DANH ${ten.toUpperCase()}`;
 
     // Gửi message vào channel điểm danh
     let channel;

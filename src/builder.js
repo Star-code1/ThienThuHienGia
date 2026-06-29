@@ -2,13 +2,13 @@ const { EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, Ac
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CLASSES = [
-  { label: 'Huyết Hà',   value: 'huyetHa',   emoji: '🐎' },
-  { label: 'Cứu Linh',   value: 'cuuLinh',   emoji: '🔮' },
-  { label: 'Tố Vấn',     value: 'toVan',     emoji: '❤️' },
-  { label: 'Toái Mộng',  value: 'toaiMong',  emoji: '⚔️' },
-  { label: 'Thiết Y',    value: 'thietY',    emoji: '🛡️' },
-  { label: 'Long Ngâm',  value: 'longNgam',  emoji: '🐉' },
-  { label: 'Thần Tương', value: 'thanTuong', emoji: '🎵' },
+  { label: 'Huyết Hà',   value: 'huyetHa',   emoji: '<:huyetha:1449791931751202987>',   emojiComponent: { id: '1449791931751202987', name: 'huyetha' } },
+  { label: 'Cứu Linh',   value: 'cuuLinh',   emoji: '<:cuulinh:1449791874482180207>',   emojiComponent: { id: '1449791874482180207', name: 'cuulinh' } },
+  { label: 'Tố Vấn',     value: 'toVan',     emoji: '<:tovan:1449986202437550202>',     emojiComponent: { id: '1449986202437550202', name: 'tovan' } },
+  { label: 'Toái Mộng',  value: 'toaiMong',  emoji: '<:toaimong:1449792113767354410>',  emojiComponent: { id: '1449792113767354410', name: 'toaimong' } },
+  { label: 'Thiết Y',    value: 'thietY',    emoji: '<:thiety:1449792043864821932>',    emojiComponent: { id: '1449792043864821932', name: 'thiety' } },
+  { label: 'Long Ngâm',  value: 'longNgam',  emoji: '<:longngam:1479195089460007137>',  emojiComponent: { id: '1479195089460007137', name: 'longngam' } },
+  { label: 'Thần Tương', value: 'thanTuong', emoji: '<:thantuong:1449791985702670489>', emojiComponent: { id: '1449791985702670489', name: 'thantuong' } },
 ];
 
 const ROLES = [
@@ -170,7 +170,7 @@ function buildEventMessage(opts) {
         new StringSelectMenuOptionBuilder()
           .setLabel(c.label)
           .setValue(c.value)
-          .setEmoji(c.emoji)
+          .setEmoji(c.emojiComponent)
       )
     );
 
