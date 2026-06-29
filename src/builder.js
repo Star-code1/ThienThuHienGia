@@ -47,7 +47,7 @@ function buildEventMessage(opts) {
   const embed = new EmbedBuilder()
     .setColor(0xE8A317) // Vàng hoàng kim
     .setAuthor({
-      name: '⚔️ THIÊN THU HIỀN GIA ⚔️',
+      name: '⚔️ THIÊN THƯ HIỀN GIẢ ⚔️',
     })
     .setTitle(`\n${title}`)
     .setDescription(
