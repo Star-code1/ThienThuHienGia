@@ -1,6 +1,6 @@
-const { EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
-// Danh sách class (theo ảnh)
+// ── Constants ─────────────────────────────────────────────────────────────────
 const CLASSES = [
   { label: 'Huyết Hà',   value: 'huyetHa',   emoji: '🐎' },
   { label: 'Cứu Linh',   value: 'cuuLinh',   emoji: '🔮' },
@@ -11,25 +11,29 @@ const CLASSES = [
   { label: 'Thần Tương', value: 'thanTuong', emoji: '🎵' },
 ];
 
-// Danh sách nhiệm vụ
 const ROLES = [
   { label: 'Đánh trụ',   value: 'danhTru',   emoji: '🏰' },
   { label: 'Đánh người',  value: 'danhNguoi', emoji: '⚔️' },
   { label: 'Vật tư',      value: 'vatTu',     emoji: '📦' },
 ];
 
+// ── Visual helpers ────────────────────────────────────────────────────────────
+const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+const DIVIDER_THIN = '┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄';
+
+function progressBar(current, max = 30) {
+  const filled = Math.min(current, max);
+  const empty = max - filled;
+  const pct = max > 0 ? Math.round((filled / max) * 100) : 0;
+  const bar = '▰'.repeat(Math.min(filled, 15)) + '▱'.repeat(Math.max(15 - filled, 0));
+  return `${bar}  **${filled}** / ${max} người (${pct}%)`;
+}
+
 /**
  * Tạo embed + components cho một sự kiện điểm danh
- * @param {object} opts
- * @param {string} opts.title       - Tên sự kiện, vd "ĐIỂM DANH BANG CHIẾN 4/7"
- * @param {string} opts.date        - Ngày hiển thị, vd "4 July 2026"
- * @param {string} opts.time        - Giờ, vd "20:00"
- * @param {string} opts.eventId     - ID dùng trong customId
- * @param {object[]} opts.attendees - Mảng { displayName, className, status, role }
- * @param {number}  opts.totalSlots - Tổng slot (hiển thị "0" nếu chưa ai)
  */
 function buildEventMessage(opts) {
-  const { title, date, time, eventId, attendees = [], totalSlots = 0 } = opts;
+  const { title, date, time, eventId, attendees = [], totalSlots = 30 } = opts;
 
   // Đếm theo status
   const present   = attendees.filter(a => a.status === 'present');
@@ -37,90 +41,130 @@ function buildEventMessage(opts) {
   const late      = attendees.filter(a => a.status === 'late');
   const tentative = attendees.filter(a => a.status === 'tentative');
   const absent    = attendees.filter(a => a.status === 'absent');
+  const totalActive = present.length + bench.length + late.length + tentative.length;
 
+  // ── Build Embed ───────────────────────────────────────────────────────────
   const embed = new EmbedBuilder()
-    .setColor(0x5865F2)
-    .setTitle(`📋 ${title}`)
+    .setColor(0xE8A317) // Vàng hoàng kim
+    .setAuthor({
+      name: '⚔️ THIÊN THU HIỀN GIA ⚔️',
+    })
+    .setTitle(`\n${title}`)
     .setDescription(
-      '**Hướng dẫn báo danh**\n' +
-      '• Click vào **Select Your Class** ➜ Chọn class để điểm danh\n' +
-      '• Click vào **Chọn nhiệm vụ** ➜ Chọn nhiệm vụ (Đánh trụ / Đánh người / Vật tư)\n' +
-      '• Nếu bận thì bấm **Vắng**'
-    )
-    .addFields(
-      { name: '🗓️ Ngày', value: date, inline: true },
-      { name: '🕗 Giờ',  value: time, inline: true },
-      { name: '\u200B',  value: '\u200B', inline: true },
+      `${DIVIDER}\n` +
+      `> 🗓️ **Ngày:**  \`${date}\`\n` +
+      `> 🕗 **Giờ:**   \`${time}\`\n` +
+      `${DIVIDER}\n\n` +
+      `📊 **Tiến độ điểm danh**\n` +
+      `${progressBar(totalActive, totalSlots)}\n\n` +
+      `\`\`\`\n` +
+      `  ✅ Có mặt: ${String(present.length).padStart(2)}    🪑 Dự bị:   ${String(bench.length).padStart(2)}\n` +
+      `  ⏰ Muộn:   ${String(late.length).padStart(2)}    ⚖️ Chưa chắc: ${String(tentative.length).padStart(2)}\n` +
+      `  ❌ Vắng:   ${String(absent.length).padStart(2)}\n` +
+      `\`\`\``
     );
 
-  // Danh sách có mặt
-  // Thống kê theo class
-if (present.length > 0) {
+  // ── Danh sách có mặt (gom theo class) ─────────────────────────────────────
+  if (present.length > 0) {
+    const grouped = {};
+    CLASSES.forEach(c => { grouped[c.label] = []; });
 
-  // Gom người theo class
-  const grouped = {};
+    present.forEach(member => {
+      if (!grouped[member.className]) grouped[member.className] = [];
+      grouped[member.className].push({ name: member.displayName, role: member.role });
+    });
 
-  CLASSES.forEach(c => {
-    grouped[c.label] = [];
-  });
+    // Đếm theo nhiệm vụ
+    const roleCounts = {};
+    ROLES.forEach(r => { roleCounts[r.label] = 0; });
+    present.forEach(m => { if (m.role && roleCounts[m.role] !== undefined) roleCounts[m.role]++; });
 
-  present.forEach(member => {
-    if (!grouped[member.className]) {
-      grouped[member.className] = [];
-    }
-    grouped[member.className].push({ name: member.displayName, role: member.role });
-  });
+    const roleStats = ROLES
+      .map(r => `${r.emoji} ${r.label}: **${roleCounts[r.label]}**`)
+      .join('  │  ');
 
-  // Tạo nội dung
-  const classText = CLASSES
-    .filter(c => grouped[c.label].length > 0)
-    .map(c => {
-      return `${c.emoji} **${c.label} (${grouped[c.label].length})**\n${grouped[c.label]
-        .map(m => {
-          const roleEmoji = m.role ? (ROLES.find(r => r.label === m.role)?.emoji || '') + ' ' : '';
-          const roleText = m.role ? `[${m.role}]` : '';
-          return `• ${m.name} ${roleEmoji}${roleText}`;
-        })
-        .join('\n')}`;
-    })
-    .join('\n\n');
+    // Tạo nội dung class
+    const classLines = CLASSES
+      .filter(c => grouped[c.label].length > 0)
+      .map(c => {
+        const members = grouped[c.label]
+          .map(m => {
+            const roleTag = m.role ? ` ┃ ${ROLES.find(r => r.label === m.role)?.emoji || '📌'} \`${m.role}\`` : '';
+            return `> ╰ ${m.name}${roleTag}`;
+          })
+          .join('\n');
+        return `> ${c.emoji} **${c.label}** ── \`${grouped[c.label].length} người\`\n${members}`;
+      })
+      .join('\n>\n');
 
+    embed.addFields({
+      name: `\n✅ CÓ MẶT ── ${present.length} người`,
+      value: `${classLines}\n> \n> ${DIVIDER_THIN}\n> 📋 **Phân công:** ${roleStats}`,
+    });
+  } else {
+    embed.addFields({
+      name: '✅ CÓ MẶT',
+      value: '> _Chưa có ai điểm danh..._',
+    });
+  }
+
+  // ── Các nhóm khác ─────────────────────────────────────────────────────────
+  const otherGroups = [
+    { list: bench,     icon: '🪑', label: 'DỰ BỊ' },
+    { list: late,      icon: '⏰', label: 'ĐẾN MUỘN' },
+    { list: tentative, icon: '⚖️', label: 'CHƯA CHẮC CHẮN' },
+    { list: absent,    icon: '❌', label: 'VẮNG MẶT' },
+  ];
+
+  // Gom các nhóm có người vào 1 field inline để gọn hơn
+  const leftGroups = otherGroups.filter((_, i) => i < 2 && _.list.length > 0);
+  const rightGroups = otherGroups.filter((_, i) => i >= 2 && _.list.length > 0);
+
+  if (leftGroups.length > 0) {
+    embed.addFields({
+      name: '\u200B',
+      value: leftGroups.map(g =>
+        `${g.icon} **${g.label}** (\`${g.list.length}\`)\n` +
+        g.list.map(a => `> ╰ ${a.displayName}`).join('\n')
+      ).join('\n\n'),
+      inline: true,
+    });
+  }
+
+  if (rightGroups.length > 0) {
+    embed.addFields({
+      name: '\u200B',
+      value: rightGroups.map(g =>
+        `${g.icon} **${g.label}** (\`${g.list.length}\`)\n` +
+        g.list.map(a => `╰ ${a.displayName}`).join('\n')
+      ).join('\n\n'),
+      inline: true,
+    });
+  }
+
+  // ── Hướng dẫn ─────────────────────────────────────────────────────────────
   embed.addFields({
-    name: `✅ Có mặt (${present.length})`,
-    value: classText,
+    name: '\u200B',
+    value:
+      `${DIVIDER}\n` +
+      '📌 **Hướng dẫn báo danh**\n' +
+      '> `1.` Chọn **class** ở menu bên dưới\n' +
+      '> `2.` Chọn **nhiệm vụ** (Đánh trụ / Đánh người / Vật tư)\n' +
+      '> `3.` Bấm 📝 **Ghi chú** nếu cần nhắn gì cho bang\n' +
+      '> `4.` Nếu bận → bấm ❌ **Vắng**',
   });
-}
-  if (bench.length > 0) {
-    embed.addFields({
-      name: `🪑 Dự bị (${bench.length})`,
-      value: bench.map(a => `• ${a.displayName}`).join('\n'),
-    });
-  }
-  if (late.length > 0) {
-    embed.addFields({
-      name: `⏰ Muộn (${late.length})`,
-      value: late.map(a => `• ${a.displayName}`).join('\n'),
-    });
-  }
-  if (tentative.length > 0) {
-    embed.addFields({
-      name: `⚖️ Chưa chắc chắn (${tentative.length})`,
-      value: tentative.map(a => `• ${a.displayName}`).join('\n'),
-    });
-  }
-  if (absent.length > 0) {
-    embed.addFields({
-      name: `❌ Vắng (${absent.length})`,
-      value: absent.map(a => `• ${a.displayName}`).join('\n'),
-    });
-  }
 
-  embed.setFooter({ text: `Tổng điểm danh: ${present.length + bench.length + late.length + tentative.length}` });
+  // ── Footer & Timestamp ────────────────────────────────────────────────────
+  embed.setFooter({
+    text: `📊 Tổng điểm danh: ${totalActive} người  •  ID: ${eventId}`,
+  });
+  embed.setTimestamp();
 
+  // ── Components ────────────────────────────────────────────────────────────
   // Select menu chọn class
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_class:${eventId}`)
-    .setPlaceholder('Select your class.')
+    .setPlaceholder('⚔️ Chọn class của bạn')
     .addOptions(
       CLASSES.map(c =>
         new StringSelectMenuOptionBuilder()
@@ -135,28 +179,35 @@ if (present.length > 0) {
   // Select menu chọn nhiệm vụ
   const roleMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_role:${eventId}`)
-    .setPlaceholder('Chọn nhiệm vụ')
+    .setPlaceholder('🎯 Chọn nhiệm vụ')
     .addOptions(
       ROLES.map(r =>
         new StringSelectMenuOptionBuilder()
           .setLabel(r.label)
           .setValue(r.value)
           .setEmoji(r.emoji)
+          .setDescription(
+            r.value === 'danhTru'   ? 'Tập trung phá trụ đối thủ' :
+            r.value === 'danhNguoi' ? 'PVP tiêu diệt địch' :
+            'Thu thập & vận chuyển vật tư'
+          )
       )
     );
 
   const rowRole = new ActionRowBuilder().addComponents(roleMenu);
 
-  // Buttons: Bench | Late | Tentative | Absence
+  // Buttons row 1: Dự bị | Muộn | Ghi chú
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`btn_bench:${eventId}`).setLabel('Dự bị').setStyle(ButtonStyle.Secondary).setEmoji('🪑'),
     new ButtonBuilder().setCustomId(`btn_late:${eventId}`).setLabel('Muộn').setStyle(ButtonStyle.Secondary).setEmoji('⏰'),
+    new ButtonBuilder().setCustomId(`btn_note:${eventId}`).setLabel('Ghi chú').setStyle(ButtonStyle.Success).setEmoji('📝'),
   );
 
+  // Buttons row 2: Chưa chắc | Vắng | Huỷ
   const row3 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`btn_tentative:${eventId}`).setLabel('Chưa chắc chắn').setStyle(ButtonStyle.Secondary).setEmoji('⚖️'),
+    new ButtonBuilder().setCustomId(`btn_tentative:${eventId}`).setLabel('Chưa chắc').setStyle(ButtonStyle.Secondary).setEmoji('⚖️'),
     new ButtonBuilder().setCustomId(`btn_absent:${eventId}`).setLabel('Vắng').setStyle(ButtonStyle.Danger).setEmoji('❌'),
-    new ButtonBuilder().setCustomId(`btn_cancel:${eventId}`).setLabel('Huỷ').setStyle(ButtonStyle.Primary).setEmoji('🔄'),
+    new ButtonBuilder().setCustomId(`btn_cancel:${eventId}`).setLabel('Huỷ điểm danh').setStyle(ButtonStyle.Primary).setEmoji('🔄'),
   );
 
   return { embeds: [embed], components: [row1, rowRole, row2, row3] };

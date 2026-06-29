@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Environment variables (secrets)
+.env
+
+# OS generated files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+
+# Optional: lock files (uncomment if you only use one package manager)
+# pnpm-lock.yaml
+# package-lock.json

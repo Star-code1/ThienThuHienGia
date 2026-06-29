@@ -17,9 +17,9 @@ const dns = require('dns');
 
 // Ép Node dùng DNS Google thay vì 127.0.0.1
 dns.setServers(['8.8.8.8', '8.8.4.4']);
-const { Client, GatewayIntentBits, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
 const mongoose = require('mongoose');
-const { Event, Attendance } = require('./src/models');
+const { Event, Attendance, Note } = require('./src/models');
 const { CLASSES, ROLES, buildEventMessage } = require('./src/builder');
 
 // ── Khởi động client ──────────────────────────────────────────────────────────
@@ -165,6 +165,54 @@ client.on(Events.InteractionCreate, async interaction => {
     return;
   }
 
+  // ── /ghichu (xem ghi chú) ──────────────────────────────────────────────────
+  if (interaction.isChatInputCommand() && interaction.commandName === 'ghichu') {
+    await interaction.deferReply({ flags: 64 });
+
+    const msgId = interaction.options.getString('message_id');
+
+    // Tìm sự kiện
+    const query = msgId ? { messageId: msgId } : { active: true };
+    const event = await Event.findOne(query).sort({ createdAt: -1 });
+
+    if (!event) {
+      await interaction.editReply('❌ Không tìm thấy sự kiện nào.');
+      return;
+    }
+
+    const notes = await Note.find({ eventId: event.messageId }).sort({ createdAt: 1 });
+
+    if (notes.length === 0) {
+      const emptyEmbed = new EmbedBuilder()
+        .setColor(0xE8A317)
+        .setTitle('📝 Ghi chú')
+        .setDescription(`**${event.title}**\n\n> _Chưa có ghi chú nào._\n> _Bấm nút_ 📝 **Ghi chú** _trên bảng điểm danh để thêm._`)
+        .setTimestamp();
+      await interaction.editReply({ embeds: [emptyEmbed] });
+      return;
+    }
+
+    const lines = notes.map((n, i) => {
+      const time = n.createdAt.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric' });
+      return `> **${i + 1}.** ${n.content}\n> ╰ 👤 _${n.displayName}_ • 🕐 _${time}_`;
+    });
+
+    const noteEmbed = new EmbedBuilder()
+      .setColor(0xE8A317)
+      .setTitle('📝 Tổng hợp ghi chú')
+      .setDescription(
+        `**${event.title}**\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        lines.join('\n\n') +
+        `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+      )
+      .setFooter({ text: `Tổng: ${notes.length} ghi chú` })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [noteEmbed] });
+    return;
+  }
+
   // ── Select class ───────────────────────────────────────────────────────────
   if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_class:')) {
     await interaction.deferReply({ flags: 64 });
@@ -222,6 +270,26 @@ client.on(Events.InteractionCreate, async interaction => {
   // ── Buttons ────────────────────────────────────────────────────────────────
   if (interaction.isButton()) {
     const [action, eventMessageId] = interaction.customId.split(':');
+
+    // ── Nút Ghi chú → mở Modal (KHÔNG deferReply) ───────────────────────
+    if (action === 'btn_note') {
+      const modal = new ModalBuilder()
+        .setCustomId(`modal_note:${eventMessageId}`)
+        .setTitle('📝 Thêm ghi chú');
+
+      const noteInput = new TextInputBuilder()
+        .setCustomId('note_content')
+        .setLabel('Nội dung ghi chú')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Nhập ghi chú của bạn tại đây...')
+        .setRequired(true)
+        .setMaxLength(500);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(noteInput));
+      await interaction.showModal(modal);
+      return;
+    }
+
     await interaction.deferReply({ flags: 64 });
 
     const event = await Event.findOne({ messageId: eventMessageId, active: true });
@@ -251,6 +319,31 @@ client.on(Events.InteractionCreate, async interaction => {
     await upsertAttendance(eventMessageId, interaction.user, interaction.member, { status, className: null });
     await refreshEventMessage(interaction, eventMessageId, eventMessageId);
     await interaction.editReply(`✅ Đã đánh dấu bạn là **${statusLabel(status)}**.`);
+  }
+
+  // ── Modal submit (ghi chú) ────────────────────────────────────────────────
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_note:')) {
+    await interaction.deferReply({ flags: 64 });
+
+    const eventMessageId = interaction.customId.split(':')[1];
+    const content = interaction.fields.getTextInputValue('note_content');
+    const displayName = interaction.member?.displayName || interaction.user.displayName || interaction.user.username;
+
+    const event = await Event.findOne({ messageId: eventMessageId, active: true });
+    if (!event) {
+      await interaction.editReply('❌ Sự kiện không tồn tại hoặc đã đóng.');
+      return;
+    }
+
+    await Note.create({
+      eventId: eventMessageId,
+      userId: interaction.user.id,
+      displayName,
+      content,
+    });
+
+    await interaction.editReply(`📝 Đã thêm ghi chú:\n> ${content}`);
+    return;
   }
 });
 

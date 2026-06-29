@@ -27,6 +27,13 @@ const commands = [
     .addStringOption(opt =>
       opt.setName('message_id').setDescription('Message ID của sự kiện').setRequired(true)
     ),
+
+  new SlashCommandBuilder()
+    .setName('ghichu')
+    .setDescription('Xem tổng hợp ghi chú của sự kiện')
+    .addStringOption(opt =>
+      opt.setName('message_id').setDescription('Message ID của sự kiện (mặc định: sự kiện mới nhất)').setRequired(false)
+    ),
 ].map(c => c.toJSON());
 
 module.exports = commands;

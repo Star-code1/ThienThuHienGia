@@ -29,7 +29,19 @@ const attendanceSchema = new mongoose.Schema({
 
 attendanceSchema.index({ eventId: 1, userId: 1 }, { unique: true });
 
+// Schema lưu ghi chú cho sự kiện
+const noteSchema = new mongoose.Schema({
+  eventId: { type: String, required: true },
+  userId: { type: String, required: true },
+  displayName: { type: String },
+  content: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+noteSchema.index({ eventId: 1 });
+
 const Event = mongoose.model('Event', eventSchema);
 const Attendance = mongoose.model('Attendance', attendanceSchema);
+const Note = mongoose.model('Note', noteSchema);
 
-module.exports = { Event, Attendance };
+module.exports = { Event, Attendance, Note };
