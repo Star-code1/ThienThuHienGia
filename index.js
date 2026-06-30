@@ -57,8 +57,10 @@ async function refreshEventMessage(interaction, eventId, messageId) {
     const msg = await channel.messages.fetch(messageId);
     await msg.edit(payload);
   } catch (e) {
-    console.error('Không thể edit message:', e.message);
-  }
+  console.error("========== LỖI EDIT MESSAGE ==========");
+  console.error(e);
+  console.error("======================================");
+}
 }
 
 // ── Upsert attendance record ──────────────────────────────────────────────────
@@ -66,14 +68,21 @@ async function upsertAttendance(eventMessageId, user, member, update) {
   return Attendance.findOneAndUpdate(
     { eventId: eventMessageId, userId: user.id },
     {
-      eventId:     eventMessageId,
-      userId:      user.id,
-      username:    user.username,
-      displayName: member?.displayName || user.displayName || user.globalName || user.username,
+      eventId: eventMessageId,
+      userId: user.id,
+      username: user.username,
+      displayName:
+        member?.displayName ||
+        user.displayName ||
+        user.globalName ||
+        user.username,
       ...update,
-      timestamp:   new Date(),
+      timestamp: new Date(),
     },
-    { upsert: true, new: true }
+    {
+      upsert: true,
+      returnDocument: 'after',
+    }
   );
 }
 
@@ -361,9 +370,45 @@ function statusLabel(status) {
   return map[status] || status;
 }
 
-// ── Global error handler (tránh crash) ───────────────────────────────────────
-client.on('error', err => console.error('❌ Discord client error:', err.message));
-process.on('unhandledRejection', err => console.error('❌ Unhandled rejection:', err.message));
+// ============================
+// Global Error Handler
+// ============================
 
-// ── Start ─────────────────────────────────────────────────────────────────────
-client.login(process.env.DISCORD_TOKEN);
+client.on("error", (err) => {
+  console.error("\n========== DISCORD CLIENT ERROR ==========");
+  console.error(err);
+  console.error("==========================================\n");
+});
+
+client.on("warn", (info) => {
+  console.warn("[Discord Warning]", info);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("\n========== UNHANDLED REJECTION ==========");
+  console.error("Promise:", promise);
+  console.error("Reason:", reason);
+  console.error("=========================================\n");
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("\n========== UNCAUGHT EXCEPTION ==========");
+  console.error(err);
+  console.error("========================================\n");
+});
+
+process.on("uncaughtExceptionMonitor", (err) => {
+  console.error("\n====== UNCAUGHT EXCEPTION MONITOR ======");
+  console.error(err);
+  console.error("========================================\n");
+});
+
+client.login(process.env.DISCORD_TOKEN)
+  .then(() => {
+    console.log("✅ Discord login thành công.");
+  })
+  .catch((err) => {
+    console.error("\n========== LOGIN ERROR ==========");
+    console.error(err);
+    console.error("=================================\n");
+  });
