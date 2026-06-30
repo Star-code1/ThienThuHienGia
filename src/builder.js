@@ -29,6 +29,7 @@ function progressBar(current, max = 60) {
   return `${bar}  **${filled}** / ${max} người (${pct}%)`;
 }
 
+
 /**
  * Tạo embed + components cho một sự kiện điểm danh
  */
@@ -83,24 +84,33 @@ function buildEventMessage(opts) {
       .map(r => `${r.emoji} ${r.label}: **${roleCounts[r.label]}**`)
       .join('  │  ');
 
-    // Tạo nội dung class
-    const classLines = CLASSES
-      .filter(c => grouped[c.label].length > 0)
-      .map(c => {
-        const members = grouped[c.label]
-          .map(m => {
-            const roleTag = m.role ? ` ┃ ${ROLES.find(r => r.label === m.role)?.emoji || '📌'} \`${m.role}\`` : '';
-            return `> ╰ ${m.name}${roleTag}`;
-          })
-          .join('\n');
-        return `> ${c.emoji} **${c.label}** ── \`${grouped[c.label].length} người\`\n${members}`;
-      })
-      .join('\n>\n');
+    // Tiêu đề
+embed.addFields({
+    name: `✅ CÓ MẶT ── ${present.length}/${totalSlots}`,
+    value: `📋 **Phân công:** ${roleStats}`,
+    inline: false,
+});
 
-    embed.addFields({
-      name: `\n✅ CÓ MẶT ── ${present.length} người`,
-      value: `${classLines}\n> \n> ${DIVIDER_THIN}\n> 📋 **Phân công:** ${roleStats}`,
-    });
+// Mỗi class là một field
+CLASSES.forEach(c => {
+  if (grouped[c.label].length === 0) return;
+
+  const members = grouped[c.label]
+    .map(m => {
+      const role = ROLES.find(r => r.label === m.role);
+
+      return `• ${m.name}${
+    role ? ` ${role.emoji} \`${role.label}\`` : ''
+}`;
+    })
+    .join('\n');
+
+  embed.addFields({
+    name: `${c.emoji} ${c.label} (${grouped[c.label].length}/20)`,
+    value: members,
+    inline: true,
+  });
+});
   } else {
     embed.addFields({
       name: '✅ CÓ MẶT',
@@ -125,7 +135,7 @@ function buildEventMessage(opts) {
       name: '\u200B',
       value: leftGroups.map(g =>
         `${g.icon} **${g.label}** (\`${g.list.length}\`)\n` +
-        g.list.map(a => `> ╰ ${a.displayName}`).join('\n')
+        g.list.map(a => ` ╰ ${a.displayName}`).join('\n')
       ).join('\n\n'),
       inline: true,
     });
