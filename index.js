@@ -95,6 +95,8 @@ client.once(Events.ClientReady, () => {
 client.on(Events.InteractionCreate, async interaction => {
   // ── /diemdanh ──────────────────────────────────────────────────────────────
   if (interaction.isChatInputCommand() && interaction.commandName === 'diemdanh') {
+   
+// Tiếp tục xử lý vote...
     await interaction.deferReply({ flags: 64 });
 
     const ten  = interaction.options.getString('ten');
@@ -250,6 +252,16 @@ client.on(Events.InteractionCreate, async interaction => {
 
   // ── Select role (nhiệm vụ) ────────────────────────────────────────────────
   if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_role:')) {
+     const DU_HOC_SINH_ROLE = '1477346550173663322';
+    const member = interaction.member;
+
+if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
+    return interaction.reply({
+        content: '❌ Thành viên có role **Du Học Sinh** không được phép tham gia bình chọn.',
+        ephemeral: true,
+    });
+}
+
     await interaction.deferReply({ flags: 64 });
 
     const eventMessageId = interaction.customId.split(':')[1];
@@ -280,6 +292,16 @@ client.on(Events.InteractionCreate, async interaction => {
 
   // ── Buttons ────────────────────────────────────────────────────────────────
   if (interaction.isButton()) {
+     const DU_HOC_SINH_ROLE = '1477346550173663322';
+    const member = interaction.member;
+
+if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
+    return interaction.reply({
+        content: '❌ Thành viên có role **Du Học Sinh** không được phép tham gia bình chọn.',
+        ephemeral: true,
+    });
+}
+
     const [action, eventMessageId] = interaction.customId.split(':');
 
     // ── Nút Ghi chú → mở Modal (KHÔNG deferReply) ───────────────────────
@@ -334,6 +356,16 @@ client.on(Events.InteractionCreate, async interaction => {
 
   // ── Modal submit (ghi chú) ────────────────────────────────────────────────
   if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_note:')) {
+     const DU_HOC_SINH_ROLE = '1477346550173663322';
+    const member = interaction.member;
+
+if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
+    return interaction.reply({
+        content: '❌ Thành viên có role **Du Học Sinh** không được phép tham gia bình chọn.',
+        ephemeral: true,
+    });
+}
+
     await interaction.deferReply({ flags: 64 });
 
     const eventMessageId = interaction.customId.split(':')[1];
@@ -412,15 +444,3 @@ client.login(process.env.DISCORD_TOKEN)
     console.error(err);
     console.error("=================================\n");
   });
-
-  const DU_HOC_SINH_ROLE = '1477346550173663322';
-  
-  const member = interaction.member;
-  
-  if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
-      return interaction.reply({
-          content: '❌ Thành viên có role **Du Học Sinh** không được phép tham gia bình chọn.',
-          ephemeral: true,
-      });
-  }
-  
