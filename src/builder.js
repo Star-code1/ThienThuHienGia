@@ -3,7 +3,7 @@ const { EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, Ac
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CLASSES = [
   { label: 'Huyết Hà',   value: 'huyetHa',   emoji: '<:huyetha:1449791931751202987>',   emojiComponent: { id: '1449791931751202987', name: 'huyetha' } },
-  { label: 'Cứu Linh',   value: 'cuuLinh',   emoji: '<:cuulinh:1449791874482180207>',   emojiComponent: { id: '1449791874482180207', name: 'cuulinh' } },
+  { label: 'Cửu Linh',   value: 'cuuLinh',   emoji: '<:cuulinh:1449791874482180207>',   emojiComponent: { id: '1449791874482180207', name: 'cuulinh' } },
   { label: 'Tố Vấn',     value: 'toVan',     emoji: '<:tovan:1449986202437550202>',     emojiComponent: { id: '1449986202437550202', name: 'tovan' } },
   { label: 'Toái Mộng',  value: 'toaiMong',  emoji: '<:toaimong:1449792113767354410>',  emojiComponent: { id: '1449792113767354410', name: 'toaimong' } },
   { label: 'Thiết Y',    value: 'thietY',    emoji: '<:thiety:1449792043864821932>',    emojiComponent: { id: '1449792043864821932', name: 'thiety' } },
