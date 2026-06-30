@@ -412,3 +412,15 @@ client.login(process.env.DISCORD_TOKEN)
     console.error(err);
     console.error("=================================\n");
   });
+
+  const DU_HOC_SINH_ROLE = '1477346550173663322';
+  
+  const member = interaction.member;
+  
+  if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
+      return interaction.reply({
+          content: '❌ Thành viên có role **Du Học Sinh** không được phép tham gia bình chọn.',
+          ephemeral: true,
+      });
+  }
+  
