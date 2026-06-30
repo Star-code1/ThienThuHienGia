@@ -223,4 +223,17 @@ CLASSES.forEach(c => {
   return { embeds: [embed], components: [row1, rowRole, row2, row3] };
 }
 
+const DU_HOC_SINH_ROLE = '1477346550173663322';
+
+const member = interaction.member;
+
+if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
+    return interaction.reply({
+        content: '❌ Thành viên có role **Du Học Sinh** không được phép tham gia bình chọn.',
+        ephemeral: true,
+    });
+}
+
+// Tiếp tục xử lý vote...
+
 module.exports = { CLASSES, ROLES, buildEventMessage };
