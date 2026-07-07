@@ -228,15 +228,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
   // ── Select class ───────────────────────────────────────────────────────────
   if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_class:')) {
-    const DU_HOC_SINH_ROLE = '1477346550173663322';
-    const member = interaction.member;
-
-if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
-    return interaction.reply({
-        content: '❌ Thành viên có role **Du Học Sinh** không được phép tham gia bình chọn.',
-        ephemeral: true,
-    });
-}
+    
     await interaction.deferReply({ flags: 64 });
 
     const eventMessageId = interaction.customId.split(':')[1];
@@ -261,15 +253,7 @@ if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
 
   // ── Select role (nhiệm vụ) ────────────────────────────────────────────────
   if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_role:')) {
-     const DU_HOC_SINH_ROLE = '1477346550173663322';
-    const member = interaction.member;
-
-if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
-    return interaction.reply({
-        content: '❌ Thành viên có role **Du Học Sinh** không được phép tham gia bình chọn.',
-        ephemeral: true,
-    });
-}
+     
 
     await interaction.deferReply({ flags: 64 });
 
@@ -301,15 +285,7 @@ if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
 
   // ── Buttons ────────────────────────────────────────────────────────────────
   if (interaction.isButton()) {
-     const DU_HOC_SINH_ROLE = '1477346550173663322';
-    const member = interaction.member;
-
-if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
-    return interaction.reply({
-        content: '❌ Thành viên có role **Du Học Sinh** không được phép tham gia bình chọn.',
-        ephemeral: true,
-    });
-}
+     
 
     const [action, eventMessageId] = interaction.customId.split(':');
 
@@ -365,15 +341,7 @@ if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
 
   // ── Modal submit (ghi chú) ────────────────────────────────────────────────
   if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_note:')) {
-     const DU_HOC_SINH_ROLE = '1477346550173663322';
-    const member = interaction.member;
-
-if (member.roles.cache.has(DU_HOC_SINH_ROLE)) {
-    return interaction.reply({
-        content: '❌ Thành viên có role **Du Học Sinh** không được phép tham gia bình chọn.',
-        ephemeral: true,
-    });
-}
+     
 
     await interaction.deferReply({ flags: 64 });
 
