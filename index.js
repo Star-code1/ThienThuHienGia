@@ -91,9 +91,11 @@ client.once(Events.ClientReady, () => {
   console.log(`🤖 Bot đã online: ${client.user.tag}`);
 });
 
-// ── Slash Commands ─────────────────────────────────────────────────────────────
+
 client.on(Events.InteractionCreate, async interaction => {
-  // ── /diemdanh ──────────────────────────────────────────────────────────────
+    try {
+
+       // ── /diemdanh ──────────────────────────────────────────────────────────────
   if (interaction.isChatInputCommand() && interaction.commandName === 'diemdanh') {
    
 // Tiếp tục xử lý vote...
@@ -365,6 +367,19 @@ client.on(Events.InteractionCreate, async interaction => {
     await interaction.editReply(`📝 Đã thêm ghi chú:\n> ${content}`);
     return;
   }
+
+    } catch (err) {
+        console.error(err);
+
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply("Có lỗi xảy ra.").catch(() => {});
+        } else {
+            await interaction.reply({
+                content: "Có lỗi xảy ra.",
+                flags: 64
+            }).catch(() => {});
+        }
+    }
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
