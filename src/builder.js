@@ -12,7 +12,8 @@ const CLASSES = [
 ];
 
 const ROLES = [
-  { label: 'Đánh trụ',   value: 'danhTru',   emoji: '🏰' },
+  { label: 'Đánh trụ ở Cánh',   value: 'danhTruCanh',   emoji: '🏰' },
+  { label: 'Đánh trụ ở Mid',   value: 'danhTruMid',   emoji: '🏯' },
   { label: 'Đánh người',  value: 'danhNguoi', emoji: '⚔️' },
   { label: 'Vật tư',      value: 'vatTu',     emoji: '📦' },
 ];
