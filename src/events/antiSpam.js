@@ -22,144 +22,118 @@ module.exports = (client) => {
             .replace(/[^\p{L}\p{N}]/gu, "");
     }
 
-    client.on("messageCreate", async (message) => {
+client.on("messageCreate", async (message) => {
 
-        if (!message.guild) return;
-        if (message.author.bot) return;
+    if (!message.guild) return;
+    if (message.author.bot) return;
 
-        // Bỏ qua admin
-        if (
-            message.member.permissions.has(
-                PermissionsBitField.Flags.Administrator
-            )
-        ) return;
+    // Bỏ qua Admin
+    if (
+        message.member.permissions.has(
+            PermissionsBitField.Flags.Administrator
+        )
+    ) return;
 
-        const now = Date.now();
-        const uid = message.author.id;
+    const TRAP_CHANNEL_ID = "1530983844113813545";
+    const LOG_CHANNEL_ID = "1438974225154183219";
 
-        if (!cache.has(uid))
-            cache.set(uid, []);
+    // Không phải kênh bẫy
+    if (message.channel.id !== TRAP_CHANNEL_ID) return;
 
-        const history = cache.get(uid);
+    console.log(`[TRAP] ${message.author.tag}`);
 
-        history.push({
-            id: message.id,
-            channel: message.channel.id,
-            content: normalize(message.content),
-            created: now
-        });
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
 
-        const recent = history.filter(
-            x => now - x.created <= WINDOW
-        );
+    let deleted = 0;
 
-        cache.set(uid, recent);
+    // Quét tất cả kênh text
+    for (const [, channel] of message.guild.channels.cache) {
 
-        const same = recent.filter(
-            x => x.content === normalize(message.content)
-        );
+        if (!channel.isTextBased()) continue;
 
-        const channels = new Set(
-            same.map(x => x.channel)
-        );
+        try {
 
-        if (
-            same.length >= MESSAGE_LIMIT &&
-            channels.size >= CHANNEL_LIMIT
-        ) {
+            const messages = await channel.messages.fetch({
+                limit: 100
+            });
 
-            console.log(
-                `[ANTI-SPAM] ${message.author.tag}`
+            const targets = messages.filter(msg =>
+                msg.author.id === message.author.id &&
+                msg.createdTimestamp >= fiveMinutesAgo
             );
 
-            // Timeout ngay nếu có quyền
-            try {
-
-                await message.member.timeout(
-                    60 * 60 * 1000,
-                    "Anti Spam"
-                );
-
-            } catch {}
-
-            // Xóa toàn bộ tin
-
-            for (const msg of same) {
+            for (const msg of targets.values()) {
 
                 try {
-
-                    const channel =
-                        await client.channels.fetch(msg.channel);
-
-                    const m =
-                        await channel.messages.fetch(msg.id);
-
-                    await m.delete();
-
+                    await msg.delete();
+                    deleted++;
                 } catch {}
 
             }
 
-            // Log
+        } catch {}
 
-            try {
+    }
 
-                const LOG_CHANNEL_ID = "1438974225154183219";
+    // Gửi log
+    try {
 
-                const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);
+        const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);
 
-                const embed = new EmbedBuilder()
-                    .setColor("Red")
-                    .setTitle("🚨 Anti Spam")
+        const embed = new EmbedBuilder()
+            .setColor("Red")
+            .setTitle("🚨 Kích hoạt kênh bẫy")
 
-                    .addFields(
-                        {
-                            name: "Người dùng",
-                            value:
-`${message.author.tag}
-${message.author.id}`
-                        },
-                        {
-                            name: "Tin nhắn",
-                            value: `${same.length}`,
-                            inline: true
-                        },
-                        {
-                            name: "Kênh",
-                            value: `${channels.size}`,
-                            inline: true
-                        }
-                    )
-                    .setTimestamp();
+            .addFields(
+                {
+                    name: "👤 Người dùng",
+                    value: `${message.author.tag}\n${message.author.id}`
+                },
+                {
+                    name: "🗑 Đã xóa",
+                    value: `${deleted} tin nhắn`,
+                    inline: true
+                },
+                {
+                    name: "🔨 Hành động",
+                    value: "Ban khỏi server",
+                    inline: true
+                },
+                {
+                    name: "📍 Kênh bẫy",
+                    value: `<#${TRAP_CHANNEL_ID}>`
+                }
+            )
 
-                await logChannel.send({
-                    embeds: [embed]
-                });
+            .setTimestamp();
 
-            } catch (e) {}
+        await logChannel.send({
+            embeds: [embed]
+        });
 
-            // Ban
+    } catch (err) {
 
-            try {
+        console.log(err);
 
-                await message.guild.members.ban(
-                    message.author.id,
-                    {
-                        deleteMessageSeconds: 0,
-                        reason: "Spam nhiều kênh"
-                    }
-                );
+    }
 
-            } catch (err) {
+    // Ban
+    try {
 
-                console.log(err);
-
+        await message.guild.members.ban(
+            message.author.id,
+            {
+                reason: "Kích hoạt Anti Trap",
+                deleteMessageSeconds: 0
             }
+        );
 
-            cache.delete(uid);
+    } catch (err) {
 
-        }
+        console.log(err);
 
-    });
+    }
+
+});
 
 };
