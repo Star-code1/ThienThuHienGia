@@ -42,7 +42,7 @@ client.on("messageCreate", async (message) => {
 
     console.log(`[TRAP] ${message.author.tag}`);
 
-    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    const oneMinutesAgo = Date.now() - 1 * 60 * 1000;
 
     let deleted = 0;
 
@@ -59,7 +59,7 @@ client.on("messageCreate", async (message) => {
 
             const targets = messages.filter(msg =>
                 msg.author.id === message.author.id &&
-                msg.createdTimestamp >= fiveMinutesAgo
+                msg.createdTimestamp >= oneMinutesAgo
             );
 
             for (const msg of targets.values()) {
