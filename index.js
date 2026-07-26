@@ -24,8 +24,16 @@ const { CLASSES, ROLES, buildEventMessage } = require('./src/builder');
 
 // ── Khởi động client ──────────────────────────────────────────────────────────
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
+    ],
 });
+
+// --- Khởi động anti Spam ------------------------------
+require("./src/events/antiSpam")(client);
 
 // ── Connect MongoDB ───────────────────────────────────────────────────────────
 mongoose
