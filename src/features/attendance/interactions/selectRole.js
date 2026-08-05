@@ -4,7 +4,9 @@ const Attendance = require('../models/Attendance');
 const { upsertAttendance, refreshEventMessage } = require('../utils');
 
 async function handleSelectRole(interaction, client) {
-  await interaction.deferReply({ flags: 64 });
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply({ flags: 64 });
+  }
 
   const eventMessageId = interaction.customId.split(':')[1];
   const chosen = interaction.values[0];

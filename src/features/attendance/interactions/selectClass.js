@@ -3,7 +3,9 @@ const Event = require('../models/Event');
 const { upsertAttendance, refreshEventMessage } = require('../utils');
 
 async function handleSelectClass(interaction, client) {
-  await interaction.deferReply({ flags: 64 });
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply({ flags: 64 });
+  }
 
   const eventMessageId = interaction.customId.split(':')[1];
   const chosen = interaction.values[0];

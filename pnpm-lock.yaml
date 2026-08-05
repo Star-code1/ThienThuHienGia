@@ -17,6 +17,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      groq-sdk:
+        specifier: ^1.5.0
+        version: 1.5.0
       mongoose:
         specifier: ^9.7.3
         version: 9.7.3
@@ -220,6 +223,10 @@ packages:
   gopd@1.2.0:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
     engines: {node: '>= 0.4'}
+
+  groq-sdk@1.5.0:
+    resolution: {integrity: sha512-aa5yaMVd8kehBacU3Pp7roObOuPksZNau+nPW+GDDB7OV/8jybVzeeOv54lZj8owNNIc3a7Tu2eYI7/kIwtMNw==}
+    hasBin: true
 
   has-symbols@1.1.0:
     resolution: {integrity: sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==}
@@ -720,6 +727,8 @@ snapshots:
       es-object-atoms: 1.1.2
 
   gopd@1.2.0: {}
+
+  groq-sdk@1.5.0: {}
 
   has-symbols@1.1.0: {}
 
