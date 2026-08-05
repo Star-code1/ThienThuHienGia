@@ -24,6 +24,26 @@ const UserProfileSchema = new mongoose.Schema({
     tuVi: { type: Number, default: 0 },
     canhGioi: { type: String, default: 'Luyện Khí Sơ Kỳ' },
     lastDiemDanh: { type: Date, default: null },
+
+    // Đạo Lữ (Hệ thống Kết Đôi / Cầu Hôn)
+    daoLu: {
+        partnerId: { type: String, default: null },
+        partnerName: { type: String, default: null },
+        ringName: { type: String, default: null },
+        intimacy: { type: Number, default: 0 },
+        marriedAt: { type: Date, default: null }
+    },
+
+    // Linh Thú Đồng Hành (Pet)
+    pets: [{
+        petId: { type: String, required: true },
+        name: { type: String, required: true },
+        level: { type: Number, default: 1 },
+        exp: { type: Number, default: 0 },
+        lastFed: { type: Date, default: null }
+    }],
+    activePetId: { type: String, default: null },
+
     stats: {
         noituWins: { type: Number, default: 0 },
         vuatiengvietWins: { type: Number, default: 0 },
@@ -34,24 +54,20 @@ const UserProfileSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-/**
- * Lấy hoặc tạo hồ sơ tu sĩ
- */
 UserProfileSchema.statics.getOrCreate = async function (userId, username = 'Đạo hữu') {
     let profile = await this.findOne({ userId });
     if (!profile) {
         profile = await this.create({ userId, username });
+    } else if (username && profile.username !== username) {
+        profile.username = username;
+        await profile.save();
     }
     return profile;
 };
 
-/**
- * Tăng Tu Vi và tự động cập nhật Cảnh Giới
- */
 UserProfileSchema.methods.addTuVi = function (amount) {
     this.tuVi += amount;
     
-    // Tìm cảnh giới phù hợp
     let currentRealm = CANH_GIOI_LIST[0].name;
     for (const realm of CANH_GIOI_LIST) {
         if (this.tuVi >= realm.reqTuVi) {
