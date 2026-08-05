@@ -451,7 +451,7 @@ async function generateVuaTiengVietQuestion(difficulty = 'trung_binh', usedWords
    - **Không** trùng lặp với bất kỳ từ nào trong usedWords.
 
 2. **Xáo trộn ký tự (scrambledLetters)**:
-   - Tách thành 2 âm tiết riêng biệt. Xáo trộn ngẫu nhiên các ký tự bên trong từng âm tiết, **giữ nguyên dấu cách ở giữa** (Ví dụ: "HỌC SINH" → "CỌH HSNI").
+   - Giữa mỗi kí tự có 1 khoảng cách. Xáo trộn ngẫu nhiên các ký tự bên trong, **giữ dấu cách ở giữa mỗi kí tự** (Ví dụ: "HỌC SINH" → "C Ọ H H S N I").
 
 3. **Gợi ý (hint)**:
    - Là một câu thơ hoặc câu nói ngắn (khoảng 4–6 từ) mang phong cách "Tiên Hiệp Nghịch Thủy Hàn" – cổ kính, ẩn ý, có chất thiền hoặc triết lý.
