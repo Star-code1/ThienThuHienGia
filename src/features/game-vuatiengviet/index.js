@@ -35,9 +35,9 @@ function startQuestionTimer(channelId, channel) {
                 .setDescription(
                     `⏳ Đã trôi qua **5 câu đố liên tiếp (1 phút/câu)** không có đạo hữu nào giải đáp!\n` +
                     `✨ Đáp án của câu vừa rồi là: **"${currentGame.originalWord}"**\n\n` +
-                    `🧙‍♂️ **Thiên Thu Hiền Giả** tuyên bố khép lại thử thách. Dùng lệnh \`/vuatiengviet\` để mở lại bất cứ lúc nào!`
+                    `🧙‍♂️ **Thiên Thư Hiền Giả** tuyên bố khép lại thử thách. Dùng lệnh \`/vuatiengviet\` để mở lại bất cứ lúc nào!`
                 )
-                .setFooter({ text: 'Thiên Thu Môn • Ngộ tính cần rèn luyện' });
+                .setFooter({ text: 'Thiên Thư Môn • Ngộ tính cần rèn luyện' });
 
             await channel.send({ embeds: [stopEmbed] }).catch(() => {});
             return;
@@ -50,7 +50,7 @@ function startQuestionTimer(channelId, channel) {
             .setDescription(
                 `⏱️ Hết 1 phút mà chưa có đạo hữu nào đoán đúng!\n` +
                 `✨ Đáp án câu trước là: **"${currentGame.originalWord}"**\n\n` +
-                `🔄 **Thiên Thu Hiền Giả** đang soạn câu đố mới...`
+                `🔄 **Thiên Thư Hiền Giả** đang soạn câu đố mới...`
             );
 
         await channel.send({ embeds: [timeoutEmbed] }).catch(() => {});
@@ -144,7 +144,7 @@ const vuatiengvietCommand = {
             .setColor('#F1C40F')
             .setTitle('👑 VUA TIẾNG VIỆT • THỬ THÁCH NGỘ TÍNH (AI ĐỘNG) 👑')
             .setDescription(
-                `🧙‍♂️ **Thiên Thu Hiền Giả** đã dùng AI sinh câu đố xáo trộn chữ cái:\n\n` +
+                `🧙‍♂️ **Thiên Thư Hiền Giả** đã dùng AI sinh câu đố xáo trộn chữ cái:\n\n` +
                 `🔤 Ký tự xáo trộn: **\` ${questionData.scrambledLetters} \`**\n\n` +
                 `👉 Nhắn câu trả lời chính xác trực tiếp vào kênh này!\n` +
                 `⏱️ **Đếm ngược:** 1 phút (Bỏ trống 5 câu liên tiếp sẽ kết thúc trò chơi).\n` +
@@ -207,9 +207,9 @@ const onMessageCreate = {
                     `✨ Đáp án đúng: **"${game.originalWord}"**\n` +
                     `🎁 Phần thưởng: **+50 💎 Linh Thạch** | **+25 ✨ Tu Vi**\n` +
                     `🔮 Cảnh giới hiện tại: **${newRealm}**\n\n` +
-                    `🔄 **Thiên Thu Hiền Giả** đang dùng AI tạo câu đố tiếp theo...`
+                    `🔄 **Thiên Thư Hiền Giả** đang dùng AI tạo câu đố tiếp theo...`
                 )
-                .setFooter({ text: 'Thiên Thu Hiền Giả Tán Thưởng' });
+                .setFooter({ text: 'Thiên Thư Hiền Giả Tán Thưởng' });
 
             await message.channel.send({ embeds: [winEmbed] });
 
@@ -273,7 +273,7 @@ const handleVuaButtons = async (interaction) => {
                 `⏱️ **Thời gian:** 1 phút/câu. Quá 1 phút không ai đoán đúng sẽ tự động sang câu đố mới. Bỏ trống 5 câu liên tiếp game kết thúc.\n` +
                 `🎁 **Thần thưởng:** +50 Linh Thạch & +25 Tu Vi cho người đoán đúng nhanh nhất!`
             )
-            .setFooter({ text: 'Thiên Thu Môn • Ngộ Tính Tối Cao' });
+            .setFooter({ text: 'Thiên Thư Môn • Ngộ Tính Tối Cao' });
 
         return interaction.reply({ embeds: [rulesEmbed], flags: 64 });
     }
@@ -298,7 +298,7 @@ const handleVuaButtons = async (interaction) => {
                 `Đạo hữu **${interaction.user.username}** đã tuyên bố đầu hàng trước thử thách!\n\n` +
                 `✨ Đáp án chính xác là: **"${game.originalWord}"**`
             )
-            .setFooter({ text: 'Thiên Thu Môn • Tu luyện là con đường gian nan' });
+            .setFooter({ text: 'Thiên Thư Môn • Tu luyện là con đường gian nan' });
 
         await interaction.update({ embeds: [embed], components: [] });
     }

@@ -164,7 +164,7 @@ const gesturesCommand = {
                 .setColor(senderWin ? '#2ECC71' : '#E74C3C')
                 .setTitle('⚔️ ĐỘNG TÁC: TỶ VÕ GIAO LƯU ⚔️')
                 .setDescription(
-                    `⚔️ **${interaction.user.username}** và **${targetUser.username}** đã rút binh khí giao chiến 100 hiệp tại Thiên Thu Môn!\n\n` +
+                    `⚔️ **${interaction.user.username}** và **${targetUser.username}** đã rút binh khí giao chiến 100 hiệp tại Thiên Thư Môn!\n\n` +
                     `🏆 **CHIẾN THẮNG:** Đạo hữu **${winnerName}** tuyệt kỹ xuất thần, đoạt lấy **+100 💎 Linh Thạch** từ **${loserName}**!`
                 )
                 .setFooter({ text: footerText });
@@ -178,7 +178,7 @@ const gesturesCommand = {
                 .setColor('#9B59B6')
                 .setTitle('🤝 ĐỘNG TÁC: BÁI SƯ HỌC ĐẠO')
                 .setDescription(
-                    `🤝 **${interaction.user.username}** cung kính khấu bái trước mặt **${targetUser.username}**, nguyện theo làm đệ tử Thiên Thu Môn!\n\n` +
+                    `🤝 **${interaction.user.username}** cung kính khấu bái trước mặt **${targetUser.username}**, nguyện theo làm đệ tử Thiên Thư Môn!\n\n` +
                     `📜 *"Sư đồ tương phùng, đạo pháp vạn năm cùng tu luyện."*`
                 )
                 .setFooter({ text: footerText });

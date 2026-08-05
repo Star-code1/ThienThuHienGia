@@ -100,9 +100,9 @@ function startBaucuaTimer(channelId, channel) {
                 (winnersSummary.length > 0 
                     ? `📊 **BẢNG KẾT QUẢ CÁC ĐẠO HỮU:**\n${winnersSummary.join('\n\n')}\n\n` 
                     : `⚠️ Không có đạo hữu nào tham gia đặt cược trong phiên này.\n\n`) +
-                `💬 **Lời Quẻ Hiền Giả (Thiên Thu Môn):**\n*"${aiCommentary}"*`
+                `💬 **Lời Quẻ Hiền Giả (Thiên Thư Môn):**\n*"${aiCommentary}"*`
             )
-            .setFooter({ text: 'Thiên Thu Hiền Giả Ban Quẻ • Dùng /baucua để mở sòng mới' })
+            .setFooter({ text: 'Thiên Thư Hiền Giả Ban Quẻ • Dùng /baucua để mở sòng mới' })
             .setTimestamp();
 
         await channel.send({ embeds: [resultEmbed] }).catch(() => {});
@@ -159,7 +159,7 @@ const baucuaCommand = {
             .setColor('#E67E22')
             .setTitle('🎲 KHAI MỞ SÒNG BẦU CUA LỤC ĐẠI LINH THÚ 🎲')
             .setDescription(
-                `🧙‍♂️ **Thiên Thu Hiền Giả** đã mở trận gieo xăm Bầu Cua tại Thiên Thu Môn!\n\n` +
+                `🧙‍♂️ **Thiên Thư Hiền Giả** đã mở trận gieo xăm Bầu Cua tại Thiên Thư Môn!\n\n` +
                 `⏱️ **Thời gian cược:** 30 giây đếm ngược!\n` +
                 `👉 Bấm vào nút các **Linh Thú** bên dưới để nhập số Linh Thạch cược tùy ý (Có thể cược nhiều Linh Thú cùng lúc!).`
             )
@@ -193,7 +193,7 @@ const handleBaucuaInteractions = async (interaction) => {
                 `• Nếu ra 3 con trùng khớp ➔ Hoàn tiền cược + Thưởng x3 tiền cược.\n` +
                 `• Nếu không trúng ➔ Mất số Linh Thạch đã cược vào linh thú đó.`
             )
-            .setFooter({ text: 'Thiên Thu Hiền Giả Ban Quẻ' });
+            .setFooter({ text: 'Thiên Thư Hiền Giả Ban Quẻ' });
 
         return interaction.reply({ embeds: [rulesEmbed], flags: 64 });
     }

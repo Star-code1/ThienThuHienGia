@@ -92,7 +92,7 @@ function getTodayString() {
 const shopTrungCommand = {
     data: new SlashCommandBuilder()
         .setName('shop-trung')
-        .setDescription('🥚 Xem Cửa Hàng Trứng Linh Thú Thiên Thu Môn (Max 5 trứng/ngày)'),
+        .setDescription('🥚 Xem Cửa Hàng Trứng Linh Thú Thiên Thư Môn (Max 5 trứng/ngày)'),
     async execute(interaction) {
         const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
         const today = getTodayString();
@@ -116,9 +116,9 @@ const shopTrungCommand = {
 
         const embed = new EmbedBuilder()
             .setColor('#F39C12')
-            .setTitle('🥚 CỬA HÀNG TRỨNG LINH THÚ • THIÊN THU MÔN')
+            .setTitle('🥚 CỬA HÀNG TRỨNG LINH THÚ • Thiên Thư MÔN')
             .setDescription(
-                `🧙‍♂️ **Thiên Thu Hiền Giả** cung cấp Trứng Linh Thú chứa đựng cơ duyên nở ra Linh Thú huyền thoại!\n\n` +
+                `🧙‍♂️ **Thiên Thư Hiền Giả** cung cấp Trứng Linh Thú chứa đựng cơ duyên nở ra Linh Thú huyền thoại!\n\n` +
                 `💰 **Giá Trứng Linh Thú:** \`5,000\` 💎 Linh Thạch / Trứng\n` +
                 `📊 **Giới hạn mua:** Tối đa **5 trứng / ngày**\n\n` +
                 `📈 **Trạng thái đạo hữu:**\n` +
@@ -187,7 +187,7 @@ const muaTrungCommand = {
                 `📊 Đã mua hôm nay: **\`${profile.eggData.eggsBoughtToday}/5\`** trứng\n\n` +
                 `👉 Dùng lệnh \`/ap-trung\` ngay để ấp trứng nở ra Linh Thú!`
             )
-            .setFooter({ text: 'Thiên Thu Môn • Cơ duyên linh thú' });
+            .setFooter({ text: 'Thiên Thư Môn • Cơ duyên linh thú' });
 
         await interaction.reply({ embeds: [embed] });
     }
@@ -294,7 +294,7 @@ const handlePetSwapButtons = async (interaction) => {
                 `• **Nuôi Thú (\`/nuoi-pet\`):** Cho ăn Linh Dược (-200 Linh Thạch) để tăng EXP & chỉ số khi lên cấp.\n` +
                 `• **Nhiệm Vụ Pet (\`/nhiemvu-pet\`):** Làm 3 nhiệm vụ huấn luyện mỗi ngày để kiếm EXP & Linh Thạch!`
             )
-            .setFooter({ text: 'Thiên Thu Môn • Linh Thú Đồng Hành' });
+            .setFooter({ text: 'Thiên Thư Môn • Linh Thú Đồng Hành' });
 
         return interaction.reply({ embeds: [rulesEmbed], flags: 64 });
     }

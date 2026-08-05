@@ -5,7 +5,7 @@ const UserProfile = require('../../shared/models/UserProfile');
 // Stores active games per channel: channelId -> gameObject
 const activeGames = new Map();
 
-const FALLBACK_WORDS_VI = ['Tu Tiên', 'Nghịch Thủy', 'Huyết Hà', 'Tố Vấn', 'Linh Thạch', 'Kim Đan', 'Bang Chiến', 'Hiền Giả', 'Giang Hồ', 'Thiên Thu'];
+const FALLBACK_WORDS_VI = ['Tu Tiên', 'Nghịch Thủy', 'Huyết Hà', 'Tố Vấn', 'Linh Thạch', 'Kim Đan', 'Bang Chiến', 'Hiền Giả', 'Giang Hồ', 'Thiên Thư'];
 const FALLBACK_WORDS_EN = ['Dragon', 'Immortal', 'Phoenix', 'Guild', 'Warrior', 'Mystic', 'Legend', 'Arcane', 'Crystal', 'Shadow'];
 
 /**
@@ -40,9 +40,9 @@ function resetTurnTimer(channelId, channel) {
                 .setTitle('🛑 SÒNG NỐI TỪ ĐÃ KẾT THÚC')
                 .setDescription(
                     `⏳ Đã trôi qua **5 lượt liên tiếp (30 giây/lượt)** không có đạo hữu nào tham gia nối từ!\n` +
-                    `🧙‍♂️ **Thiên Thu Hiền Giả** đã thu hồi trận pháp. Dùng lệnh \`/noitu-vi\` hoặc \`/noitu-en\` để mở sòng mới!`
+                    `🧙‍♂️ **Thiên Thư Hiền Giả** đã thu hồi trận pháp. Dùng lệnh \`/noitu-vi\` hoặc \`/noitu-en\` để mở sòng mới!`
                 )
-                .setFooter({ text: 'Thiên Thu Môn • Đạo pháp tự nhiên' });
+                .setFooter({ text: 'Thiên Thư Môn • Đạo pháp tự nhiên' });
 
             await channel.send({ embeds: [stopEmbed] }).catch(() => {});
             return;
@@ -68,7 +68,7 @@ function resetTurnTimer(channelId, channel) {
             .setDescription(
                 `⏱️ Quá 30s không ai nối từ!\n` +
                 (currentGame.lastUserId ? `🏆 Đạo hữu nối từ cuối nhận thưởng thêm **+20 💎 Linh Thạch**!\n\n` : '\n') +
-                `👉 **Thiên Thu Hiền Giả** khởi tạo từ mới: **"${newWord}"**\n` +
+                `👉 **Thiên Thư Hiền Giả** khởi tạo từ mới: **"${newWord}"**\n` +
                 `👉 Từ tiếp theo bắt đầu bằng: **"${nextCharOrPart}"**!`
             )
             .setFooter({ text: 'Nhắn từ trực tiếp vào kênh để nối • Đếm ngược 30 giây' });
@@ -123,7 +123,7 @@ const noituViCommand = {
             .setColor('#1ABC9C')
             .setTitle('🐲 KHAI MỞ GAME NỐI TỪ TIẾNG VIỆT 🐲')
             .setDescription(
-                `🧙‍♂️ **Thiên Thu Hiền Giả** đã mở trận Luận Từ tại Thiên Thu Môn!\n\n` +
+                `🧙‍♂️ **Thiên Thư Hiền Giả** đã mở trận Luận Từ tại Thiên Thư Môn!\n\n` +
                 `👉 Từ mở màn: **"${startWord}"**\n` +
                 `👉 Người chơi tiếp theo hãy nhắn một từ ghép tiếng Việt bắt đầu bằng tiếng **"${startWord.split(/\s+/).pop()}"**!\n\n` +
                 `⏱️ **Thời gian mỗi lượt:** 30 giây (Quá 30s không ai nối sẽ tự động đổi từ mới; 5 lần liên tiếp sẽ dừng game).\n` +
@@ -178,7 +178,7 @@ const noituEnCommand = {
             .setColor('#3498DB')
             .setTitle('🐉 ENGLISH WORD CHAIN INITIATED 🐉')
             .setDescription(
-                `🧙‍♂️ **Thiên Thu Hiền Giả** has initiated the English Word Chain!\n\n` +
+                `🧙‍♂️ **Thiên Thư Hiền Giả** has initiated the English Word Chain!\n\n` +
                 `👉 Random initial word: **"${startWord}"**\n` +
                 `👉 Next player must enter ANY valid English word starting with letter **"${startWord.slice(-1).toUpperCase()}"**!\n\n` +
                 `⏱️ **Time limit:** 30 seconds per turn (5 consecutive timeouts = game over).\n` +
@@ -207,7 +207,7 @@ const noituStopCommand = {
         if (game.timer) clearTimeout(game.timer);
         activeGames.delete(channelId);
 
-        await interaction.reply(`🛑 **Thiên Thu Hiền Giả** đã đóng sòng Nối Từ (${game.lang.toUpperCase()}) theo yêu cầu của đạo hữu!`);
+        await interaction.reply(`🛑 **Thiên Thư Hiền Giả** đã đóng sòng Nối Từ (${game.lang.toUpperCase()}) theo yêu cầu của đạo hữu!`);
     }
 };
 
@@ -228,7 +228,7 @@ const handleNoituRules = async (interaction) => {
             `⏱️ **Luật chung:** 30 giây/lượt. Quá 30s không ai trả lời sẽ đổi từ ngẫu nhiên. Quá 5 lượt timeout sòng sẽ tự hủy.\n` +
             `🎁 **Thưởng:** +15 Linh Thạch & +10 Tu Vi cho mỗi từ đúng!`
         )
-        .setFooter({ text: 'Thiên Thu Hiền Giả Ban Luật' });
+        .setFooter({ text: 'Thiên Thư Hiền Giả Ban Luật' });
 
     await interaction.reply({ embeds: [embed], flags: 64 });
 };

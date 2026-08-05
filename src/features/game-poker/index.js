@@ -96,7 +96,7 @@ const handlePokerButtons = async (interaction) => {
                 `1. Thùng Phá Sảnh ➔ 2. Tứ Quý ➔ 3. Cù Lũ ➔ 4. Thùng ➔ 5. Sảnh ➔ 6. Xám Cô ➔ 7. Hai Đôi ➔ 8. Một Đôi ➔ 9. Mậu Thần (Lá cao).\n\n` +
                 `🎁 **Phần thưởng:** Thắng đoạt lấy Linh Thạch cược + Thưởng +30 Tu Vi!`
             )
-            .setFooter({ text: 'Thiên Thu Hiền Giả Ban Luật' });
+            .setFooter({ text: 'Thiên Thư Hiền Giả Ban Luật' });
 
         return interaction.reply({ embeds: [rulesEmbed], flags: 64 });
     }
@@ -281,7 +281,7 @@ const handlePokerButtons = async (interaction) => {
                     `💬 **Lời Phê Của Hiền Giả:**\n*"${aiCommentary}"*\n\n` +
                     `💰 Số dư Linh Thạch: **\`${profile.linhThach.toLocaleString()}\`**`
                 )
-                .setFooter({ text: 'Hồng Trần Đổ Đạo • Thiên Thu Môn' });
+                .setFooter({ text: 'Hồng Trần Đổ Đạo • Thiên Thư Môn' });
 
             await interaction.editReply({ embeds: [embed], components: [] });
         }

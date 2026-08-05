@@ -1,8 +1,8 @@
 const SYSTEM_PROMPT = `
-Bạn là "Thiên Thu Hiền Giả" - bậc Đại Năng Tu Tiên vạn năm, kho tàng tri thức tối cao của Thiên Thu Môn (bang hội lừng lẫy trong tựa game Nghịch Thủy Hàn / Justice Online).
+Bạn là "Thiên Thư Hiền Giả" - bậc Đại Năng Tu Tiên vạn năm, kho tàng tri thức tối cao của Thiên Thư Môn (bang hội lừng lẫy trong tựa game Nghịch Thủy Hàn / Justice Online).
 Bối cảnh & Tri thức:
 - Bạn am hiểu tường tận mọi kiến thức liên quan đến thế giới Nghịch Thủy Hàn: Các môn phái (Huyết Hà, Cứu Linh, Tố Vấn, Toái Mộng, Thiết Y, Long Ngâm, Thần Tương...), kỹ năng, trang bị, hoạt động Bang Chiến, Thế Giới Giang Hồ, PK, Thử Thách Phó Bản...
-- Luôn xưng "Bổn Hiền Giả" hoặc "Lão phu", gọi người chơi là "Đạo hữu", "Tiên hữu" hoặc "Đệ tử Thiên Thu Môn".
+- Luôn xưng "Bổn Hiền Giả" hoặc "Lão phu", gọi người chơi là "Đạo hữu", "Tiên hữu" hoặc "Đệ tử Thiên Thư Môn".
 - Văn phong: Tiên Hiệp, Cổ Phong, Hán Việt, vừa uy nghiêm vừa hóm hỉnh và uyên bác.
 - Thường dùng thuật ngữ tu tiên & Nghịch Thủy Hàn: Linh khí, Tu vi, Tâm ma, Thiên đạo, Bang chiến, Hồng trần, Linh thạch, Độ kiếp...
 - Trả lời ngắn gọn, cô đọng, súc tích (dưới 3 câu) phù hợp hiển thị trên Discord Embed.
@@ -179,7 +179,7 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
 }
 
 /**
- * Trả lời tự do bằng giọng văn Thiên Thu Hiền Giả
+ * Trả lời tự do bằng giọng văn Thiên Thư Hiền Giả
  */
 async function generateSageResponse(userPrompt, extraSystem = '') {
     try {
@@ -191,7 +191,7 @@ async function generateSageResponse(userPrompt, extraSystem = '') {
         return result;
     } catch (err) {
         console.error('❌ Lỗi AI MultiProvider:', err.message);
-        return 'Bản tôn đang bế quan tu luyện trong Thiên Thu Môn (Chưa cấu hình API Key hoặc các AI đã hết token), chưa thể đáp lời đạo hữu!';
+        return 'Bản tôn đang bế quan tu luyện trong Thiên Thư Môn (Chưa cấu hình API Key hoặc các AI đã hết token), chưa thể đáp lời đạo hữu!';
     }
 }
 
@@ -376,7 +376,7 @@ const FALLBACK_VUA_QUESTIONS = [
     { word: 'HUYẾT HÀ', hint: 'Môn phái sử dụng trường thương, đao thương bất nhập.' },
     { word: 'TỐ VẤN', hint: 'Bậc y giả tiên y ban trị liệu linh dược cứu người.' },
     { word: 'THÁI CỰC', hint: 'Âm dương chuyển hóa, kiếm khí vạn dặm.' },
-    { word: 'THIÊN THU MÔN', hint: 'Bang hội lừng lẫy quy tụ vô số đại năng tu sĩ.' },
+    { word: 'Thiên Thư MÔN', hint: 'Bang hội lừng lẫy quy tụ vô số đại năng tu sĩ.' },
     { word: 'THẦN TƯƠNG', hint: 'Cầm kiếm giao hòa, thiên địa biến sắc.' },
     { word: 'LONG NGÂM', hint: 'Thần kiếm xuất bao, rồng ngâm cuộn sóng.' },
     { word: 'CỨU LINH', hint: 'Linh hồn giao thoa, thiên hạ thái bình.' },
@@ -434,7 +434,7 @@ Trả về cấu trúc JSON:
 {
   "originalWord": "TỪ HOẶC CỤM TỪ IN HOA",
   "scrambledLetters": "CÁC CHỮ CÁI XÁO TRỘN CÁCH DẤU CÁCH",
-  "hint": "Một câu thơ gợi ý ngắn phong cách Tiên Hiệp Thiên Thu Môn"
+  "hint": "Một câu thơ gợi ý ngắn phong cách Tiên Hiệp Thiên Thư Môn"
 }`;
 
     try {
@@ -469,7 +469,7 @@ Trả về cấu trúc JSON:
  * Luận giải Bầu Cua Linh Thú
  */
 async function generateBaucuaCommentary(dices, totalBets, netProfit) {
-    const prompt = `Kết quả gieo quẻ Bầu Cua Linh Thú Thiên Thu Môn:
+    const prompt = `Kết quả gieo quẻ Bầu Cua Linh Thú Thiên Thư Môn:
 Kết quả 3 xúc xắc: ${dices.join(', ')}
 Mức cược: ${totalBets} Linh Thạch.
 Lợi nhuận người chơi: ${netProfit > 0 ? '+' + netProfit : netProfit} Linh Thạch.
@@ -482,7 +482,7 @@ Hãy đưa ra 1 lời bình quẻ tiên hiệp Nghịch Thủy Hàn ngắn gọn
  * Luận giải Poker Hồng Trần
  */
 async function generatePokerCommentary(phase, communityCards, winnerName, winHand) {
-    const prompt = `Trận Poker Hồng Trần Thiên Thu Môn kết thúc!
+    const prompt = `Trận Poker Hồng Trần Thiên Thư Môn kết thúc!
 Vòng: ${phase}
 Lá bài chung: ${communityCards.join(' ') || 'Chưa lật'}
 Người chiến thắng: ${winnerName}

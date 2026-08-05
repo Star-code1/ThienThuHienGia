@@ -11,7 +11,7 @@ const RINGS = [
     { id: 'ring1', name: 'Nhẫn Cỏ Linh Nữ 🌿', price: 5000, desc: 'Kết duyên mộc mạc, chan chứa chân tình.' },
     { id: 'ring2', name: 'Nhẫn Bạc Thái Cực 💍', price: 20000, desc: 'Âm dương hòa hợp, vững bền cùng năm tháng.' },
     { id: 'ring3', name: 'Nhẫn Kim Cương Hồng Trần 💎', price: 50000, desc: 'Sáng ngời chốn hồng trần, kết tóc xe duyên.' },
-    { id: 'ring4', name: 'Nhẫn Tiên Duyên Nghịch Thủy 🌸', price: 100000, desc: 'Bảo vật Thiên Thu Môn, thề nguyện trường sinh vạn năm.' },
+    { id: 'ring4', name: 'Nhẫn Tiên Duyên Nghịch Thủy 🌸', price: 100000, desc: 'Bảo vật Thiên Thư Môn, thề nguyện trường sinh vạn năm.' },
 ];
 
 // Pending proposals: `${proposerId}_${targetId}` -> proposalObj
@@ -20,7 +20,7 @@ const activeProposals = new Map();
 const shopNhanCommand = {
     data: new SlashCommandBuilder()
         .setName('shop-nhan')
-        .setDescription('💍 Xem Cửa Hàng Nhẫn Đính Ước Cầu Hôn Thiên Thu Môn'),
+        .setDescription('💍 Xem Cửa Hàng Nhẫn Đính Ước Cầu Hôn Thiên Thư Môn'),
     async execute(interaction) {
         let desc = RINGS.map(r => 
             `• **${r.name}** — Giá: **\`${r.price.toLocaleString()}\` 💎 Linh Thạch**\n  └ *${r.desc}*`
@@ -28,7 +28,7 @@ const shopNhanCommand = {
 
         const embed = new EmbedBuilder()
             .setColor('#FF69B4')
-            .setTitle('💒 CỬA HÀNG NHẪN ĐÍNH ƯỚC • THIÊN THU MÔN')
+            .setTitle('💒 CỬA HÀNG NHẪN ĐÍNH ƯỚC • Thiên Thư MÔN')
             .setDescription(
                 `Dùng Linh Thạch mua Nhẫn Đính Ước để cầu hôn Đạo Lữ kết duyên!\n\n` + desc + `\n\n` +
                 `👉 Dùng lệnh \`/cauhon user:[@Đạo_Hữu] nhan:[Tên_Nhẫn]\` để cầu hôn!`
@@ -110,7 +110,7 @@ const cauHonCommand = {
 
         const embed = new EmbedBuilder()
             .setColor('#FF1493')
-            .setTitle('💒 THỀ NGUYỆN CẦU HÔN • THIÊN THU MÔN')
+            .setTitle('💒 THỀ NGUYỆN CẦU HÔN • Thiên Thư MÔN')
             .setDescription(
                 `🌸 Đạo hữu **${interaction.user.username}** đã trao tặng **${ring.name}** và ngỏ lời cầu hôn **${targetUser.username}**!\n\n` +
                 `*"Lời thề trao nhẫn hồng trần,\nCùng nhau tu luyện trọn phần tiên duyên."*\n\n` +
@@ -172,11 +172,11 @@ const handleMarryButtons = async (interaction) => {
             .setColor('#FF69B4')
             .setTitle('🎉 CHÚC MỪNG KẾT THÀNH ĐẠO LỮ 🎉')
             .setDescription(
-                `💖 Đạo hữu **${proposal.proposerName}** và **${proposal.targetName}** đã chính thức trao **${proposal.ring.name}** và kết thành **ĐẠO LỮ** tại Thiên Thu Môn!\n\n` +
+                `💖 Đạo hữu **${proposal.proposerName}** và **${proposal.targetName}** đã chính thức trao **${proposal.ring.name}** và kết thành **ĐẠO LỮ** tại Thiên Thư Môn!\n\n` +
                 `✨ Cùng nhau song tu, chung sức trong trận Bang Chiến Nghịch Thủy Hàn và tích lũy điểm Thân Thiết!\n\n` +
                 `👩‍❤️‍👨 Xem thông tin Đạo Lữ qua lệnh \`/daolu\`.`
             )
-            .setFooter({ text: 'Thiên Thu Môn Ban Phước Trăm Năm Hạnh Phúc' });
+            .setFooter({ text: 'Thiên Thư Môn Ban Phước Trăm Năm Hạnh Phúc' });
 
         await interaction.update({ embeds: [embed], components: [] });
 
@@ -220,7 +220,7 @@ const daoLuCommand = {
                 { name: '✨ Điểm Thân Thiết', value: `\`${profile.daoLu.intimacy}\` điểm`, inline: true },
                 { name: '📅 Ngày Kết Duyên', value: `\`${dateStr}\``, inline: true },
             )
-            .setFooter({ text: 'Thiên Thu Môn • Tiên Duyên Vạn Năm' });
+            .setFooter({ text: 'Thiên Thư Môn • Tiên Duyên Vạn Năm' });
 
         await interaction.reply({ embeds: [embed] });
     }
