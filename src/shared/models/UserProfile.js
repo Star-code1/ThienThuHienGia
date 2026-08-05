@@ -42,6 +42,7 @@ const UserProfileSchema = new mongoose.Schema({
 
     // Quản lý Trứng Linh Thú (Max 5 trứng/ngày)
     eggData: {
+        eggCount: { type: Number, default: 0 },
         eggsBoughtToday: { type: Number, default: 0 },
         lastBuyDate: { type: String, default: '' }
     },
@@ -88,12 +89,40 @@ const UserProfileSchema = new mongoose.Schema({
 
 UserProfileSchema.statics.getOrCreate = async function (userId, username = 'Đạo hữu') {
     let profile = await this.findOne({ userId });
+    let needsSave = false;
+
     if (!profile) {
         profile = await this.create({ userId, username });
-    } else if (username && profile.username !== username) {
+        return profile;
+    }
+
+    if (username && profile.username !== username) {
         profile.username = username;
+        needsSave = true;
+    }
+
+    if (!profile.eggData) {
+        profile.eggData = { eggCount: 0, eggsBoughtToday: 0, lastBuyDate: '' };
+        needsSave = true;
+    } else {
+        if (typeof profile.eggData.eggCount !== 'number') {
+            profile.eggData.eggCount = 0;
+            needsSave = true;
+        }
+        if (typeof profile.eggData.eggsBoughtToday !== 'number') {
+            profile.eggData.eggsBoughtToday = 0;
+            needsSave = true;
+        }
+        if (typeof profile.eggData.lastBuyDate !== 'string') {
+            profile.eggData.lastBuyDate = '';
+            needsSave = true;
+        }
+    }
+
+    if (needsSave) {
         await profile.save();
     }
+
     return profile;
 };
 
