@@ -428,13 +428,13 @@ const FALLBACK_VUA_QUESTIONS = [
  */
 async function generateVuaTiengVietQuestion(difficulty = 'trung_binh', usedWords = []) {
     const excludeStr = usedWords.length > 0 ? `Tránh trùng các từ: ${usedWords.join(', ')}.` : '';
-    const prompt = `Tạo 1 từ hoặc cụm từ Tiếng Việt (có nghĩa, chủ đề: Tu Tiên, Nghịch Thủy Hàn, Thành Ngữ, Từ Hán Việt, hoặc Đời Sống).
+    const prompt = `Tạo 1 từ Tiếng Việt gồm 2 tiếng (có nghĩa, chủ đề: Tu Tiên, Nghịch Thủy Hàn, Thành Ngữ, Từ Hán Việt, hoặc Đời Sống).
 Độ khó: ${difficulty}. ${excludeStr}
 Trả về cấu trúc JSON:
 {
   "originalWord": "TỪ HOẶC CỤM TỪ IN HOA",
   "scrambledLetters": "CÁC CHỮ CÁI XÁO TRỘN CÁCH DẤU CÁCH",
-  "hint": "Một câu thơ gợi ý ngắn phong cách Tiên Hiệp Thiên Thư Môn"
+  "hint": "Một câu thơ gợi ý ngắn phong cách Tiên Hiệp "
 }`;
 
     try {
