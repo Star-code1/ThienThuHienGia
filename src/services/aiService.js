@@ -133,43 +133,157 @@ Output JSON format: {"valid": boolean, "meaning": "Dịch nghĩa Hán Việt / T
 }
 
 /**
- * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (bao gồm cả thuật ngữ Nghịch Thủy Hàn)
+ * Lấy ngẫu nhiên từ Tiếng Anh mở màn cho Nối Từ
  */
-async function generateVuaTiengVietQuestion(difficulty = 'trung_binh') {
-    const prompt = `Tạo 1 từ hoặc cụm từ Tiếng Việt (từ có nghĩa hoặc các thuật ngữ Nghịch Thủy Hàn / Tu Tiên / Đời sống).
-Độ khó: ${difficulty}.
-Trả về JSON:
-{
-  "originalWord": "Cụm từ gốc (ví dụ: NGHỊCH THỦY HÀN, HUYẾT HÀ, TỐ VẤN, TU TIÊN...)",
-  "scrambledLetters": "Các chữ cái đã xáo trộn ngẫu nhiên",
-  "hint": "Một câu thơ gợi ý phong cách Tiên Hiệp Thiên Thu Môn"
-}`;
+async function getRandomEnglishStartWord() {
+    const defaultList = [
+        'Dragon', 'Phoenix', 'Immortal', 'Celestial', 'Thunder', 'Kingdom', 'Victory',
+        'Eclipse', 'Mystic', 'Legend', 'Arcane', 'Crystal', 'Shadow', 'Warrior', 'Guild',
+        'Empire', 'Sovereignty', 'Destiny', 'Genesis', 'Horizon', 'Infinity', 'Labyrinth',
+        'Miracle', 'Nebula', 'Odyssey', 'Paladin', 'Quest', 'Radiance', 'Solitude', 'Triumph'
+    ];
 
     if (!groq) {
-        const fallbackList = [
-            { originalWord: 'NGHỊCH THỦY HÀN', scrambledLetters: 'N G H Ị C H T H U Ỷ H À N', hint: 'Thế giới giang hồ hội tụ chốn vạn người tranh đấu.' },
-            { originalWord: 'HUYẾT HÀ', scrambledLetters: 'H U Y Ế T H À', hint: 'Môn phái sử dụng trường thương, đao thương bất nhập.' },
-            { originalWord: 'TỐ VẤN', scrambledLetters: 'T Ố V Ấ N', hint: 'Bậc y giả tiên y ban trị liệu linh dược cứu người.' },
-            { originalWord: 'THÁI CỰC', scrambledLetters: 'T H Á I C Ự C', hint: 'Âm dương chuyển hóa, kiếm khí vạn dặm.' },
-            { originalWord: 'THIÊN THU MÔN', scrambledLetters: 'T H I Ê N T H U M Ô N', hint: 'Bang hội lừng lẫy quy tụ vô số đại năng tu sĩ.' }
-        ];
-        return fallbackList[Math.floor(Math.random() * fallbackList.length)];
+        return defaultList[Math.floor(Math.random() * defaultList.length)];
     }
 
     try {
         const response = await groq.chat.completions.create({
             messages: [
-                { role: 'system', content: SYSTEM_PROMPT + '\nTrả về CHÍNH XÁC JSON: {"originalWord": string, "scrambledLetters": string, "hint": string}.' },
+                { role: 'system', content: 'Generate a single interesting, commonly known English noun or adjective (5-9 letters long) suitable for a word chain game. Return ONLY the raw word, nothing else.' },
+                { role: 'user', content: 'Generate a random English word.' }
+            ],
+            model: 'llama-3.3-70b-versatile',
+            temperature: 0.9,
+            max_tokens: 15
+        });
+
+        const word = response.choices[0]?.message?.content?.trim().replace(/[^a-zA-Z]/g, '');
+        if (word && word.length >= 3) {
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        }
+        return defaultList[Math.floor(Math.random() * defaultList.length)];
+    } catch (e) {
+        return defaultList[Math.floor(Math.random() * defaultList.length)];
+    }
+}
+
+// Hàm xáo trộn chữ cái bằng thuật toán Fisher-Yates
+function scrambleWord(word) {
+    const letters = word.replace(/\s+/g, '').toUpperCase().split('');
+    for (let i = letters.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [letters[i], letters[j]] = [letters[j], letters[i]];
+    }
+    return letters.join(' ');
+}
+
+// Kho từ đố Vua Tiếng Việt phong phú (50+ từ Hán Việt, Nghịch Thủy Hàn, Tiên Hiệp, Đời Sống)
+const FALLBACK_VUA_QUESTIONS = [
+    { word: 'NGHỊCH THỦY HÀN', hint: 'Thế giới giang hồ hội tụ chốn vạn người tranh đấu.' },
+    { word: 'HUYẾT HÀ', hint: 'Môn phái sử dụng trường thương, đao thương bất nhập.' },
+    { word: 'TỐ VẤN', hint: 'Bậc y giả tiên y ban trị liệu linh dược cứu người.' },
+    { word: 'THÁI CỰC', hint: 'Âm dương chuyển hóa, kiếm khí vạn dặm.' },
+    { word: 'THIÊN THU MÔN', hint: 'Bang hội lừng lẫy quy tụ vô số đại năng tu sĩ.' },
+    { word: 'THẦN TƯƠNG', hint: 'Cầm kiếm giao hòa, thiên địa biến sắc.' },
+    { word: 'LONG NGÂM', hint: 'Thần kiếm xuất bao, rồng ngâm cuộn sóng.' },
+    { word: 'CỨU LINH', hint: 'Linh hồn giao thoa, thiên hạ thái bình.' },
+    { word: 'TOÁI MỘNG', hint: 'Song đao như chớp, ảo ảnh vạn ngàn.' },
+    { word: 'THIẾT Y', hint: 'Thân như kim cang, chắn sóng cản gió.' },
+    { word: 'KIM ĐAN', hint: 'Linh khí ngưng tụ thành hạt kim quang trong đan điền.' },
+    { word: 'NGUYÊN ANH', hint: 'Biến hóa thần thông, anh nhi giáng thế.' },
+    { word: 'ĐỘ KIẾP', hint: 'Thiên lôi giáng xuống rèn luyện thân thể tu sĩ.' },
+    { word: 'BÁC HỌC', hint: 'Uyên bác tinh thông vạn quyển kinh thư.' },
+    { word: 'NGỘ TÍNH', hint: 'Khả năng thấu hiểu đạo lý thiên địa siêu việt.' },
+    { word: 'LINH THẠCH', hint: 'Tài nguyên trân quý nuôi dưỡng linh khí tu tiên.' },
+    { word: 'ANH HÙNG', hint: 'Bậc đại hiệp ra tay vì nghĩa lớn giang hồ.' },
+    { word: 'PHÚC KHÍ', hint: 'May mắn vạn năm ban cho người có duyên.' },
+    { word: 'TÂM MA', hint: 'Chướng ngại lớn nhất trên con đường tu tiên.' },
+    { word: 'VẠN VẬT', hint: 'Càn khôn thiên địa hóa sinh vô cùng.' },
+    { word: 'THƯƠNG KHUNG', hint: 'Bầu trời bao la vượt khỏi tầm mắt.' },
+    { word: 'CÀN KHÔN', hint: 'Trời đất âm dương xoay chuyển.' },
+    { word: 'PHÁP BẢO', hint: 'Binh khí linh thiêng chứa đựng thần lực.' },
+    { word: 'TRUYỀN KỲ', hint: 'Câu chuyện huyền thoại lưu danh ngàn đời.' },
+    { word: 'TIÊN NỮ', hint: 'Nhan sắc tuyệt trần chốn bồng lai tiên cảnh.' },
+    { word: 'THẠCH ANH', hint: 'Linh đá quý tỏa ánh sáng nhiệm màu.' },
+    { word: 'PHI THĂNG', hint: 'Vượt qua kiếp nạn bước lên tiên giới.' },
+    { word: 'TRÚC CƠ', hint: 'Nền móng vững chắc cho con đường tu đại đạo.' },
+    { word: 'HÓA THẦN', hint: 'Tâm trí hòa nhập cùng quy luật tự nhiên.' },
+    { word: 'CỔ PHONG', hint: 'Nét đẹp văn hóa cội nguồn từ ngàn xưa.' },
+    { word: 'KIM CANG', hint: 'Bất hoại kiên cố không thể phá vỡ.' },
+    { word: 'TÂM THIÊN', hint: 'Ý trời bao la thương xót chúng sinh.' },
+    { word: 'HỒNG TRẦN', hint: 'Thế giới nhân gian muôn màu ân nợ.' },
+    { word: 'DUYÊN PHẬN', hint: 'Sự gặp gỡ định sẵn bởi ý trời.' },
+    { word: 'BỒNG LAI', hint: 'Chốn tiên cảnh mây mù giăng lối.' },
+    { word: 'SƯ MÔN', hint: 'Nơi dung dưỡng truyền dạy đạo pháp.' },
+    { word: 'BẢO TẠNG', hint: 'Kho báu cất giấu bí thuật ngàn năm.' },
+    { word: 'HUYỀN THOẠI', hint: 'Chiến tích vang dội không ai sánh bằng.' },
+    { word: 'TRANG BỊ', hint: 'Binh khí giáp trụ rèn luyện thân thể.' },
+    { word: 'ĐẠO HỮU', hint: 'Bạn đồng hành trên con đường tu tiên.' },
+    { word: 'BANG CHIẾN', hint: 'Trận đại chiến giữa các thế lực lừng lẫy.' },
+    { word: 'GIANG HỒ', hint: 'Chốn võ lâm hiểm nguy nhưng đầy nghĩa khí.' },
+    { word: 'VŨ TRỤ', hint: 'Không gian vô tận chứa đựng vô vàn vì sao.' },
+    { word: 'THỜI GIAN', hint: 'Dòng chảy vô hình không bao giờ ngừng nghỉ.' },
+    { word: 'TRI KỶ', hint: 'Người thấu hiểu tâm tư dù không cần cất lời.' },
+    { word: 'TỰ DO', hint: 'Thỏa sức vẫy vùng giữa trời cao đất rộng.' },
+    { word: 'BÌNH AN', hint: 'Ước mơ giản đơn của mọi kiếp nhân sinh.' },
+    { word: 'HY VỌNG', hint: 'Ánh sáng dẫn đường qua đêm đen mù mịt.' },
+    { word: 'TRÍ TUỆ', hint: 'Chìa khóa mở ra mọi bí mật càn khôn.' }
+];
+
+/**
+ * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (100% Động bằng AI)
+ */
+async function generateVuaTiengVietQuestion(difficulty = 'trung_binh', usedWords = []) {
+    const excludeStr = usedWords.length > 0 ? `Tránh trùng với các từ sau: ${usedWords.join(', ')}.` : '';
+    const prompt = `Tạo 1 từ hoặc cụm từ Tiếng Việt (có nghĩa, chủ đề: Tu Tiên, Nghịch Thủy Hàn, Thành Ngữ, Từ Hán Việt, hoặc Đời Sống).
+Độ khó: ${difficulty}. ${excludeStr}
+Trả về cấu trúc JSON:
+{
+  "originalWord": "TỪ HOẶC CỤM TỪ IN HOA (Ví dụ: TU TIÊN)",
+  "scrambledLetters": "CÁC CHỮ CÁI ĐÃ XÁO TRỘN CÁCH NHAU DẤU CÁCH (Ví dụ: U I T T Ê N)",
+  "hint": "Một câu thơ gợi ý ngắn phong cách Tiên Hiệp Thiên Thu Môn"
+}`;
+
+    if (!groq) {
+        // Lọc các từ chưa sử dụng
+        const available = FALLBACK_VUA_QUESTIONS.filter(q => !usedWords.includes(q.word));
+        const chosen = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : FALLBACK_VUA_QUESTIONS[Math.floor(Math.random() * FALLBACK_VUA_QUESTIONS.length)];
+        return {
+            originalWord: chosen.word,
+            scrambledLetters: scrambleWord(chosen.word),
+            hint: chosen.hint
+        };
+    }
+
+    try {
+        const response = await groq.chat.completions.create({
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT + '\nTrả về CHÍNH XÁC cấu trúc JSON: {"originalWord": string, "scrambledLetters": string, "hint": string}.' },
                 { role: 'user', content: prompt }
             ],
             model: 'llama-3.3-70b-versatile',
             response_format: { type: 'json_object' },
-            temperature: 0.8,
+            temperature: 0.85,
         });
 
-        return JSON.parse(response.choices[0]?.message?.content?.trim());
+        const data = JSON.parse(response.choices[0]?.message?.content?.trim());
+        if (data && data.originalWord) {
+            // Đảm bảo chữ xáo trộn được tạo chuẩn
+            if (!data.scrambledLetters || data.scrambledLetters === data.originalWord) {
+                data.scrambledLetters = scrambleWord(data.originalWord);
+            }
+            return data;
+        }
+        throw new Error('Invalid AI response');
     } catch (e) {
-        return { originalWord: 'TU TIÊN', scrambledLetters: 'T U T I Ê N', hint: 'Con đường nghịch thiên cải mệnh.' };
+        console.error('❌ AI generateVuaTiengVietQuestion Error:', e.message);
+        const chosen = FALLBACK_VUA_QUESTIONS[Math.floor(Math.random() * FALLBACK_VUA_QUESTIONS.length)];
+        return {
+            originalWord: chosen.word,
+            scrambledLetters: scrambleWord(chosen.word),
+            hint: chosen.hint
+        };
     }
 }
 
@@ -204,6 +318,7 @@ module.exports = {
     generateSageResponse,
     validateWordVI,
     validateWordEN,
+    getRandomEnglishStartWord,
     generateVuaTiengVietQuestion,
     generateBaucuaCommentary,
     generatePokerCommentary,

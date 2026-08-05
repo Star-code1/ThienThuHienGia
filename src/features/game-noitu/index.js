@@ -1,5 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { validateWordVI, validateWordEN } = require('../../services/aiService');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { validateWordVI, validateWordEN, getRandomEnglishStartWord } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
 
 // Stores active games per channel: channelId -> gameObject
@@ -53,7 +53,7 @@ function resetTurnTimer(channelId, channel) {
         if (currentGame.lang === 'vi') {
             newWord = FALLBACK_WORDS_VI[Math.floor(Math.random() * FALLBACK_WORDS_VI.length)];
         } else {
-            newWord = FALLBACK_WORDS_EN[Math.floor(Math.random() * FALLBACK_WORDS_EN.length)];
+            newWord = await getRandomEnglishStartWord();
         }
 
         currentGame.lastWord = newWord;
@@ -86,7 +86,7 @@ const noituViCommand = {
         .setDescription('🐲 Khai mở sòng Nối Từ Tiếng Việt (Nghịch Thủy Hàn & Tu Tiên)')
         .addStringOption(option => 
             option.setName('tudau')
-                .setDescription('Từ khởi đầu (Ví dụ: Nghịch Thủy)')
+                .setDescription('Từ khởi đầu (Để trống sẽ chọn ngẫu nhiên)')
                 .setRequired(false)
         ),
     async execute(interaction) {
@@ -98,7 +98,8 @@ const noituViCommand = {
             });
         }
 
-        const startWord = (interaction.options.getString('tudau') || 'Nghịch Thủy').trim();
+        const inputWord = interaction.options.getString('tudau');
+        const startWord = (inputWord || FALLBACK_WORDS_VI[Math.floor(Math.random() * FALLBACK_WORDS_VI.length)]).trim();
 
         const game = {
             lang: 'vi',
@@ -110,6 +111,13 @@ const noituViCommand = {
         };
 
         activeGames.set(channelId, game);
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('noitu_rules:vi')
+                .setLabel('📖 Luật Chơi Nối Từ')
+                .setStyle(ButtonStyle.Secondary)
+        );
 
         const embed = new EmbedBuilder()
             .setColor('#1ABC9C')
@@ -123,7 +131,7 @@ const noituViCommand = {
             )
             .setFooter({ text: 'Nhắn từ trực tiếp vào kênh để tham gia • /noitu-stop để dừng' });
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({ embeds: [embed], components: [row] });
 
         // Khởi động đồng hồ 30s
         resetTurnTimer(channelId, interaction.channel);
@@ -133,12 +141,7 @@ const noituViCommand = {
 const noituEnCommand = {
     data: new SlashCommandBuilder()
         .setName('noitu-en')
-        .setDescription('🐉 English Word Chain - Nối từ tiếng Anh (Chấp nhận mọi từ hợp lệ)')
-        .addStringOption(option => 
-            option.setName('tudau')
-                .setDescription('Initial word (e.g., Dragon)')
-                .setRequired(false)
-        ),
+        .setDescription('🐉 English Word Chain - Nối từ tiếng Anh (Từ mở màn Random 100%)'),
     async execute(interaction) {
         const channelId = interaction.channelId;
         if (activeGames.has(channelId)) {
@@ -148,7 +151,10 @@ const noituEnCommand = {
             });
         }
 
-        const startWord = (interaction.options.getString('tudau') || 'Dragon').trim();
+        await interaction.deferReply();
+
+        // Lựa chọn ngẫu nhiên 1 từ Tiếng Anh khởi đầu
+        const startWord = await getRandomEnglishStartWord();
 
         const game = {
             lang: 'en',
@@ -161,19 +167,26 @@ const noituEnCommand = {
 
         activeGames.set(channelId, game);
 
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('noitu_rules:en')
+                .setLabel('📖 English Chain Rules')
+                .setStyle(ButtonStyle.Secondary)
+        );
+
         const embed = new EmbedBuilder()
             .setColor('#3498DB')
             .setTitle('🐉 ENGLISH WORD CHAIN INITIATED 🐉')
             .setDescription(
                 `🧙‍♂️ **Thiên Thu Hiền Giả** has initiated the English Word Chain!\n\n` +
-                `👉 Initial word: **"${startWord}"**\n` +
+                `👉 Random initial word: **"${startWord}"**\n` +
                 `👉 Next player must enter ANY valid English word starting with letter **"${startWord.slice(-1).toUpperCase()}"**!\n\n` +
                 `⏱️ **Time limit:** 30 seconds per turn (5 consecutive timeouts = game over).\n` +
                 `🎁 **Reward:** +15 Linh Thạch & +10 Tu Vi.`
             )
             .setFooter({ text: 'Type your word directly in channel • Use /noitu-stop to end' });
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed], components: [row] });
 
         // Khởi động đồng hồ 30s
         resetTurnTimer(channelId, interaction.channel);
@@ -196,6 +209,28 @@ const noituStopCommand = {
 
         await interaction.reply(`🛑 **Thiên Thu Hiền Giả** đã đóng sòng Nối Từ (${game.lang.toUpperCase()}) theo yêu cầu của đạo hữu!`);
     }
+};
+
+// Interaction handler cho nút bấm luật chơi
+const handleNoituRules = async (interaction) => {
+    const embed = new EmbedBuilder()
+        .setColor('#9B59B6')
+        .setTitle('📖 HƯỚNG DẪN & LUẬT CHƠI NỐI TỪ')
+        .setDescription(
+            `🐲 **NỐI TỪ TIẾNG VIỆT (\`/noitu-vi\`):**\n` +
+            `• Nhắn trực tiếp từ ghép tiếng Việt vào kênh.\n` +
+            `• Tiếng đầu của từ bạn nhắn phải TRÙNG với tiếng cuối của từ trước.\n` +
+            `  *Ví dụ:* "Tu **Tiên**" ➔ "**Tiên** Giới" ➔ "**Giới** Hạn".\n\n` +
+            `🐉 **ENGLISH WORD CHAIN (\`/noitu-en\`):**\n` +
+            `• Chấp nhận mọi từ Tiếng Anh có thật ngẫu nhiên.\n` +
+            `• Chữ cái ĐẦU TIÊN của từ bạn nhắn phải trùng với chữ cái CUỐI CÙNG của từ trước.\n` +
+            `  *Ví dụ:* "Drago**n**" ➔ "**N**irvana" ➔ "**A**rcane".\n\n` +
+            `⏱️ **Luật chung:** 30 giây/lượt. Quá 30s không ai trả lời sẽ đổi từ ngẫu nhiên. Quá 5 lượt timeout sòng sẽ tự hủy.\n` +
+            `🎁 **Thưởng:** +15 Linh Thạch & +10 Tu Vi cho mỗi từ đúng!`
+        )
+        .setFooter({ text: 'Thiên Thu Hiền Giả Ban Luật' });
+
+    await interaction.reply({ embeds: [embed], flags: 64 });
 };
 
 // Listener cho messageCreate
@@ -320,6 +355,8 @@ const onMessageCreate = {
 
 module.exports = {
     commands: [noituViCommand, noituEnCommand, noituStopCommand],
-    interactions: {},
+    interactions: {
+        'noitu_rules': handleNoituRules
+    },
     events: [onMessageCreate]
 };

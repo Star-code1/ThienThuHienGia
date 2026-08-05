@@ -34,10 +34,42 @@ const UserProfileSchema = new mongoose.Schema({
         marriedAt: { type: Date, default: null }
     },
 
-    // Linh Thú Đồng Hành (Pet)
+    // Giới hạn Động Tác (10 lần / 6h)
+    gestureUsage: {
+        count: { type: Number, default: 0 },
+        windowStart: { type: Date, default: Date.now }
+    },
+
+    // Quản lý Trứng Linh Thú (Max 5 trứng/ngày)
+    eggData: {
+        eggsBoughtToday: { type: Number, default: 0 },
+        lastBuyDate: { type: String, default: '' }
+    },
+
+    // Linh Thú Độc Nhất (Pet Slot = 1)
+    pet: {
+        name: { type: String, default: null },
+        species: { type: String, default: null },
+        rarity: { type: String, default: null },
+        rarityIndex: { type: Number, default: 0 },
+        element: { type: String, default: null }, // Kim, Mộc, Thủy, Hỏa, Thổ
+        level: { type: Number, default: 1 },
+        exp: { type: Number, default: 0 },
+        stats: {
+            hp: { type: Number, default: 100 },
+            atk: { type: Number, default: 20 },
+            def: { type: Number, default: 15 },
+            spatk: { type: Number, default: 20 },
+            spdef: { type: Number, default: 15 }
+        },
+        questsCompletedToday: { type: Number, default: 0 },
+        lastQuestResetDate: { type: String, default: '' }
+    },
+
+    // (Giữ mảng pets cũ để tránh lỗi tương thích nếu cần)
     pets: [{
-        petId: { type: String, required: true },
-        name: { type: String, required: true },
+        petId: { type: String },
+        name: { type: String },
         level: { type: Number, default: 1 },
         exp: { type: Number, default: 0 },
         lastFed: { type: Date, default: null }

@@ -44,7 +44,7 @@ const pokerCommand = {
             playerCards,
             aiCards,
             communityCards,
-            stage: 'preflop', // 'preflop', 'flop', 'turn', 'river', 'showdown'
+            stage: 'preflop',
         });
 
         const row = new ActionRowBuilder().addComponents(
@@ -52,6 +52,10 @@ const pokerCommand = {
                 .setCustomId(`pk_next:${interaction.user.id}`)
                 .setLabel('👀 Lật 3 Lá Flop')
                 .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('pk_rules')
+                .setLabel('📖 Luật Chơi')
+                .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId(`pk_fold:${interaction.user.id}`)
                 .setLabel('🏳️ Bỏ Bài (Fold)')
@@ -78,6 +82,25 @@ const pokerCommand = {
 
 const handlePokerButtons = async (interaction) => {
     const customId = interaction.customId;
+
+    if (customId === 'pk_rules') {
+        const rulesEmbed = new EmbedBuilder()
+            .setColor('#9B59B6')
+            .setTitle('📖 LUẬT CHƠI HỒNG TRẦN POKER (TEXAS HOLD\'EM)')
+            .setDescription(
+                `🃏 **Quy tắc thi đấu 1v1:**\n` +
+                `• Mỗi người chơi được chia 2 lá bài tẩy riêng.\n` +
+                `• Lần lượt trải qua các vòng lật 5 lá bài chung: **Flop (3 lá)** ➔ **Turn (1 lá)** ➔ **River (1 lá)** ➔ **Showdown (Đọ bài)**.\n` +
+                `• Kết hợp 2 lá trên tay và 5 lá trên bàn để tạo thành bộ 5 lá mạnh nhất!\n\n` +
+                `🏆 **Thứ tự độ mạnh bài từ cao xuống thấp:**\n` +
+                `1. Thùng Phá Sảnh ➔ 2. Tứ Quý ➔ 3. Cù Lũ ➔ 4. Thùng ➔ 5. Sảnh ➔ 6. Xám Cô ➔ 7. Hai Đôi ➔ 8. Một Đôi ➔ 9. Mậu Thần (Lá cao).\n\n` +
+                `🎁 **Phần thưởng:** Thắng đoạt lấy Linh Thạch cược + Thưởng +30 Tu Vi!`
+            )
+            .setFooter({ text: 'Thiên Thu Hiền Giả Ban Luật' });
+
+        return interaction.reply({ embeds: [rulesEmbed], flags: 64 });
+    }
+
     const userId = interaction.user.id;
     const game = pokerGames.get(userId);
 
@@ -121,6 +144,10 @@ const handlePokerButtons = async (interaction) => {
                     .setLabel('🔮 Lật Lá Thứ 4 (Turn)')
                     .setStyle(ButtonStyle.Primary),
                 new ButtonBuilder()
+                    .setCustomId('pk_rules')
+                    .setLabel('📖 Luật Chơi')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
                     .setCustomId(`pk_fold:${userId}`)
                     .setLabel('🏳️ Bỏ Bài (Fold)')
                     .setStyle(ButtonStyle.Danger)
@@ -148,6 +175,10 @@ const handlePokerButtons = async (interaction) => {
                     .setLabel('🌊 Lật Lá Thứ 5 (River)')
                     .setStyle(ButtonStyle.Primary),
                 new ButtonBuilder()
+                    .setCustomId('pk_rules')
+                    .setLabel('📖 Luật Chơi')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
                     .setCustomId(`pk_fold:${userId}`)
                     .setLabel('🏳️ Bỏ Bài (Fold)')
                     .setStyle(ButtonStyle.Danger)
@@ -174,6 +205,10 @@ const handlePokerButtons = async (interaction) => {
                     .setCustomId(`pk_next:${userId}`)
                     .setLabel('⚔️ ĐỌ BÀI QUYẾT CHIẾN (SHOWDOWN)')
                     .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId('pk_rules')
+                    .setLabel('📖 Luật Chơi')
+                    .setStyle(ButtonStyle.Secondary),
                 new ButtonBuilder()
                     .setCustomId(`pk_fold:${userId}`)
                     .setLabel('🏳️ Bỏ Bài (Fold)')
@@ -246,7 +281,7 @@ const handlePokerButtons = async (interaction) => {
                     `💬 **Lời Phê Của Hiền Giả:**\n*"${aiCommentary}"*\n\n` +
                     `💰 Số dư Linh Thạch: **\`${profile.linhThach.toLocaleString()}\`**`
                 )
-                .setFooter({ text: 'Hồng Trần Đổ Đạo • Thiên Thư Môn' });
+                .setFooter({ text: 'Hồng Trần Đổ Đạo • Thiên Thu Môn' });
 
             await interaction.editReply({ embeds: [embed], components: [] });
         }
@@ -257,6 +292,7 @@ module.exports = {
     commands: [pokerCommand],
     interactions: {
         'pk_next': handlePokerButtons,
+        'pk_rules': handlePokerButtons,
         'pk_fold': handlePokerButtons,
     }
 };

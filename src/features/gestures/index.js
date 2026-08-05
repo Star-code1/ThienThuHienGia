@@ -1,10 +1,44 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const UserProfile = require('../../shared/models/UserProfile');
 
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+function checkAndUpdateGestureUsage(profile) {
+    if (!profile.gestureUsage || !profile.gestureUsage.windowStart) {
+        profile.gestureUsage = { count: 0, windowStart: new Date() };
+    }
+
+    const now = Date.now();
+    const windowStart = new Date(profile.gestureUsage.windowStart).getTime();
+
+    if (now - windowStart >= SIX_HOURS_MS) {
+        profile.gestureUsage.count = 0;
+        profile.gestureUsage.windowStart = new Date();
+    }
+
+    if (profile.gestureUsage.count >= 10) {
+        const resetAt = new Date(profile.gestureUsage.windowStart.getTime() + SIX_HOURS_MS);
+        const resetTimestampSec = Math.floor(resetAt.getTime() / 1000);
+        return {
+            allowed: false,
+            count: profile.gestureUsage.count,
+            resetTimestampSec
+        };
+    }
+
+    profile.gestureUsage.count += 1;
+    const remaining = 10 - profile.gestureUsage.count;
+    return {
+        allowed: true,
+        count: profile.gestureUsage.count,
+        remaining
+    };
+}
+
 const gesturesCommand = {
     data: new SlashCommandBuilder()
         .setName('dongtac')
-        .setDescription('🎭 Thực hiện động tác tương tác Tiên Hiệp với đạo hữu khác')
+        .setDescription('🎭 Thực hiện động tác tương tác Tiên Hiệp với đạo hữu khác (Tối đa 10 lần/6 tiếng)')
         .addStringOption(opt => 
             opt.setName('hanh_dong')
                 .setDescription('Chọn hành động tương tác')
@@ -34,11 +68,26 @@ const gesturesCommand = {
         }
 
         const senderProfile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+
+        // Kiểm tra giới hạn 10 lượt / 6 tiếng
+        const usageCheck = checkAndUpdateGestureUsage(senderProfile);
+        if (!usageCheck.allowed) {
+            return interaction.reply({
+                content: `⚠️ **Đạo hữu đã dùng hết 10 lượt động tác trong vòng 6 tiếng!**\n` +
+                         `⏱️ Thể lực sẽ được hồi phục hoàn toàn vào lúc: <t:${usageCheck.resetTimestampSec}:R> (<t:${usageCheck.resetTimestampSec}:F>).`,
+                flags: 64
+            });
+        }
+
         const targetProfile = await UserProfile.getOrCreate(targetUser.id, targetUser.username);
+        const footerText = `Lượt sử dụng động tác: ${usageCheck.count}/10 (Còn lại ${usageCheck.remaining} lượt trong 6h)`;
 
         if (action === 'xoadau') {
             const cost = 20;
             if (senderProfile.linhThach < cost) {
+                // Revert count if cancelled due to insufficient funds
+                senderProfile.gestureUsage.count -= 1;
+                await senderProfile.save();
                 return interaction.reply({ content: `⚠️ Đạo hữu không đủ Linh Thạch! Cần \`${cost}\` 💎.`, flags: 64 });
             }
 
@@ -54,13 +103,15 @@ const gesturesCommand = {
                     `💆‍♂️ **${interaction.user.username}** ân cần dịu dàng xoa đầu **${targetUser.username}**!\n\n` +
                     `✨ **${targetUser.username}** cảm nhận được ấm áp, tâm trí khai sáng nhận **+10 ✨ Tu Vi**!`
                 )
-                .setFooter({ text: 'Thiên Thu Môn • Tình sư đệ đồng môn' });
+                .setFooter({ text: footerText });
 
             await interaction.reply({ embeds: [embed] });
 
         } else if (action === 'truyencong') {
             const amount = 100;
             if (senderProfile.linhThach < amount) {
+                senderProfile.gestureUsage.count -= 1;
+                await senderProfile.save();
                 return interaction.reply({ content: `⚠️ Đạo hữu không đủ Linh Thạch! Cần \`${amount}\` 💎 để truyền công.`, flags: 64 });
             }
 
@@ -77,16 +128,20 @@ const gesturesCommand = {
                     `⚡ **${interaction.user.username}** vận công truyền nhập linh khí cho **${targetUser.username}**!\n\n` +
                     `🎁 **${targetUser.username}** nhận được **+100 💎 Linh Thạch** & **+20 ✨ Tu Vi**!`
                 )
-                .setFooter({ text: 'Truyền công giúp đồng môn đột phá' });
+                .setFooter({ text: footerText });
 
             await interaction.reply({ embeds: [embed] });
 
         } else if (action === 'tyvo') {
             const bet = 100;
             if (senderProfile.linhThach < bet) {
+                senderProfile.gestureUsage.count -= 1;
+                await senderProfile.save();
                 return interaction.reply({ content: `⚠️ Bạn không đủ Linh Thạch! Cần \`${bet}\` 💎 để tỷ võ.`, flags: 64 });
             }
             if (targetProfile.linhThach < bet) {
+                senderProfile.gestureUsage.count -= 1;
+                await senderProfile.save();
                 return interaction.reply({ content: `⚠️ **${targetUser.username}** không đủ Linh Thạch để tiếp chiêu tỷ võ!`, flags: 64 });
             }
 
@@ -112,24 +167,29 @@ const gesturesCommand = {
                     `⚔️ **${interaction.user.username}** và **${targetUser.username}** đã rút binh khí giao chiến 100 hiệp tại Thiên Thu Môn!\n\n` +
                     `🏆 **CHIẾN THẮNG:** Đạo hữu **${winnerName}** tuyệt kỹ xuất thần, đoạt lấy **+100 💎 Linh Thạch** từ **${loserName}**!`
                 )
-                .setFooter({ text: 'Tỷ võ rèn luyện thân thể • Thắng bại là chuyện thường tình' });
+                .setFooter({ text: footerText });
 
             await interaction.reply({ embeds: [embed] });
 
         } else if (action === 'baisu') {
+            await senderProfile.save();
+
             const embed = new EmbedBuilder()
                 .setColor('#9B59B6')
                 .setTitle('🤝 ĐỘNG TÁC: BÁI SƯ HỌC ĐẠO')
                 .setDescription(
                     `🤝 **${interaction.user.username}** cung kính khấu bái trước mặt **${targetUser.username}**, nguyện theo làm đệ tử Thiên Thu Môn!\n\n` +
                     `📜 *"Sư đồ tương phùng, đạo pháp vạn năm cùng tu luyện."*`
-                );
+                )
+                .setFooter({ text: footerText });
 
             await interaction.reply({ embeds: [embed] });
 
         } else if (action === 'tanghoa') {
             const cost = 50;
             if (senderProfile.linhThach < cost) {
+                senderProfile.gestureUsage.count -= 1;
+                await senderProfile.save();
                 return interaction.reply({ content: `⚠️ Bạn không đủ Linh Thạch! Cần \`${cost}\` 💎.`, flags: 64 });
             }
 
@@ -144,7 +204,8 @@ const gesturesCommand = {
                 .setDescription(
                     `🌸 **${interaction.user.username}** mỉm cười trao tặng đoá hoa tươi thắm cho **${targetUser.username}**!\n\n` +
                     `🎁 **${targetUser.username}** cảm động nhận đoá hoa kèm **+50 💎 Linh Thạch**!`
-                );
+                )
+                .setFooter({ text: footerText });
 
             await interaction.reply({ embeds: [embed] });
         }

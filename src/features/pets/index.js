@@ -1,167 +1,532 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { 
+    SlashCommandBuilder, 
+    EmbedBuilder, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle 
+} = require('discord.js');
 const UserProfile = require('../../shared/models/UserProfile');
 
-const PET_SHOP = [
-    { id: 'fox', name: 'Linh Hồ Cửu Vĩ 🦊', price: 10000, desc: 'Hồ tiên 9 đuôi lanh lợi, tăng vận may ngộ tính.' },
-    { id: 'turtle', name: 'Kim Quy Trấn Hải 🐢', price: 20000, desc: 'Thần quy ngàn năm mang lại đại phú đại quý.' },
-    { id: 'bird', name: 'Băng Phượng Tuyết Sơn 🦅', price: 50000, desc: 'Băng phượng thanh cao giáng thế ban linh khí.' },
-    { id: 'dragon', name: 'Chân Long Thần Thú 🐉', price: 100000, desc: 'Rồng thần đại năng đại diện cho bá khí tối cao.' },
+// 11 Phẩm Giai Linh Thú (Từ thấp đến cao)
+const RARITY_TIERS = [
+    { name: 'Phàm Thú', weight: 350, color: '#95A5A6', multiplier: 1.0 },
+    { name: 'Linh Thú', weight: 250, color: '#2ECC71', multiplier: 1.4 },
+    { name: 'Huyền Thú', weight: 150, color: '#3498DB', multiplier: 1.9 },
+    { name: 'Địa Thú', weight: 100, color: '#9B59B6', multiplier: 2.5 },
+    { name: 'Thiên Thú', weight: 70, color: '#F1C40F', multiplier: 3.2 },
+    { name: 'Thánh Thú', weight: 40, color: '#E67E22', multiplier: 4.0 },
+    { name: 'Tiên Thú', weight: 20, color: '#E74C3C', multiplier: 5.0 },
+    { name: 'Thần Thú', weight: 10, color: '#1ABC9C', multiplier: 6.5 },
+    { name: 'Cổ Thú', weight: 6, color: '#D35400', multiplier: 8.5 },
+    { name: 'Hồng Hoang Thú', weight: 3, color: '#8E44AD', multiplier: 11.0 },
+    { name: 'Hỗn Độn Thú', weight: 1, color: '#FF0055', multiplier: 15.0 },
 ];
 
-const shopPetCommand = {
+// 5 Hệ Ngũ Hành
+const ELEMENTS = [
+    { name: 'Kim ⚡', emoji: '⚡' },
+    { name: 'Mộc 🌿', emoji: '🌿' },
+    { name: 'Thủy 💧', emoji: '💧' },
+    { name: 'Hỏa 🔥', emoji: '🔥' },
+    { name: 'Thổ ⛰️', emoji: '⛰️' },
+];
+
+// Loài Linh Thú
+const SPECIES_LIST = [
+    'Bạch Hổ', 'Chu Tước', 'Huyền Vũ', 'Thanh Long', 'Kỳ Lân', 'Băng Cáo',
+    'Cửu Vĩ Hồ', 'Phượng Hoàng', 'Thôn Thiên Thú', 'Hỗn Độn Trư', 'Kình Ngư',
+    'Kim Tinh Niên', 'U Linh Xà', 'Thiên Ưng', 'Băng Sương Lang', 'Lôi Lân Thú'
+];
+
+// Tạm lưu pet mới đang chờ quyết định đổi/giữ: userId -> pendingPetObj
+const pendingHatchPets = new Map();
+
+// Hàm sinh ngẫu nhiên Pet theo phẩm giai & chỉ số
+function generateRandomPet() {
+    // Random Rarity theo tỷ lệ weight
+    const totalWeight = RARITY_TIERS.reduce((acc, r) => acc + r.weight, 0);
+    let randomWeight = Math.floor(Math.random() * totalWeight);
+    let selectedTierIndex = 0;
+
+    for (let i = 0; i < RARITY_TIERS.length; i++) {
+        if (randomWeight < RARITY_TIERS[i].weight) {
+            selectedTierIndex = i;
+            break;
+        }
+        randomWeight -= RARITY_TIERS[i].weight;
+    }
+
+    const tier = RARITY_TIERS[selectedTierIndex];
+    const elementObj = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
+    const species = SPECIES_LIST[Math.floor(Math.random() * SPECIES_LIST.length)];
+    const name = `${tier.name} ${species}`;
+
+    const mult = tier.multiplier;
+    const stats = {
+        hp: Math.floor((100 + Math.random() * 40) * mult),
+        atk: Math.floor((20 + Math.random() * 10) * mult),
+        def: Math.floor((15 + Math.random() * 8) * mult),
+        spatk: Math.floor((20 + Math.random() * 10) * mult),
+        spdef: Math.floor((15 + Math.random() * 8) * mult),
+    };
+
+    return {
+        name,
+        species,
+        rarity: tier.name,
+        rarityIndex: selectedTierIndex,
+        color: tier.color,
+        element: elementObj.name,
+        level: 1,
+        exp: 0,
+        stats
+    };
+}
+
+// Lấy ngày hôm nay dạng YYYY-MM-DD
+function getTodayString() {
+    return new Date().toISOString().split('T')[0];
+}
+
+// 1. Cửa Hàng & Mua Trứng (`/shop-trung`, `/mua-trung`)
+const shopTrungCommand = {
     data: new SlashCommandBuilder()
-        .setName('shop-pet')
-        .setDescription('🦊 Xem Cửa Hàng Linh Thú Đồng Hành (Pet) Thiên Thu Môn'),
+        .setName('shop-trung')
+        .setDescription('🥚 Xem Cửa Hàng Trứng Linh Thú Thiên Thu Môn (Max 5 trứng/ngày)'),
     async execute(interaction) {
-        let desc = PET_SHOP.map(p => 
-            `• **${p.name}** — Giá: **\`${p.price.toLocaleString()}\` 💎 Linh Thạch**\n  └ *${p.desc}*`
-        ).join('\n\n');
+        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const today = getTodayString();
+
+        if (profile.eggData.lastBuyDate !== today) {
+            profile.eggData.eggsBoughtToday = 0;
+            profile.eggData.lastBuyDate = today;
+            await profile.save();
+        }
+
+        const boughtToday = profile.eggData.eggsBoughtToday || 0;
+        const remainingToday = Math.max(0, 5 - boughtToday);
+        const eggCount = profile.eggData.eggCount || 0;
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('pet_rules')
+                .setLabel('📖 Hướng Dẫn Nuôi Pet')
+                .setStyle(ButtonStyle.Secondary)
+        );
 
         const embed = new EmbedBuilder()
             .setColor('#F39C12')
-            .setTitle('🐾 CỬA HÀNG LINH THÚ ĐỒNG HÀNH • THIÊN THU MÔN')
+            .setTitle('🥚 CỬA HÀNG TRỨNG LINH THÚ • THIÊN THU MÔN')
             .setDescription(
-                `Dùng Linh Thạch nhận nuôi Linh Thú đồng hành cùng tu luyện!\n\n` + desc + `\n\n` +
-                `👉 Dùng lệnh \`/mua-pet [pet_id]\` để nhận nuôi!`
+                `🧙‍♂️ **Thiên Thu Hiền Giả** cung cấp Trứng Linh Thú chứa đựng cơ duyên nở ra Linh Thú huyền thoại!\n\n` +
+                `💰 **Giá Trứng Linh Thú:** \`5,000\` 💎 Linh Thạch / Trứng\n` +
+                `📊 **Giới hạn mua:** Tối đa **5 trứng / ngày**\n\n` +
+                `📈 **Trạng thái đạo hữu:**\n` +
+                `• Số trứng đã mua hôm nay: **\`${boughtToday}/5\`** (Còn mua được: **\`${remainingToday}\`** trứng)\n` +
+                `• Số trứng đang có trong túi: **\`${eggCount}\`** trứng 🥚\n\n` +
+                `👉 Dùng lệnh \`/mua-trung [soluong]\` để mua trứng!\n` +
+                `👉 Dùng lệnh \`/ap-trung\` để ấp trứng nở ra Linh Thú đồng hành!`
             )
-            .setFooter({ text: 'Linh thú thần hộ mệnh trên con đường tu tiên' });
+            .setFooter({ text: 'Slot Pet tối đa: 1 • Được chọn Giữ hoặc Đổi khi ấp trứng mới' });
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({ embeds: [embed], components: [row] });
     }
 };
 
-const muaPetCommand = {
+const muaTrungCommand = {
     data: new SlashCommandBuilder()
-        .setName('mua-pet')
-        .setDescription('🐾 Nhận nuôi Linh Thú đồng hành')
-        .addStringOption(opt => 
-            opt.setName('pet')
-                .setDescription('Chọn Linh Thú muốn nhận nuôi')
-                .setRequired(true)
-                .addChoices(
-                    { name: '🦊 Linh Hồ Cửu Vĩ (10,000 💎)', value: 'fox' },
-                    { name: '🐢 Kim Quy Trấn Hải (20,000 💎)', value: 'turtle' },
-                    { name: '🦅 Băng Phượng Tuyết Sơn (50,000 💎)', value: 'bird' },
-                    { name: '🐉 Chân Long Thần Thú (100,000 💎)', value: 'dragon' },
-                )
+        .setName('mua-trung')
+        .setDescription('🛒 Mua Trứng Linh Thú (Giá 5,000 Linh Thạch/trứng, max 5 trứng/ngày)')
+        .addIntegerOption(opt =>
+            opt.setName('soluong')
+                .setDescription('Số lượng trứng muốn mua (1 - 5)')
+                .setRequired(false)
+                .setMinValue(1)
+                .setMaxValue(5)
         ),
     async execute(interaction) {
-        const petId = interaction.options.getString('pet');
-        const petObj = PET_SHOP.find(p => p.id === petId);
-
+        const amount = interaction.options.getInteger('soluong') || 1;
         const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const today = getTodayString();
 
-        const hasPet = profile.pets.some(p => p.petId === petId);
-        if (hasPet) {
-            return interaction.reply({ content: `⚠️ Đạo hữu đã nhận nuôi **${petObj.name}** rồi!`, flags: 64 });
+        if (profile.eggData.lastBuyDate !== today) {
+            profile.eggData.eggsBoughtToday = 0;
+            profile.eggData.lastBuyDate = today;
         }
 
-        if (profile.linhThach < petObj.price) {
+        const boughtToday = profile.eggData.eggsBoughtToday || 0;
+        if (boughtToday + amount > 5) {
+            const canBuy = Math.max(0, 5 - boughtToday);
             return interaction.reply({
-                content: `⚠️ Đạo hữu không đủ Linh Thạch! Cần **\`${petObj.price.toLocaleString()}\` 💎 Linh Thạch** để nhận nuôi ${petObj.name}.`,
+                content: `⚠️ Đạo hữu đã mua **${boughtToday}/5** trứng hôm nay! Hôm nay chỉ còn mua được thêm **${canBuy}** trứng nữa.`,
                 flags: 64
             });
         }
 
-        profile.linhThach -= petObj.price;
-        profile.pets.push({
-            petId: petObj.id,
-            name: petObj.name,
-            level: 1,
-            exp: 0,
-            lastFed: null
-        });
-        profile.activePetId = petObj.id;
+        const pricePerEgg = 5000;
+        const totalPrice = pricePerEgg * amount;
+
+        if (profile.linhThach < totalPrice) {
+            return interaction.reply({
+                content: `⚠️ Đạo hữu không đủ Linh Thạch! Mua \`${amount}\` trứng cần **\`${totalPrice.toLocaleString()}\` 💎 Linh Thạch** (Hiện có: \`${profile.linhThach.toLocaleString()}\` 💎).`,
+                flags: 64
+            });
+        }
+
+        profile.linhThach -= totalPrice;
+        profile.eggData.eggsBoughtToday += amount;
+        profile.eggData.eggCount = (profile.eggData.eggCount || 0) + amount;
         await profile.save();
 
         const embed = new EmbedBuilder()
             .setColor('#2ECC71')
-            .setTitle('🎉 KHAI MỞ LINH THÚ ĐỒNG HÀNH 🎉')
+            .setTitle('🎉 MUA TRỨNG LINH THÚ THÀNH CÔNG 🎉')
             .setDescription(
-                `🐾 Đạo hữu **${interaction.user.username}** đã nhận nuôi thành công **${petObj.name}**!\n\n` +
-                `✨ **${petObj.name}** chính thức xuất chiến làm Linh Thú đồng hành.\n` +
-                `🍖 Dùng lệnh \`/nuoi-pet\` để cho Linh Thú ăn và tăng cấp độ!`
+                `🥚 Đạo hữu đã mua thành công **${amount} Trứng Linh Thú** (-${totalPrice.toLocaleString()} 💎 Linh Thạch)!\n\n` +
+                `📦 Túi trứng hiện có: **\`${profile.eggData.eggCount}\`** 🥚 Trứng Linh Thú\n` +
+                `📊 Đã mua hôm nay: **\`${profile.eggData.eggsBoughtToday}/5\`** trứng\n\n` +
+                `👉 Dùng lệnh \`/ap-trung\` ngay để ấp trứng nở ra Linh Thú!`
             )
-            .setFooter({ text: 'Thiên Thu Môn • Linh thú quy phục' });
+            .setFooter({ text: 'Thiên Thu Môn • Cơ duyên linh thú' });
 
         await interaction.reply({ embeds: [embed] });
     }
 };
 
-const nuoiPetCommand = {
+// 2. Ấp Trứng (`/ap-trung`)
+const apTrungCommand = {
     data: new SlashCommandBuilder()
-        .setName('nuoi-pet')
-        .setDescription('🍖 Cho Linh Thú đồng hành ăn Linh Dược (Tốn 100 Linh Thạch) để tăng EXP'),
+        .setName('ap-trung')
+        .setDescription('🐣 Ấp 1 Trứng Linh Thú trong túi để nở ra Linh Thú mới'),
     async execute(interaction) {
         const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
 
-        if (!profile.pets.length) {
-            return interaction.reply({ content: '⚠️ Đạo hữu chưa có Linh Thú nào! Dùng `/shop-pet` để nhận nuôi.', flags: 64 });
+        if (!profile.eggData.eggCount || profile.eggData.eggCount <= 0) {
+            return interaction.reply({
+                content: '⚠️ Đạo hữu chưa có Trứng Linh Thú nào! Dùng `/shop-trung` hoặc `/mua-trung` để mua trứng.',
+                flags: 64
+            });
         }
 
-        const activePet = profile.pets.find(p => p.petId === profile.activePetId) || profile.pets[0];
-        const foodCost = 100;
+        // Tiêu tốn 1 trứng
+        profile.eggData.eggCount -= 1;
+        await profile.save();
 
-        if (profile.linhThach < foodCost) {
-            return interaction.reply({ content: `⚠️ Đạo hữu không đủ Linh Thạch để mua Linh Dược cho Pet (Cần \`${foodCost}\` 💎).`, flags: 64 });
+        // Sinh Pet ngẫu nhiên
+        const newPet = generateRandomPet();
+        const existingPet = profile.pet && profile.pet.name ? profile.pet : null;
+
+        if (!existingPet) {
+            // Chưa có pet ➔ Tự động nhận pet mới
+            profile.pet = newPet;
+            await profile.save();
+
+            const embed = new EmbedBuilder()
+                .setColor(newPet.color)
+                .setTitle('🐣 TRỨNG NỞ! CHÚC MỪNG LINH THÚ GIÁNG THẾ 🐣')
+                .setDescription(
+                    `🎉 Trứng Linh Thú đã nở ra một **${newPet.name}**!\n\n` +
+                    `✨ **THÔNG TIN LINH THÚ ĐỒNG HÀNH:**\n` +
+                    `• Phẩm Giai: **${newPet.rarity}**\n` +
+                    `• Hệ Ngũ Hành: **${newPet.element}**\n` +
+                    `• Cấp Độ: **Level ${newPet.level}**\n\n` +
+                    `📊 **CHỈ SỐ CHIẾN ĐẤU:**\n` +
+                    `❤️ HP: **\`${newPet.stats.hp}\`** | ⚔️ ATK: **\`${newPet.stats.atk}\`** | 🛡️ DEF: **\`${newPet.stats.def}\`**\n` +
+                    `🔮 SP.ATK: **\`${newPet.stats.spatk}\`** | 🔰 SP.DEF: **\`${newPet.stats.spdef}\`**\n\n` +
+                    `🍖 Dùng lệnh \`/nuoi-pet\` để nuôi dưỡng hoặc \`/nhiemvu-pet\` để làm nhiệm vụ!`
+                )
+                .setFooter({ text: 'Slot Pet: 1/1 • Đã tự động nhận nuôi' });
+
+            return interaction.reply({ embeds: [embed] });
         }
 
-        profile.linhThach -= foodCost;
-        activePet.exp += 50;
+        // ĐÃ CÓ PET ➔ Lưu vào pending để chọn Giữ hay Đổi!
+        pendingHatchPets.set(interaction.user.id, newPet);
 
-        let levelMsg = '';
-        const expNeeded = activePet.level * 100;
-        if (activePet.exp >= expNeeded) {
-            activePet.level += 1;
-            activePet.exp -= expNeeded;
-            profile.addTuVi(50); // Thưởng tu vi cho chủ khi pet lên cấp
-            levelMsg = `\n🎉 **CHÚC MỪNG LINH THÚ ĐÃ THĂNG LÊN CẤP [ Level ${activePet.level} ]!** Ban cho chủ nhân +50 Tu Vi!`;
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`pet_keep:${interaction.user.id}`)
+                .setLabel('🟢 Giữ Pet Cũ')
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId(`pet_swap:${interaction.user.id}`)
+                .setLabel('🔄 Đổi Nhận Pet Mới')
+                .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+                .setCustomId('pet_rules')
+                .setLabel('📖 Luật Chơi')
+                .setStyle(ButtonStyle.Secondary)
+        );
+
+        const embed = new EmbedBuilder()
+            .setColor('#E67E22')
+            .setTitle('🐣 TRỨNG ĐÃ NỞ! CHỌN GIỮ HOẶC ĐỔI PET 🐣')
+            .setDescription(
+                `Đạo hữu vừa ấp nở ra **${newPet.name}**!\n` +
+                `⚠️ Do slot Pet tối đa chỉ là **1**, hãy so sánh chỉ số và chọn **Giữ Pet Cũ** hoặc **Đổi Pet Mới**:\n\n` +
+                `🛡️ **[PET HIỆN TẠI]** ${existingPet.name}\n` +
+                `• Phẩm Giai: **${existingPet.rarity}** | Hệ: **${existingPet.element}** | Cấp: **Lv.${existingPet.level}**\n` +
+                `• HP: \`${existingPet.stats.hp}\` | ATK: \`${existingPet.stats.atk}\` | DEF: \`${existingPet.stats.def}\` | SPATK: \`${existingPet.stats.spatk}\` | SPDEF: \`${existingPet.stats.spdef}\`\n\n` +
+                `✨ **[PET MỚI NỞ]** ${newPet.name}\n` +
+                `• Phẩm Giai: **${newPet.rarity}** | Hệ: **${newPet.element}** | Cấp: **Lv.1**\n` +
+                `• HP: \`${newPet.stats.hp}\` | ATK: \`${newPet.stats.atk}\` | DEF: \`${newPet.stats.def}\` | SPATK: \`${newPet.stats.spatk}\` | SPDEF: \`${newPet.stats.spdef}\``
+            )
+            .setFooter({ text: 'Bấm nút bên dưới để xác nhận giữ hay đổi pet!' });
+
+        await interaction.reply({ embeds: [embed], components: [row] });
+    }
+};
+
+// Handle Nút Giữ / Đổi Pet
+const handlePetSwapButtons = async (interaction) => {
+    const customId = interaction.customId;
+    const userId = interaction.user.id;
+
+    if (customId === 'pet_rules') {
+        const rulesEmbed = new EmbedBuilder()
+            .setColor('#9B59B6')
+            .setTitle('📖 HƯỚNG DẪN HỆ THỐNG LINH THÚ (PET)')
+            .setDescription(
+                `🐾 **Cơ Chế Ấp Trứng & Nuôi Thú:**\n` +
+                `• **Mua Trứng:** Giá 5,000 Linh Thạch, tối đa mua 5 trứng/ngày.\n` +
+                `• **Ấp Trứng:** Mở trứng nhận ngẫu nhiên Linh Thú với 11 Phẩm Giai (Phàm ➔ Linh ➔ Huyền ➔ Địa ➔ Thiên ➔ Thánh ➔ Tiên ➔ Thần ➔ Cổ ➔ Hồng Hoang ➔ Hỗn Độn) & 5 Hệ Ngũ Hành (Kim, Mộc, Thủy, Hỏa, Thổ).\n` +
+                `• **Slot Pet = 1:** Đạo hữu chỉ giữ 1 Linh Thú duy nhất. Khi ấp trứng mới có thể so sánh chỉ số để Giữ Pet Cũ hoặc Đổi sang Pet Mới.\n` +
+                `• **Nuôi Thú (\`/nuoi-pet\`):** Cho ăn Linh Dược (-200 Linh Thạch) để tăng EXP & chỉ số khi lên cấp.\n` +
+                `• **Nhiệm Vụ Pet (\`/nhiemvu-pet\`):** Làm 3 nhiệm vụ huấn luyện mỗi ngày để kiếm EXP & Linh Thạch!`
+            )
+            .setFooter({ text: 'Thiên Thu Môn • Linh Thú Đồng Hành' });
+
+        return interaction.reply({ embeds: [rulesEmbed], flags: 64 });
+    }
+
+    const targetUserId = customId.split(':')[1];
+    if (targetUserId !== userId) {
+        return interaction.reply({ content: 'Đây không phải lượt ấp trứng của đạo hữu!', flags: 64 });
+    }
+
+    const newPet = pendingHatchPets.get(userId);
+    if (!newPet) {
+        return interaction.reply({ content: 'Lượt chọn Pet này đã hết hạn hoặc không tồn tại.', flags: 64 });
+    }
+
+    const profile = await UserProfile.getOrCreate(userId, interaction.user.username);
+
+    if (customId.startsWith('pet_keep:')) {
+        pendingHatchPets.delete(userId);
+        const embed = new EmbedBuilder()
+            .setColor('#2ECC71')
+            .setTitle('🟢 ĐÃ GIỮ LINH THÚ CŨ')
+            .setDescription(
+                `Đạo hữu đã quyết định **Giữ lại ${profile.pet.name}**!\n` +
+                `Linh Thú mới nở (${newPet.name}) đã được phóng sinh về tự nhiên.`
+            );
+
+        return interaction.update({ embeds: [embed], components: [] });
+    }
+
+    if (customId.startsWith('pet_swap:')) {
+        pendingHatchPets.delete(userId);
+        const oldName = profile.pet.name;
+        profile.pet = newPet;
+        await profile.save();
+
+        const embed = new EmbedBuilder()
+            .setColor('#E74C3C')
+            .setTitle('🔄 ĐÃ ĐỔI SANG LINH THÚ MỚI!')
+            .setDescription(
+                `Đạo hữu đã chia tay **${oldName}** và nhận nuôi thành công **${newPet.name}**!\n\n` +
+                `✨ Phẩm Giai: **${newPet.rarity}** | Hệ: **${newPet.element}**\n` +
+                `❤️ HP: \`${newPet.stats.hp}\` | ⚔️ ATK: \`${newPet.stats.atk}\` | 🛡️ DEF: \`${newPet.stats.def}\` | 🔮 SPATK: \`${newPet.stats.spatk}\` | 🔰 SPDEF: \`${newPet.stats.spdef}\``
+            );
+
+        return interaction.update({ embeds: [embed], components: [] });
+    }
+};
+
+// 3. Xem Linh Thú (`/pet`, `/linh-thu`)
+const viewPetCommand = {
+    data: new SlashCommandBuilder()
+        .setName('pet')
+        .setDescription('🐾 Xem thông tin và chỉ số Linh Thú đồng hành của bạn'),
+    async execute(interaction) {
+        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+
+        if (!profile.pet || !profile.pet.name) {
+            return interaction.reply({
+                content: '⚠️ Đạo hữu chưa có Linh Thú nào! Dùng `/shop-trung` mua trứng và `/ap-trung` để ấp nở Linh Thú.',
+                flags: 64
+            });
         }
 
-        activePet.lastFed = new Date();
+        const p = profile.pet;
+        const expNeeded = p.level * 150;
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('pet_rules')
+                .setLabel('📖 Hướng Dẫn Nuôi Pet')
+                .setStyle(ButtonStyle.Secondary)
+        );
+
+        const embed = new EmbedBuilder()
+            .setColor('#9B59B6')
+            .setTitle(`🐾 LINH THÚ ĐỒNG HÀNH • ${profile.username}`)
+            .setDescription(
+                `✨ **${p.name}**\n` +
+                `• Phẩm Giai: **${p.rarity}**\n` +
+                `• Hệ Ngũ Hành: **${p.element}**\n` +
+                `• Cấp Độ: **Level ${p.level}** (EXP: \`${p.exp}/${expNeeded}\`)\n\n` +
+                `📊 **BỘ CHỈ SỐ CHIẾN ĐẤU:**\n` +
+                `❤️ HP: **\`${p.stats.hp}\`**\n` +
+                `⚔️ ATK (Tấn công): **\`${p.stats.atk}\`**\n` +
+                `🛡️ DEF (Phòng thủ): **\`${p.stats.def}\`**\n` +
+                `🔮 SP.ATK (Pháp công): **\`${p.stats.spatk}\`**\n` +
+                `🔰 SP.DEF (Pháp phòng): **\`${p.stats.spdef}\`**`
+            )
+            .setFooter({ text: 'Dùng /nuoi-pet để cho ăn hoặc /nhiemvu-pet để làm nhiệm vụ' });
+
+        await interaction.reply({ embeds: [embed], components: [row] });
+    }
+};
+
+// 4. Nuôi Linh Thú (`/nuoi-pet`)
+const nuoiPetCommand = {
+    data: new SlashCommandBuilder()
+        .setName('nuoi-pet')
+        .setDescription('🍖 Cho Linh Thú ăn Linh Dược (Tốn 200 Linh Thạch) để tăng EXP & Chỉ số'),
+    async execute(interaction) {
+        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+
+        if (!profile.pet || !profile.pet.name) {
+            return interaction.reply({
+                content: '⚠️ Đạo hữu chưa có Linh Thú! Dùng `/shop-trung` và `/ap-trung` để ấp trứng nhận Linh Thú.',
+                flags: 64
+            });
+        }
+
+        const cost = 200;
+        if (profile.linhThach < cost) {
+            return interaction.reply({
+                content: `⚠️ Đạo hữu không đủ Linh Thạch! Cho Linh Thú ăn cần \`${cost}\` 💎 Linh Thạch.`,
+                flags: 64
+            });
+        }
+
+        profile.linhThach -= cost;
+        const p = profile.pet;
+        p.exp += 75;
+
+        let levelUpMsg = '';
+        const expNeeded = p.level * 150;
+        if (p.exp >= expNeeded) {
+            p.level += 1;
+            p.exp -= expNeeded;
+
+            // Tăng chỉ số khi lên cấp
+            p.stats.hp = Math.floor(p.stats.hp * 1.08);
+            p.stats.atk = Math.floor(p.stats.atk * 1.08);
+            p.stats.def = Math.floor(p.stats.def * 1.08);
+            p.stats.spatk = Math.floor(p.stats.spatk * 1.08);
+            p.stats.spdef = Math.floor(p.stats.spdef * 1.08);
+
+            profile.addTuVi(60);
+            levelUpMsg = `\n🎉 **CHÚC MỪNG LINH THÚ THĂNG LÊN [ LEVEL ${p.level} ]!**\n✨ Tất cả chỉ số chiến đấu tăng +8%! Ban cho chủ nhân +60 Tu Vi!`;
+        }
+
         await profile.save();
 
         const embed = new EmbedBuilder()
             .setColor('#F1C40F')
             .setTitle('🍖 CHO LINH THÚ ĂN LINH DƯỢC')
             .setDescription(
-                `🐾 Đạo hữu cho **${activePet.name}** ăn Linh Dược (-100 💎 Linh Thạch).\n\n` +
-                `✨ EXP hiện tại: **\`${activePet.exp}/${activePet.level * 100}\`**\n` +
-                `⭐ Cấp độ hiện tại: **Level ${activePet.level}**` + levelMsg
+                `🐾 Đạo hữu cho **${p.name}** thưởng thức Linh Dược (-200 💎 Linh Thạch).\n\n` +
+                `⭐ Cấp độ hiện tại: **Level ${p.level}** (EXP: \`${p.exp}/${p.level * 150}\`)` + levelUpMsg
             )
-            .setFooter({ text: 'Linh Thú càng cao cấp càng mang lại nhiều may mắn' });
+            .setFooter({ text: 'Linh Thú cấp càng cao chỉ số càng vượt trội' });
 
         await interaction.reply({ embeds: [embed] });
     }
 };
 
-const petCommand = {
+// 5. Nhiệm Vụ Linh Thú (`/nhiemvu-pet`)
+const nhiemvuPetCommand = {
     data: new SlashCommandBuilder()
-        .setName('pet')
-        .setDescription('🐾 Xem danh sách và chỉ số Linh Thú đồng hành của bạn'),
+        .setName('nhiemvu-pet')
+        .setDescription('📜 Thực hiện nhiệm vụ huấn luyện Linh Thú hàng ngày (Max 3 nhiệm vụ/ngày)'),
     async execute(interaction) {
         const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
 
-        if (!profile.pets.length) {
-            return interaction.reply({ content: '⚠️ Đạo hữu chưa có Linh Thú nào! Dùng `/shop-pet` để nhận nuôi.', flags: 64 });
+        if (!profile.pet || !profile.pet.name) {
+            return interaction.reply({
+                content: '⚠️ Đạo hữu chưa có Linh Thú! Hãy ấp trứng nhận Linh Thú trước khi làm nhiệm vụ.',
+                flags: 64
+            });
         }
 
-        let desc = profile.pets.map(p => {
-            const isActive = p.petId === profile.activePetId ? ' *(Đang xuất chiến)*' : '';
-            return `• **${p.name}**${isActive}\n  └ Cấp độ: **Level ${p.level}** (EXP: \`${p.exp}/${p.level * 100}\`)`;
-        }).join('\n\n');
+        const today = getTodayString();
+        const p = profile.pet;
+
+        if (p.lastQuestResetDate !== today) {
+            p.questsCompletedToday = 0;
+            p.lastQuestResetDate = today;
+        }
+
+        if (p.questsCompletedToday >= 3) {
+            return interaction.reply({
+                content: '⚠️ Linh Thú của đạo hữu đã hoàn thành đủ **3/3 nhiệm vụ hôm nay**! Hãy quay lại vào ngày mai.',
+                flags: 64
+            });
+        }
+
+        const quests = [
+            { name: '👹 Tru Ma Tiệt Yêu', exp: 100, rewardlt: 200, desc: 'Đưa Linh Thú trừ ma vệ đạo tại Yêu Phong Sơn.' },
+            { name: '💎 Tầm Bảo Linh Thạch', exp: 150, rewardlt: 300, desc: 'Linh Thú dẫn đường phát hiện mỏ Linh Thạch cổ xưa.' },
+            { name: '🧘‍♂️ Luyện Khí Tẩy Tủy', exp: 200, rewardlt: 500, desc: 'Cùng Linh Thú bế quan hấp thu nguyệt hoa thiên địa.' },
+        ];
+
+        const questIndex = p.questsCompletedToday;
+        const currentQuest = quests[questIndex];
+
+        p.questsCompletedToday += 1;
+        p.exp += currentQuest.exp;
+        profile.linhThach += currentQuest.rewardlt;
+
+        let levelUpMsg = '';
+        const expNeeded = p.level * 150;
+        if (p.exp >= expNeeded) {
+            p.level += 1;
+            p.exp -= expNeeded;
+            p.stats.hp = Math.floor(p.stats.hp * 1.08);
+            p.stats.atk = Math.floor(p.stats.atk * 1.08);
+            p.stats.def = Math.floor(p.stats.def * 1.08);
+            p.stats.spatk = Math.floor(p.stats.spatk * 1.08);
+            p.stats.spdef = Math.floor(p.stats.spdef * 1.08);
+            profile.addTuVi(60);
+            levelUpMsg = `\n🎉 **LINH THÚ ĐÃ THĂNG CẤP [ LEVEL ${p.level} ]!** Ban cho chủ nhân +60 Tu Vi!`;
+        }
+
+        await profile.save();
 
         const embed = new EmbedBuilder()
-            .setColor('#9B59B6')
-            .setTitle(`🐾 LINH THÚ ĐỒNG HÀNH • ${interaction.user.username}`)
-            .setDescription(desc)
-            .setFooter({ text: 'Dùng /nuoi-pet để chăm sóc Linh Thú' });
+            .setColor('#1ABC9C')
+            .setTitle(`📜 NHIỆM VỤ PET (${p.questsCompletedToday}/3): ${currentQuest.name}`)
+            .setDescription(
+                `🐾 **${p.name}** đã hoàn thành nhiệm vụ: *${currentQuest.desc}*\n\n` +
+                `🎁 **PHẦN THƯỞNG:**\n` +
+                `• EXP Linh Thú: **+${currentQuest.exp} EXP** (Hiện có: \`${p.exp}/${p.level * 150}\`)\n` +
+                `• Linh Thạch thưởng: **+${currentQuest.rewardlt} 💎 Linh Thạch**` + levelUpMsg
+            )
+            .setFooter({ text: `Đã hoàn thành ${p.questsCompletedToday}/3 nhiệm vụ hôm nay` });
 
         await interaction.reply({ embeds: [embed] });
     }
 };
 
 module.exports = {
-    commands: [shopPetCommand, muaPetCommand, nuoiPetCommand, petCommand],
-    interactions: {}
+    commands: [shopTrungCommand, muaTrungCommand, apTrungCommand, viewPetCommand, nuoiPetCommand, nhiemvuPetCommand],
+    interactions: {
+        'pet_keep': handlePetSwapButtons,
+        'pet_swap': handlePetSwapButtons,
+        'pet_rules': handlePetSwapButtons,
+    }
 };

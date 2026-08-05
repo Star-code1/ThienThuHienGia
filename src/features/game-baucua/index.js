@@ -141,14 +141,18 @@ const baucuaCommand = {
             )
         );
 
-        // Row 2: Next 3 beasts
+        // Row 2: Next 3 beasts + Rules button
         const row2 = new ActionRowBuilder().addComponents(
-            LINH_THU.slice(3, 6).map(beast => 
+            ...LINH_THU.slice(3, 6).map(beast => 
                 new ButtonBuilder()
                     .setCustomId(`bc_modal:${beast.id}`)
                     .setLabel(`${beast.emoji} ${beast.name.split(' ')[0]}`)
                     .setStyle(ButtonStyle.Primary)
-            )
+            ),
+            new ButtonBuilder()
+                .setCustomId('bc_rules')
+                .setLabel('📖 Luật Chơi')
+                .setStyle(ButtonStyle.Secondary)
         );
 
         const embed = new EmbedBuilder()
@@ -173,6 +177,27 @@ const baucuaCommand = {
 const handleBaucuaInteractions = async (interaction) => {
     const customId = interaction.customId;
     const channelId = interaction.channelId;
+
+    if (customId === 'bc_rules') {
+        const rulesEmbed = new EmbedBuilder()
+            .setColor('#E67E22')
+            .setTitle('📖 LUẬT CHƠI BẦU CUA LỤC ĐẠI LINH THÚ')
+            .setDescription(
+                `🎲 **Quy tắc gieo quẻ:**\n` +
+                `• Mỗi lượt chơi kéo dài 30 giây cho tất cả đạo hữu cùng tham gia đặt cược.\n` +
+                `• Có 6 Linh Thú: Bầu 🍈, Cua 🦀, Tôm 🦞, Cá 🐟, Gà 🐓, Nai 🦌.\n` +
+                `• Đạo hữu có thể chọn cược Linh Thạch vào một hoặc nhiều Linh Thú cùng lúc!\n\n` +
+                `💰 **Trả thưởng:**\n` +
+                `• Nếu 3 xúc xắc ra 1 con trùng khớp ➔ Hoàn tiền cược + Thưởng x1 tiền cược.\n` +
+                `• Nếu ra 2 con trùng khớp ➔ Hoàn tiền cược + Thưởng x2 tiền cược.\n` +
+                `• Nếu ra 3 con trùng khớp ➔ Hoàn tiền cược + Thưởng x3 tiền cược.\n` +
+                `• Nếu không trúng ➔ Mất số Linh Thạch đã cược vào linh thú đó.`
+            )
+            .setFooter({ text: 'Thiên Thu Hiền Giả Ban Quẻ' });
+
+        return interaction.reply({ embeds: [rulesEmbed], flags: 64 });
+    }
+
     const session = activeBaucuaGames.get(channelId);
 
     if (!session) {
@@ -256,6 +281,7 @@ module.exports = {
     commands: [baucuaCommand],
     interactions: {
         'bc_modal': handleBaucuaInteractions,
+        'bc_rules': handleBaucuaInteractions,
         'bc_submit': handleBaucuaModalSubmit,
     }
 };
