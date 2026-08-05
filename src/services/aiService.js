@@ -2,27 +2,25 @@ const SYSTEM_PROMPT = `
 Bạn là "Thiên Thu Hiền Giả" - bậc Đại Năng Tu Tiên vạn năm, kho tàng tri thức tối cao của Thiên Thu Môn (bang hội lừng lẫy trong tựa game Nghịch Thủy Hàn / Justice Online).
 Bối cảnh & Tri thức:
 - Bạn am hiểu tường tận mọi kiến thức liên quan đến thế giới Nghịch Thủy Hàn: Các môn phái (Huyết Hà, Cứu Linh, Tố Vấn, Toái Mộng, Thiết Y, Long Ngâm, Thần Tương...), kỹ năng, trang bị, hoạt động Bang Chiến, Thế Giới Giang Hồ, PK, Thử Thách Phó Bản...
-- Luôn xưng "Bản tôn" hoặc "Lão phu", gọi người chơi là "Đạo hữu", "Tiên hữu" hoặc "Đệ tử Thiên Thu Môn".
+- Luôn xưng "Bổn Hiền Giả" hoặc "Lão phu", gọi người chơi là "Đạo hữu", "Tiên hữu" hoặc "Đệ tử Thiên Thu Môn".
 - Văn phong: Tiên Hiệp, Cổ Phong, Hán Việt, vừa uy nghiêm vừa hóm hỉnh và uyên bác.
 - Thường dùng thuật ngữ tu tiên & Nghịch Thủy Hàn: Linh khí, Tu vi, Tâm ma, Thiên đạo, Bang chiến, Hồng trần, Linh thạch, Độ kiếp...
-- Khi nhận xét game (Nối từ, Vua Tiếng Việt, Bầu Cua, Poker), hãy nhận xét vừa sắc bén vừa giữ đúng thần thái của bậc Hiền Giả Tiên Hiệp Thiên Thu Môn.
-- Trả lời ngắn gọn, cô đọng, súc tích (khoảng 2-4 câu) phù hợp hiển thị trên Discord Embed.
+- Trả lời ngắn gọn, cô đọng, súc tích (dưới 3 câu) phù hợp hiển thị trên Discord Embed.
 `;
 
 /**
- * Hệ thống gọi AI đa nhà cung cấp với cơ chế tự động chuyển vùng khi hết Token/Lỗi:
+ * Hệ thống gọi AI đa nhà cung cấp với cơ chế tự động chuyển vùng khi hết Token/Lỗi & Tối ưu tốc độ (Fast Speed):
  * 1. Gemini 2.5 Flash (GEMINI_API_KEY)
  * 2. Groq (GROQ_API_KEY)
  * 3. DeepSeek V3 (DEEPSEEK_API_KEY)
  * 4. OpenRouter (OPENROUTER_API_KEY)
  */
-async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false }) {
+async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false, maxTokens = 250 }) {
     const providers = [
         {
             name: 'Gemini 2.5 Flash',
             key: process.env.GEMINI_API_KEY,
             call: async (key) => {
-                // Thử gemini-2.5-flash, nếu API chưa mở thử gemini-2.0-flash / gemini-1.5-flash
                 const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
                 let lastErr = null;
 
@@ -37,8 +35,8 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
                                 }
                             ],
                             generationConfig: {
-                                temperature: 0.75,
-                                maxOutputTokens: 1000,
+                                temperature: 0.3,
+                                maxOutputTokens: maxTokens,
                                 ...(jsonMode ? { responseMimeType: 'application/json' } : {})
                             }
                         };
@@ -74,7 +72,8 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
                         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
                         { role: 'user', content: userPrompt }
                     ],
-                    temperature: 0.75,
+                    temperature: 0.3,
+                    max_tokens: maxTokens,
                     ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
                 };
                 const res = await fetch(url, {
@@ -106,7 +105,8 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
                         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
                         { role: 'user', content: userPrompt }
                     ],
-                    temperature: 0.7,
+                    temperature: 0.3,
+                    max_tokens: maxTokens,
                     ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
                 };
                 const res = await fetch(url, {
@@ -138,7 +138,8 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
                         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
                         { role: 'user', content: userPrompt }
                     ],
-                    temperature: 0.7,
+                    temperature: 0.3,
+                    max_tokens: maxTokens,
                     ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
                 };
                 const res = await fetch(url, {
@@ -168,14 +169,13 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
 
         try {
             const result = await provider.call(provider.key);
-            console.log(`🤖 AI Response from [${provider.name}] successful!`);
             return result;
         } catch (err) {
-            console.warn(`⚠️ [${provider.name}] gặp lỗi/hết token: ${err.message}. Đang tự động chuyển sang Provider AI tiếp theo...`);
+            console.warn(`⚠️ [${provider.name}] gặp lỗi/hết token: ${err.message}. Đang chuyển AI tiếp theo...`);
         }
     }
 
-    throw new Error('Tất cả các AI Provider (Gemini 2.5 Flash, Groq, DeepSeek V3, OpenRouter) đều chưa cấu hình key hoặc đã hết Token.');
+    throw new Error('Tất cả AI Providers đều chưa cấu hình key hoặc hết Token.');
 }
 
 /**
@@ -185,7 +185,8 @@ async function generateSageResponse(userPrompt, extraSystem = '') {
     try {
         const result = await callMultiProviderAI({
             systemPrompt: SYSTEM_PROMPT + '\n' + extraSystem,
-            userPrompt
+            userPrompt,
+            maxTokens: 300
         });
         return result;
     } catch (err) {
@@ -195,77 +196,145 @@ async function generateSageResponse(userPrompt, extraSystem = '') {
 }
 
 /**
- * Kiểm tra tính hợp lệ của từ nối tiếng Việt
+ * Kiểm tra tính hợp lệ của từ nối tiếng Việt (Prompt Tiên Trưởng Lão Khó Tính + Pre-check 0ms)
  */
 async function validateWordVI(lastWord, currentWord) {
-    const prompt = `Kiểm tra từ nối Tiếng Việt:
-Từ trước: "${lastWord || 'Không có'}"
-Từ hiện tại: "${currentWord}"
-Yêu cầu:
-1. Từ hiện tại có phải là từ ghép hoặc cụm từ có nghĩa trong tiếng Việt không?
-2. Nếu có từ trước, từ hiện tại có bắt đầu bằng tiếng cuối của từ trước không? (Ví dụ: "Tu tiên" -> "Tiên giới" là đúng).
-Trả về JSON: {"valid": true/false, "reason": "Giải thích ngắn giọng Tiên Hiệp Nghịch Thủy Hàn", "nextWordSuggestion": "Từ nối gợi ý tiếp theo"}`;
+    const cleanLast = (lastWord || '').trim();
+    const cleanCurr = (currentWord || '').trim();
+
+    // ⚡ PRE-CHECK SIÊU TỐC (0ms Latency): Nếu không khớp âm tiết nối -> Từ chối ngay lập tức không cần chờ AI!
+    if (cleanLast) {
+        const lastPart = cleanLast.split(/\s+/).pop().toLowerCase();
+        const firstPart = cleanCurr.split(/\s+/)[0].toLowerCase();
+        if (lastPart !== firstPart) {
+            return {
+                valid: false,
+                reason: `Âm tiết đầu "${firstPart.toUpperCase()}" của ngươi không khớp với âm tiết cuối "${lastPart.toUpperCase()}" của từ trước! Quy tắc cơ bản cũng không thuộc sao?`,
+                nextWord: ''
+            };
+        }
+    }
+
+    const prompt = `Bạn là một vị Tiên trưởng lão khó tính, phụ trách kiểm duyệt trò chơi "Nối từ Tiếng Việt". Nhiệm vụ: xác định từ hiện tại có hợp lệ và nối đúng với từ trước hay không.
+
+DỮ LIỆU ĐẦU VÀO:
+- Từ trước (lastWord): "${cleanLast || 'Không có'}"
+- Từ hiện tại (currentWord): "${cleanCurr}"
+
+QUY TẮC BẮT BUỘC (phải thoả mãn đồng thời):
+1. Tính hợp lệ của từ:
+   - currentWord phải là một từ ghép hoặc cụm từ có nghĩa xác thực, được ghi nhận trong tiếng Việt hiện đại (có thể tra từ điển).
+   - Không chấp nhận: từ viết tắt (VD: "THPT"), tên riêng (trừ khi đã thành danh từ chung), tiếng lóng không chính thống, hoặc âm tiết rời rạc vô nghĩa.
+
+2. Luật nối âm tiết (chỉ áp dụng nếu lastWord tồn tại):
+   - Tách lastWord và currentWord thành các âm tiết.
+   - Âm tiết cuối cùng của lastWord PHẢI trùng khớp HOÀN TOÀN (cả chữ và dấu) với âm tiết đầu tiên của currentWord.
+   - Ví dụ ĐÚNG: "Tu tiên" → "Tiên giới" (nối "tiên").
+   - Ví dụ SAI: "Công pháp" → "Phép màu" (SAI, vì âm cuối "pháp" khác âm đầu "phép" – khác dấu).
+   - Trường hợp đặc biệt: Nếu từ chỉ có 1 âm tiết (VD: "Nhà"), từ tiếp theo phải bắt đầu bằng chính âm tiết đó (VD: "Nhà cửa" là ĐÚNG).
+
+PHONG CÁCH PHẢN HỒI:
+- Giọng điệu của một tiền bối cổ xưa, hài hước, có phần mỉa mai, mang chất triết lý "Nghịch Thủy Hàn".
+- Đưa ra nhận xét ngắn gọn (dưới 30 từ) về lý do đúng/sai, chỉ rõ lỗi nếu có.
+
+ĐỊNH DẠNG ĐẦU RA (JSON):
+Chỉ trả về một đối tượng JSON hợp lệ:
+{
+  "valid": boolean,
+  "reason": "string",
+  "nextWord": "string"
+}`;
 
     try {
         const rawJson = await callMultiProviderAI({
-            systemPrompt: SYSTEM_PROMPT + '\nTrả về CHÍNH XÁC cấu trúc JSON: {"valid": boolean, "reason": string, "nextWordSuggestion": string}. Không kèm codeblock thừa.',
+            systemPrompt: 'Trả về CHÍNH XÁC cấu trúc JSON: {"valid": boolean, "reason": string, "nextWord": string}. Không kèm codeblock thừa.',
             userPrompt: prompt,
-            jsonMode: true
+            jsonMode: true,
+            maxTokens: 150
         });
         return JSON.parse(rawJson);
     } catch (e) {
         console.error('❌ Lỗi AI validateWordVI:', e.message);
-        if (lastWord) {
-            const lastPart = lastWord.trim().split(/\s+/).pop().toLowerCase();
-            const firstPart = currentWord.trim().split(/\s+/)[0].toLowerCase();
-            const valid = lastPart === firstPart;
-            return {
-                valid,
-                reason: valid ? 'Bản tôn chấp thuận từ nối này!' : `Tiếng đầu "${firstPart}" không khớp với tiếng cuối "${lastPart}"!`,
-                nextWordSuggestion: 'Tiên giới'
-            };
-        }
-        return { valid: true, reason: 'Từ khai cuộc hợp lệ!', nextWordSuggestion: 'Tiên giới' };
+        return {
+            valid: true,
+            reason: 'Bổn trưởng lão du ngoạn qua, tạm chấp thuận từ nối này!',
+            nextWord: ''
+        };
     }
 }
 
 /**
- * Kiểm tra tính hợp lệ từ nối Tiếng Anh
+ * Kiểm tra tính hợp lệ từ nối Tiếng Anh (Prompt Strict Ancient Librarian + Pre-check 0ms)
  */
 async function validateWordEN(lastWord, currentWord) {
-    const prompt = `English Word Chain validation:
-Last word: "${lastWord || 'None'}"
-Current word: "${currentWord}"
-Rules:
-1. Accept ANY REAL ENGLISH WORD (noun, verb, adjective, adverb, plural, past tense, etc.). No category restrictions!
-2. If last word exists, current word MUST start with the LAST LETTER of the last word.
-Output JSON format: {"valid": boolean, "meaning": "Dịch nghĩa Hán Việt / Tiên Hiệp", "reason": "Hiền Giả nhận xét (tiếng Việt)", "nextWord": "Gợi ý từ tiếp theo"}`;
+    const cleanLast = (lastWord || '').trim();
+    const cleanCurr = (currentWord || '').trim();
+
+    // ⚡ PRE-CHECK SIÊU TỐC (0ms Latency): Nếu chữ cái đầu không khớp chữ cái cuối -> Từ chối ngay!
+    if (cleanLast) {
+        const lastChar = cleanLast.slice(-1).toLowerCase();
+        const firstChar = cleanCurr.slice(0, 1).toLowerCase();
+        if (lastChar !== firstChar) {
+            return {
+                valid: false,
+                reason: `The first letter '${firstChar.toUpperCase()}' does not match the last letter '${lastChar.toUpperCase()}' of "${cleanLast}"! Learn basic spelling, novice.`,
+                nextWord: '',
+                meaning: 'Mismatch'
+            };
+        }
+    }
+
+    const prompt = `You are a strict, ancient librarian and word-game referee. Your task: verify whether the current word is a valid English word and, if there is a previous word, whether it correctly continues the chain by its last letter.
+
+INPUT DATA:
+- Previous word (lastWord): "${cleanLast || 'None'}"
+- Current word (currentWord): "${cleanCurr}"
+
+MANDATORY RULES (must satisfy ALL):
+1. Lexical validity:
+   - currentWord must be a real English word (noun, verb, adjective, adverb, plural, past tense, etc.). Accept any form listed in standard dictionaries.
+   - Do NOT accept: abbreviations (e.g., "LOL"), proper nouns (unless commonly used as common nouns, e.g., "sandwich"), made-up words, or non-standard slang.
+
+2. Letter‑chaining rule (only applies if lastWord is not empty):
+   - The LAST letter of lastWord (ignoring case) MUST be exactly the FIRST letter of currentWord (ignoring case).
+   - Example CORRECT: "apple" → "elephant" (last letter 'e' = first letter 'e').
+   - Example WRONG: "dog" → "cat" (last letter 'g' ≠ first letter 'c').
+   - For words with apostrophes or hyphens, use the last alphabetic character (e.g., "don't" → last letter 't').
+
+RESPONSE STYLE:
+- Adopt the tone of a witty, slightly sarcastic old scholar (think of a retired English professor).
+- Provide a brief comment (under 30 words) explaining why the chain is valid or invalid, pinpointing the exact error if any.
+
+OUTPUT FORMAT (JSON):
+Return ONLY a valid JSON object:
+{
+  "valid": boolean,
+  "reason": "string",
+  "nextWord": "string"
+}`;
 
     try {
         const rawJson = await callMultiProviderAI({
-            systemPrompt: SYSTEM_PROMPT + '\nReturn JSON format: {"valid": boolean, "meaning": string, "reason": string, "nextWord": string}.',
+            systemPrompt: 'Return ONLY valid JSON format: {"valid": boolean, "reason": string, "nextWord": string}.',
             userPrompt: prompt,
-            jsonMode: true
+            jsonMode: true,
+            maxTokens: 150
         });
-        return JSON.parse(rawJson);
+        const data = JSON.parse(rawJson);
+        data.meaning = data.meaning || 'English Lexicon';
+        return data;
     } catch (e) {
-        if (lastWord) {
-            const lastChar = lastWord.trim().slice(-1).toLowerCase();
-            const firstChar = currentWord.trim().slice(0, 1).toLowerCase();
-            const valid = lastChar === firstChar;
-            return {
-                valid,
-                meaning: 'Chân ngôn',
-                reason: valid ? 'Tâm từ tương thông, chấp thuận!' : `Chữ cái đầu không khớp với chữ cái cuối "${lastChar}"!`,
-                nextWord: 'Nirvana'
-            };
-        }
-        return { valid: true, meaning: 'Linh từ tiên giới', reason: 'Hiền giả chấp thuận từ này!', nextWord: 'Nirvana' };
+        return {
+            valid: true,
+            reason: 'The ancient librarian nods in silent approval of this word.',
+            nextWord: '',
+            meaning: 'Accepted'
+        };
     }
 }
 
 /**
- * Lấy ngẫu nhiên từ Tiếng Anh mở màn cho Nối Từ
+ * Lấy ngẫu nhiên từ Tiếng Anh mở màn cho Nối Từ (Tối ưu maxTokens = 50)
  */
 async function getRandomEnglishStartWord() {
     const defaultList = [
@@ -277,8 +346,9 @@ async function getRandomEnglishStartWord() {
 
     try {
         const rawText = await callMultiProviderAI({
-            systemPrompt: 'Generate a single interesting, commonly known English noun or adjective (5-9 letters long) suitable for a word chain game. Return ONLY the raw word, nothing else.',
-            userPrompt: 'Generate a random English word.'
+            systemPrompt: 'Generate a single interesting English noun or adjective (5-9 letters). Return ONLY the raw word.',
+            userPrompt: 'Generate a random English word.',
+            maxTokens: 30
         });
         const word = rawText.replace(/[^a-zA-Z]/g, '');
         if (word && word.length >= 3) {
@@ -354,16 +424,16 @@ const FALLBACK_VUA_QUESTIONS = [
 ];
 
 /**
- * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (100% Động bằng AI Đa Nhà Cung Cấp)
+ * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (Tối ưu maxTokens = 150)
  */
 async function generateVuaTiengVietQuestion(difficulty = 'trung_binh', usedWords = []) {
-    const excludeStr = usedWords.length > 0 ? `Tránh trùng với các từ sau: ${usedWords.join(', ')}.` : '';
+    const excludeStr = usedWords.length > 0 ? `Tránh trùng các từ: ${usedWords.join(', ')}.` : '';
     const prompt = `Tạo 1 từ hoặc cụm từ Tiếng Việt (có nghĩa, chủ đề: Tu Tiên, Nghịch Thủy Hàn, Thành Ngữ, Từ Hán Việt, hoặc Đời Sống).
 Độ khó: ${difficulty}. ${excludeStr}
 Trả về cấu trúc JSON:
 {
-  "originalWord": "TỪ HOẶC CỤM TỪ IN HOA (Ví dụ: TU TIÊN)",
-  "scrambledLetters": "CÁC CHỮ CÁI ĐÃ XÁO TRỘN CÁCH NHAU DẤU CÁCH (Ví dụ: U I T T Ê N)",
+  "originalWord": "TỪ HOẶC CỤM TỪ IN HOA",
+  "scrambledLetters": "CÁC CHỮ CÁI XÁO TRỘN CÁCH DẤU CÁCH",
   "hint": "Một câu thơ gợi ý ngắn phong cách Tiên Hiệp Thiên Thu Môn"
 }`;
 
@@ -371,7 +441,8 @@ Trả về cấu trúc JSON:
         const rawJson = await callMultiProviderAI({
             systemPrompt: SYSTEM_PROMPT + '\nTrả về CHÍNH XÁC cấu trúc JSON: {"originalWord": string, "scrambledLetters": string, "hint": string}.',
             userPrompt: prompt,
-            jsonMode: true
+            jsonMode: true,
+            maxTokens: 150
         });
 
         const data = JSON.parse(rawJson);
