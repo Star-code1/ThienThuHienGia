@@ -8,6 +8,7 @@ const {
 const { createDeck, evaluate7Cards } = require('./pokerEngine');
 const { generatePokerCommentary } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
+const { getDisplayName } = require('../../shared/utils/nameHelper');
 
 // Active poker games: userId -> gameSession
 const pokerGames = new Map();
@@ -25,7 +26,8 @@ const pokerCommand = {
         ),
     async execute(interaction) {
         const betAmount = interaction.options.getInteger('cuoc') || 200;
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
 
         if (profile.linhThach < betAmount) {
             return interaction.reply({
@@ -66,7 +68,7 @@ const pokerCommand = {
             .setColor('#9B59B6')
             .setTitle('🃏 HỒNG TRẦN POKER • ĐẤU VỚI HIỀN GIẢ 🃏')
             .setDescription(
-                `⚔️ **Đạo Hữu vs Thiên Thư Hiền Giả**\n` +
+                `⚔️ **${displayName} vs Thiên Thư Hiền Giả**\n` +
                 `💎 Mức cược: **\`${betAmount.toLocaleString()}\` Linh Thạch**\n\n` +
                 `🎴 **Hai lá bài ẩn trên tay của đạo hữu:**\n` +
                 `>>> 🃏 **\` [ ${playerCards[0].toString()} ]  [ ${playerCards[1].toString()} ] \`**\n\n` +
@@ -113,9 +115,11 @@ const handlePokerButtons = async (interaction) => {
         return interaction.reply({ content: 'Đây không phải ván Poker của đạo hữu!', flags: 64 });
     }
 
+    const displayName = getDisplayName(interaction);
+
     if (customId.startsWith('pk_fold:')) {
         pokerGames.delete(userId);
-        const profile = await UserProfile.getOrCreate(userId, interaction.user.username);
+        const profile = await UserProfile.getOrCreate(userId, displayName);
         profile.linhThach -= game.betAmount;
         profile.stats.pokerGames += 1;
         await profile.save();
@@ -124,7 +128,7 @@ const handlePokerButtons = async (interaction) => {
             .setColor('#E74C3C')
             .setTitle('🏳️ ĐẠO HỮU ĐÃ BỎ BÀI (FOLD)')
             .setDescription(
-                `Đạo hữu **${interaction.user.username}** đã chịu thua, bỏ bài rút lui!\n\n` +
+                `Đạo hữu **${displayName}** đã chịu thua, bỏ bài rút lui!\n\n` +
                 `❌ Mất: **-${game.betAmount} Linh Thạch**\n` +
                 `🧙‍♂️ Bài của Hiền Giả là: \` [ ${game.aiCards[0].toString()} ]  [ ${game.aiCards[1].toString()} ] \``
             )
@@ -236,7 +240,7 @@ const handlePokerButtons = async (interaction) => {
             const playerEval = evaluate7Cards([...game.playerCards, ...game.communityCards]);
             const aiEval = evaluate7Cards([...game.aiCards, ...game.communityCards]);
 
-            const profile = await UserProfile.getOrCreate(userId, interaction.user.username);
+            const profile = await UserProfile.getOrCreate(userId, displayName);
             profile.stats.pokerGames += 1;
 
             let isPlayerWin = false;
@@ -263,7 +267,7 @@ const handlePokerButtons = async (interaction) => {
             const playerCardStr = game.playerCards.map(c => c.toString()).join('  ');
             const aiCardStr = game.aiCards.map(c => c.toString()).join('  ');
 
-            const winnerName = isPlayerWin ? interaction.user.username : isDraw ? 'Hòa' : 'Thiên Thư Hiền Giả';
+            const winnerName = isPlayerWin ? displayName : isDraw ? 'Hòa' : 'Thiên Thư Hiền Giả';
             const winningHand = isPlayerWin ? playerEval.rankName : aiEval.rankName;
 
             const aiCommentary = await generatePokerCommentary('Showdown', game.communityCards.map(c => c.toString()), winnerName, winningHand);
@@ -273,7 +277,7 @@ const handlePokerButtons = async (interaction) => {
                 .setTitle('⚔️ KẾT QUẢ ĐỌ BÀI POKER SHOWDOWN ⚔️')
                 .setDescription(
                     `🌐 **5 Lá Bài Chung:**\n\` [ ${communityStr} ] \`\n\n` +
-                    `👤 **Bài của ${interaction.user.username}:**\n` +
+                    `👤 **Bài của ${displayName}:**\n` +
                     `\` [ ${playerCardStr} ] \` => **${playerEval.rankName}**\n\n` +
                     `🧙‍♂️ **Bài của Thiên Thư Hiền Giả:**\n` +
                     `\` [ ${aiCardStr} ] \` => **${aiEval.rankName}**\n\n` +

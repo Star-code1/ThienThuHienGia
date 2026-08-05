@@ -6,6 +6,7 @@ const {
     ButtonStyle 
 } = require('discord.js');
 const UserProfile = require('../../shared/models/UserProfile');
+const { getDisplayName } = require('../../shared/utils/nameHelper');
 
 // Bảng Phẩm Giai Linh Thú (11 Cấp từ Phàm ➔ Hỗn Độn)
 const RARITY_TIERS = [
@@ -98,7 +99,8 @@ const shopTrungCommand = {
         .setName('shop-trung')
         .setDescription('🥚 Xem Cửa Hàng Trứng Linh Thú Thiên Thư Môn (Max 5 trứng/ngày)'),
     async execute(interaction) {
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
         const today = getTodayString();
 
         if (profile.eggData.lastBuyDate !== today) {
@@ -126,7 +128,7 @@ const shopTrungCommand = {
                 `🧙‍♂️ **Thiên Thư Hiền Giả** cung cấp Trứng Linh Thú chứa đựng cơ duyên nở ra Linh Thú huyền thoại!\n\n` +
                 `💰 **Giá Trứng Linh Thú:** \`5,000\` 💎 Linh Thạch / Trứng\n` +
                 `📊 **Giới hạn mua:** Tối đa **5 trứng / ngày**\n\n` +
-                `📈 **Trạng thái đạo hữu:**\n` +
+                `📈 **Trạng thái đạo hữu (${displayName}):**\n` +
                 `• Số trứng đã mua hôm nay: **\`${boughtToday}/5\`** (Còn mua được: **\`${remainingToday}\`** trứng)\n` +
                 `• Số trứng đang có trong túi: **\`${eggCount}\`** trứng 🥚\n\n` +
                 `👉 Dùng lệnh \`/mua-trung [soluong]\` để mua trứng!\n` +
@@ -151,7 +153,8 @@ const muaTrungCommand = {
         ),
     async execute(interaction) {
         const amount = interaction.options.getInteger('soluong') || 1;
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
         const today = getTodayString();
 
         if (profile.eggData.lastBuyDate !== today) {
@@ -188,7 +191,7 @@ const muaTrungCommand = {
             .setColor('#2ECC71')
             .setTitle('🎉 MUA TRỨNG LINH THÚ THÀNH CÔNG 🎉')
             .setDescription(
-                `🥚 Đạo hữu đã mua thành công **${amount} Trứng Linh Thú** (-${totalPrice.toLocaleString()} 💎 Linh Thạch)!\n\n` +
+                `🥚 Đạo hữu **${displayName}** đã mua thành công **${amount} Trứng Linh Thú** (-${totalPrice.toLocaleString()} 💎 Linh Thạch)!\n\n` +
                 `📦 Túi trứng hiện có: **\`${profile.eggData.eggCount}\`** 🥚 Trứng Linh Thú\n` +
                 `📊 Đã mua hôm nay: **\`${profile.eggData.eggsBoughtToday}/5\`** trứng\n\n` +
                 `👉 Dùng lệnh \`/ap-trung\` ngay để ấp trứng nở ra Linh Thú!`
@@ -205,7 +208,8 @@ const apTrungCommand = {
         .setName('ap-trung')
         .setDescription('🐣 Ấp 1 Trứng Linh Thú trong túi để nở ra Linh Thú mới'),
     async execute(interaction) {
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
 
         const currentEggs = profile.eggData ? profile.eggData.eggCount : 0;
 
@@ -235,7 +239,7 @@ const apTrungCommand = {
                 .setColor(newPet.color)
                 .setTitle('🐣 TRỨNG NỞ! CHÚC MỪNG LINH THÚ GIÁNG THẾ 🐣')
                 .setDescription(
-                    `🎉 Trứng Linh Thú đã nở ra một **${newPet.name}**!\n\n` +
+                    `🎉 Trứng Linh Thú của **${displayName}** đã nở ra một **${newPet.name}**!\n\n` +
                     `✨ **THÔNG TIN LINH THÚ ĐỒNG HÀNH:**\n` +
                     `• Phẩm Giai: **${newPet.rarity}**\n` +
                     `• Hệ Ngũ Hành: **${newPet.element}**\n` +
@@ -273,7 +277,7 @@ const apTrungCommand = {
             .setColor('#E67E22')
             .setTitle('🐣 TRỨNG ĐÃ NỞ! CHỌN GIỮ HOẶC ĐỔI PET 🐣')
             .setDescription(
-                `Đạo hữu vừa ấp nở ra **${newPet.name}**! (Còn lại: \`${profile.eggData.eggCount}\` 🥚 trứng)\n` +
+                `Đạo hữu **${displayName}** vừa ấp nở ra **${newPet.name}**! (Còn lại: \`${profile.eggData.eggCount}\` 🥚 trứng)\n` +
                 `⚠️ Do slot Pet tối đa chỉ là **1**, hãy so sánh chỉ số và chọn **Giữ Pet Cũ** hoặc **Đổi Pet Mới**:\n\n` +
                 `🛡️ **[PET HIỆN TẠI]** ${existingPet.name}\n` +
                 `• Phẩm Giai: **${existingPet.rarity}** | Hệ: **${existingPet.element}** | Cấp: **Lv.${existingPet.level}**\n` +
@@ -320,7 +324,8 @@ const handlePetSwapButtons = async (interaction) => {
         return interaction.reply({ content: 'Lượt chọn Pet này đã hết hạn hoặc không tồn tại.', flags: 64 });
     }
 
-    const profile = await UserProfile.getOrCreate(userId, interaction.user.username);
+    const displayName = getDisplayName(interaction);
+    const profile = await UserProfile.getOrCreate(userId, displayName);
 
     if (customId.startsWith('pet_keep:')) {
         pendingHatchPets.delete(userId);
@@ -328,7 +333,7 @@ const handlePetSwapButtons = async (interaction) => {
             .setColor('#2ECC71')
             .setTitle('🟢 ĐÃ GIỮ LINH THÚ CŨ')
             .setDescription(
-                `Đạo hữu đã quyết định **Giữ lại ${profile.pet.name}**!\n` +
+                `Đạo hữu **${displayName}** đã quyết định **Giữ lại ${profile.pet.name}**!\n` +
                 `Linh Thú mới nở (${newPet.name}) đã được phóng sinh về tự nhiên.`
             );
 
@@ -346,7 +351,7 @@ const handlePetSwapButtons = async (interaction) => {
             .setColor('#E74C3C')
             .setTitle('🔄 ĐÃ ĐỔI SANG LINH THÚ MỚI!')
             .setDescription(
-                `Đạo hữu đã chia tay **${oldName}** và nhận nuôi thành công **${newPet.name}**!\n\n` +
+                `Đạo hữu **${displayName}** đã chia tay **${oldName}** và nhận nuôi thành công **${newPet.name}**!\n\n` +
                 `✨ Phẩm Giai: **${newPet.rarity}** | Hệ: **${newPet.element}**\n` +
                 `❤️ HP: \`${newPet.stats.hp}\` | ATK: \`${newPet.stats.atk}\` | DEF: \`${newPet.stats.def}\` | 🔮 SPATK: \`${newPet.stats.spatk}\` | 🔰 SPDEF: \`${newPet.stats.spdef}\``
             );
@@ -361,7 +366,8 @@ const viewPetCommand = {
         .setName('pet')
         .setDescription('🐾 Xem thông tin và chỉ số Linh Thú đồng hành của bạn'),
     async execute(interaction) {
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
 
         if (!profile.pet || !profile.pet.name) {
             return interaction.reply({
@@ -382,7 +388,7 @@ const viewPetCommand = {
 
         const embed = new EmbedBuilder()
             .setColor('#9B59B6')
-            .setTitle(`🐾 LINH THÚ ĐỒNG HÀNH • ${profile.username}`)
+            .setTitle(`🐾 LINH THÚ ĐỒNG HÀNH • ${displayName}`)
             .setDescription(
                 `✨ **${p.name}**\n` +
                 `• Phẩm Giai: **${p.rarity}**\n` +
@@ -407,7 +413,8 @@ const nuoiPetCommand = {
         .setName('nuoi-pet')
         .setDescription('🍖 Cho Linh Thú ăn Linh Dược (Tốn 200 Linh Thạch) để tăng EXP & Chỉ số'),
     async execute(interaction) {
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
 
         if (!profile.pet || !profile.pet.name) {
             return interaction.reply({
@@ -452,7 +459,7 @@ const nuoiPetCommand = {
             .setColor('#F1C40F')
             .setTitle('🍖 CHO LINH THÚ ĂN LINH DƯỢC')
             .setDescription(
-                `🐾 Đạo hữu cho **${p.name}** thưởng thức Linh Dược (-200 💎 Linh Thạch).\n\n` +
+                `🐾 Đạo hữu **${displayName}** cho **${p.name}** thưởng thức Linh Dược (-200 💎 Linh Thạch).\n\n` +
                 `⭐ Cấp độ hiện tại: **Level ${p.level}** (EXP: \`${p.exp}/${p.level * 150}\`)` + levelUpMsg
             )
             .setFooter({ text: 'Linh Thú cấp càng cao chỉ số càng vượt trội' });
@@ -467,7 +474,8 @@ const nhiemvuPetCommand = {
         .setName('nhiemvu-pet')
         .setDescription('📜 Thực hiện nhiệm vụ huấn luyện Linh Thú hàng ngày (Max 3 nhiệm vụ/ngày)'),
     async execute(interaction) {
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
 
         if (!profile.pet || !profile.pet.name) {
             return interaction.reply({
@@ -525,7 +533,7 @@ const nhiemvuPetCommand = {
             .setColor('#1ABC9C')
             .setTitle(`📜 NHIỆM VỤ PET (${p.questsCompletedToday}/3): ${currentQuest.name}`)
             .setDescription(
-                `🐾 **${p.name}** đã hoàn thành nhiệm vụ: *${currentQuest.desc}*\n\n` +
+                `🐾 Linh Thú của **${displayName}** (${p.name}) đã hoàn thành nhiệm vụ: *${currentQuest.desc}*\n\n` +
                 `🎁 **PHẦN THƯỞNG:**\n` +
                 `• EXP Linh Thú: **+${currentQuest.exp} EXP** (Hiện có: \`${p.exp}/${p.level * 150}\`)\n` +
                 `• Linh Thạch thưởng: **+${currentQuest.rewardlt} 💎 Linh Thạch**` + levelUpMsg

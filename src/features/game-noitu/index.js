@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { validateWordVI, validateWordEN, getRandomEnglishStartWord } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
+const { getDisplayName } = require('../../shared/utils/nameHelper');
 
 // Stores active games per channel: channelId -> gameObject
 const activeGames = new Map();
@@ -282,7 +283,8 @@ const onMessageCreate = {
             // Đặt lại timer 30s
             resetTurnTimer(message.channelId, message.channel);
 
-            const profile = await UserProfile.getOrCreate(message.author.id, message.author.username);
+            const authorName = getDisplayName(message);
+            const profile = await UserProfile.getOrCreate(message.author.id, authorName);
             profile.linhThach += 15;
             profile.stats.noituWins += 1;
             profile.addTuVi(10);
@@ -293,7 +295,7 @@ const onMessageCreate = {
             const lastWordPart = userText.split(/\s+/).pop();
             const embed = new EmbedBuilder()
                 .setColor('#2ECC71')
-                .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+                .setAuthor({ name: authorName, iconURL: message.author.displayAvatarURL() })
                 .setDescription(
                     `✨ **Nối từ thành công:** "${userText}"\n` +
                     `💬 *Hiền Giả:* "${res.reason}"\n` +
@@ -329,7 +331,8 @@ const onMessageCreate = {
             // Đặt lại timer 30s
             resetTurnTimer(message.channelId, message.channel);
 
-            const profile = await UserProfile.getOrCreate(message.author.id, message.author.username);
+            const authorName = getDisplayName(message);
+            const profile = await UserProfile.getOrCreate(message.author.id, authorName);
             profile.linhThach += 15;
             profile.stats.noituWins += 1;
             profile.addTuVi(10);
@@ -340,7 +343,7 @@ const onMessageCreate = {
             const nextChar = userText.slice(-1).toUpperCase();
             const embed = new EmbedBuilder()
                 .setColor('#3498DB')
-                .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+                .setAuthor({ name: authorName, iconURL: message.author.displayAvatarURL() })
                 .setDescription(
                     `✨ **Word Accepted:** "${userText}" (${res.meaning})\n` +
                     `💬 *Hiền Giả:* "${res.reason}"\n` +

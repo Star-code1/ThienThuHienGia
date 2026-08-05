@@ -1,6 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { generateSageResponse } = require('../../services/aiService');
 
+const { getDisplayName } = require('../../shared/utils/nameHelper');
+
 const hienGiaCommand = {
     data: new SlashCommandBuilder()
         .setName('hien-gia')
@@ -12,10 +14,11 @@ const hienGiaCommand = {
         ),
     async execute(interaction) {
         const question = interaction.options.getString('cau_hoi');
+        const displayName = getDisplayName(interaction);
 
         await interaction.deferReply();
 
-        const answer = await generateSageResponse(question, `Người hỏi: ${interaction.user.username}`);
+        const answer = await generateSageResponse(question, `Người hỏi: ${displayName}`);
 
         const embed = new EmbedBuilder()
             .setColor('#7289DA')

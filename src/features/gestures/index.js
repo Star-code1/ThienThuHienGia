@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const UserProfile = require('../../shared/models/UserProfile');
+const { getDisplayName } = require('../../shared/utils/nameHelper');
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
@@ -67,7 +68,10 @@ const gesturesCommand = {
             return interaction.reply({ content: '⚠️ Bot không thể tương tác động tác tu tiên!', flags: 64 });
         }
 
-        const senderProfile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const senderName = getDisplayName(interaction);
+        const targetName = getDisplayName(interaction, targetUser);
+
+        const senderProfile = await UserProfile.getOrCreate(interaction.user.id, senderName);
 
         // Kiểm tra giới hạn 10 lượt / 6 tiếng
         const usageCheck = checkAndUpdateGestureUsage(senderProfile);
@@ -79,13 +83,12 @@ const gesturesCommand = {
             });
         }
 
-        const targetProfile = await UserProfile.getOrCreate(targetUser.id, targetUser.username);
+        const targetProfile = await UserProfile.getOrCreate(targetUser.id, targetName);
         const footerText = `Lượt sử dụng động tác: ${usageCheck.count}/10 (Còn lại ${usageCheck.remaining} lượt trong 6h)`;
 
         if (action === 'xoadau') {
             const cost = 20;
             if (senderProfile.linhThach < cost) {
-                // Revert count if cancelled due to insufficient funds
                 senderProfile.gestureUsage.count -= 1;
                 await senderProfile.save();
                 return interaction.reply({ content: `⚠️ Đạo hữu không đủ Linh Thạch! Cần \`${cost}\` 💎.`, flags: 64 });
@@ -100,8 +103,8 @@ const gesturesCommand = {
                 .setColor('#2ECC71')
                 .setTitle('💆‍♂️ ĐỘNG TÁC: XOA ĐẦU NGHỊCH THỦY HÀN')
                 .setDescription(
-                    `💆‍♂️ **${interaction.user.username}** ân cần dịu dàng xoa đầu **${targetUser.username}**!\n\n` +
-                    `✨ **${targetUser.username}** cảm nhận được ấm áp, tâm trí khai sáng nhận **+10 ✨ Tu Vi**!`
+                    `💆‍♂️ **${senderName}** ân cần dịu dàng xoa đầu **${targetName}**!\n\n` +
+                    `✨ **${targetName}** cảm nhận được ấm áp, tâm trí khai sáng nhận **+10 ✨ Tu Vi**!`
                 )
                 .setFooter({ text: footerText });
 
@@ -125,8 +128,8 @@ const gesturesCommand = {
                 .setColor('#F1C40F')
                 .setTitle('⚡ ĐỘNG TÁC: TRUYỀN CÔNG ĐẠO NĂNG')
                 .setDescription(
-                    `⚡ **${interaction.user.username}** vận công truyền nhập linh khí cho **${targetUser.username}**!\n\n` +
-                    `🎁 **${targetUser.username}** nhận được **+100 💎 Linh Thạch** & **+20 ✨ Tu Vi**!`
+                    `⚡ **${senderName}** vận công truyền nhập linh khí cho **${targetName}**!\n\n` +
+                    `🎁 **${targetName}** nhận được **+100 💎 Linh Thạch** & **+20 ✨ Tu Vi**!`
                 )
                 .setFooter({ text: footerText });
 
@@ -142,12 +145,12 @@ const gesturesCommand = {
             if (targetProfile.linhThach < bet) {
                 senderProfile.gestureUsage.count -= 1;
                 await senderProfile.save();
-                return interaction.reply({ content: `⚠️ **${targetUser.username}** không đủ Linh Thạch để tiếp chiêu tỷ võ!`, flags: 64 });
+                return interaction.reply({ content: `⚠️ **${targetName}** không đủ Linh Thạch để tiếp chiêu tỷ võ!`, flags: 64 });
             }
 
             const senderWin = Math.random() < 0.5;
-            let winnerName = senderWin ? interaction.user.username : targetUser.username;
-            let loserName = senderWin ? targetUser.username : interaction.user.username;
+            let winnerName = senderWin ? senderName : targetName;
+            let loserName = senderWin ? targetName : senderName;
 
             if (senderWin) {
                 senderProfile.linhThach += bet;
@@ -164,7 +167,7 @@ const gesturesCommand = {
                 .setColor(senderWin ? '#2ECC71' : '#E74C3C')
                 .setTitle('⚔️ ĐỘNG TÁC: TỶ VÕ GIAO LƯU ⚔️')
                 .setDescription(
-                    `⚔️ **${interaction.user.username}** và **${targetUser.username}** đã rút binh khí giao chiến 100 hiệp tại Thiên Thư Môn!\n\n` +
+                    `⚔️ **${senderName}** và **${targetName}** đã rút binh khí giao chiến 100 hiệp tại Thiên Thư Môn!\n\n` +
                     `🏆 **CHIẾN THẮNG:** Đạo hữu **${winnerName}** tuyệt kỹ xuất thần, đoạt lấy **+100 💎 Linh Thạch** từ **${loserName}**!`
                 )
                 .setFooter({ text: footerText });
@@ -178,7 +181,7 @@ const gesturesCommand = {
                 .setColor('#9B59B6')
                 .setTitle('🤝 ĐỘNG TÁC: BÁI SƯ HỌC ĐẠO')
                 .setDescription(
-                    `🤝 **${interaction.user.username}** cung kính khấu bái trước mặt **${targetUser.username}**, nguyện theo làm đệ tử Thiên Thư Môn!\n\n` +
+                    `🤝 **${senderName}** cung kính khấu bái trước mặt **${targetName}**, nguyện theo làm đệ tử Thiên Thư Môn!\n\n` +
                     `📜 *"Sư đồ tương phùng, đạo pháp vạn năm cùng tu luyện."*`
                 )
                 .setFooter({ text: footerText });
@@ -202,8 +205,8 @@ const gesturesCommand = {
                 .setColor('#FF69B4')
                 .setTitle('🌸 ĐỘNG TÁC: TẶNG HOA NGHỊCH THỦY HÀN')
                 .setDescription(
-                    `🌸 **${interaction.user.username}** mỉm cười trao tặng đoá hoa tươi thắm cho **${targetUser.username}**!\n\n` +
-                    `🎁 **${targetUser.username}** cảm động nhận đoá hoa kèm **+50 💎 Linh Thạch**!`
+                    `🌸 **${senderName}** mỉm cười trao tặng đoá hoa tươi thắm cho **${targetName}**!\n\n` +
+                    `🎁 **${targetName}** cảm động nhận đoá hoa kèm **+50 💎 Linh Thạch**!`
                 )
                 .setFooter({ text: footerText });
 

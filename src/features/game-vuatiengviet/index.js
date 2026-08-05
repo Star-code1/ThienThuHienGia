@@ -5,8 +5,8 @@ const {
     ButtonBuilder, 
     ButtonStyle 
 } = require('discord.js');
-const { generateVuaTiengVietQuestion } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
+const { getDisplayName } = require('../../shared/utils/nameHelper');
 
 // Stores active Vua Tiếng Việt games per channel: channelId -> gameObject
 const activeVuaGames = new Map();
@@ -191,7 +191,8 @@ const onMessageCreate = {
             // Đoán đúng!
             if (game.timer) clearTimeout(game.timer);
 
-            const profile = await UserProfile.getOrCreate(message.author.id, message.author.username);
+            const authorName = getDisplayName(message);
+            const profile = await UserProfile.getOrCreate(message.author.id, authorName);
             profile.linhThach += 50;
             profile.stats.vuatiengvietWins += 1;
             const newRealm = profile.addTuVi(25);
@@ -203,7 +204,7 @@ const onMessageCreate = {
                 .setColor('#2ECC71')
                 .setTitle('👑 CHÚC MỪNG VUA TIẾNG VIỆT! 👑')
                 .setDescription(
-                    `🎉 Đạo hữu **${message.author.username}** với ngộ tính phi thường đã giải đáp chính xác!\n\n` +
+                    `🎉 Đạo hữu **${authorName}** với ngộ tính phi thường đã giải đáp chính xác!\n\n` +
                     `✨ Đáp án đúng: **"${game.originalWord}"**\n` +
                     `🎁 Phần thưởng: **+50 💎 Linh Thạch** | **+25 ✨ Tu Vi**\n` +
                     `🔮 Cảnh giới hiện tại: **${newRealm}**\n\n` +
@@ -291,11 +292,12 @@ const handleVuaButtons = async (interaction) => {
         if (game.timer) clearTimeout(game.timer);
         activeVuaGames.delete(channelId);
 
+        const userName = getDisplayName(interaction);
         const embed = new EmbedBuilder()
             .setColor('#E74C3C')
             .setTitle('🏳️ THỬ THÁCH KẾT THÚC')
             .setDescription(
-                `Đạo hữu **${interaction.user.username}** đã tuyên bố đầu hàng trước thử thách!\n\n` +
+                `Đạo hữu **${userName}** đã tuyên bố đầu hàng trước thử thách!\n\n` +
                 `✨ Đáp án chính xác là: **"${game.originalWord}"**`
             )
             .setFooter({ text: 'Thiên Thư Môn • Tu luyện là con đường gian nan' });

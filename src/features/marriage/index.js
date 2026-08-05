@@ -6,62 +6,63 @@ const {
     ButtonStyle 
 } = require('discord.js');
 const UserProfile = require('../../shared/models/UserProfile');
+const { getDisplayName } = require('../../shared/utils/nameHelper');
 
+// Nhẫn Đính Ước
 const RINGS = [
-    { id: 'ring1', name: 'Nhẫn Cỏ Linh Nữ 🌿', price: 5000, desc: 'Kết duyên mộc mạc, chan chứa chân tình.' },
-    { id: 'ring2', name: 'Nhẫn Bạc Thái Cực 💍', price: 20000, desc: 'Âm dương hòa hợp, vững bền cùng năm tháng.' },
-    { id: 'ring3', name: 'Nhẫn Kim Cương Hồng Trần 💎', price: 50000, desc: 'Sáng ngời chốn hồng trần, kết tóc xe duyên.' },
-    { id: 'ring4', name: 'Nhẫn Tiên Duyên Nghịch Thủy 🌸', price: 100000, desc: 'Bảo vật Thiên Thư Môn, thề nguyện trường sinh vạn năm.' },
+    { id: 'nhan_dong', name: '💍 Nhẫn Đồng Tiên Duyên', price: 1000 },
+    { id: 'nhan_bac', name: '💖 Nhẫn Bạc Bạch Kim', price: 5000 },
+    { id: 'nhan_vang', name: '👑 Nhẫn Vàng Long Phụng', price: 20000 },
+    { id: 'nhan_kim_cuong', name: '💎 Nhẫn Kim Cương Vĩnh Cửu', price: 50000 },
 ];
 
-// Pending proposals: `${proposerId}_${targetId}` -> proposalObj
+// Trạng thái các lời cầu hôn đang chờ xử lý: proposalKey -> proposalObj
 const activeProposals = new Map();
 
+// 1. Cửa hàng nhẫn (`/shop-nhan`)
 const shopNhanCommand = {
     data: new SlashCommandBuilder()
         .setName('shop-nhan')
-        .setDescription('💍 Xem Cửa Hàng Nhẫn Đính Ước Cầu Hôn Thiên Thư Môn'),
+        .setDescription('💍 Xem danh sách Nhẫn Đính Ước Đạo Lữ'),
     async execute(interaction) {
-        let desc = RINGS.map(r => 
-            `• **${r.name}** — Giá: **\`${r.price.toLocaleString()}\` 💎 Linh Thạch**\n  └ *${r.desc}*`
-        ).join('\n\n');
-
         const embed = new EmbedBuilder()
             .setColor('#FF69B4')
-            .setTitle('💒 CỬA HÀNG NHẪN ĐÍNH ƯỚC • Thiên Thư MÔN')
+            .setTitle('💍 CỬA HÀNG NHẪN ĐÍNH ƯỚC • THIÊN THƯ MÔN')
             .setDescription(
-                `Dùng Linh Thạch mua Nhẫn Đính Ước để cầu hôn Đạo Lữ kết duyên!\n\n` + desc + `\n\n` +
-                `👉 Dùng lệnh \`/cauhon user:[@Đạo_Hữu] nhan:[Tên_Nhẫn]\` để cầu hôn!`
+                `🧙‍♂️ **Thiên Thư Hiền Giả** chứng giám cho tiên duyên đôi lứa! Dùng Linh Thạch mua nhẫn để cầu hôn Đạo Lữ:\n\n` +
+                RINGS.map(r => `• **${r.name}**: \`${r.price.toLocaleString()}\` 💎 Linh Thạch`).join('\n') +
+                `\n\n👉 Dùng lệnh \`/cauhon [user] [loai_nhan]\` để thề nguyện kết thành Đạo Lữ!`
             )
-            .setFooter({ text: 'Trăm năm ngộ đạo, vạn năm kết duyên' });
+            .setFooter({ text: 'Thiên Thư Môn • Tiên Duyên Vạn Năm' });
 
         await interaction.reply({ embeds: [embed] });
     }
 };
 
+// 2. Cầu hôn (`/cauhon`)
 const cauHonCommand = {
     data: new SlashCommandBuilder()
         .setName('cauhon')
-        .setDescription('💖 Cầu hôn kết thành Đạo Lữ với một đạo hữu trong server')
+        .setDescription('💒 Cầu hôn đạo hữu khác để kết thành Đạo Lữ song tu')
         .addUserOption(opt => 
             opt.setName('user')
                 .setDescription('Đạo hữu bạn muốn cầu hôn')
                 .setRequired(true)
         )
-        .addStringOption(opt => 
-            opt.setName('nhan')
+        .addStringOption(opt =>
+            opt.setName('loai_nhan')
                 .setDescription('Chọn loại nhẫn đính ước')
                 .setRequired(true)
                 .addChoices(
-                    { name: '🌿 Nhẫn Cỏ Linh Nữ (5,000 💎)', value: 'ring1' },
-                    { name: '💍 Nhẫn Bạc Thái Cực (20,000 💎)', value: 'ring2' },
-                    { name: '💎 Nhẫn Kim Cương Hồng Trần (50,000 💎)', value: 'ring3' },
-                    { name: '🌸 Nhẫn Tiên Duyên Nghịch Thủy (100,000 💎)', value: 'ring4' },
+                    { name: '💍 Nhẫn Đồng Tiên Duyên (1,000 Linh Thạch)', value: 'nhan_dong' },
+                    { name: '💖 Nhẫn Bạc Bạch Kim (5,000 Linh Thạch)', value: 'nhan_bac' },
+                    { name: '👑 Nhẫn Vàng Long Phụng (20,000 Linh Thạch)', value: 'nhan_vang' },
+                    { name: '💎 Nhẫn Kim Cương Vĩnh Cửu (50,000 Linh Thạch)', value: 'nhan_kim_cuong' },
                 )
         ),
     async execute(interaction) {
         const targetUser = interaction.options.getUser('user');
-        const ringId = interaction.options.getString('nhan');
+        const ringId = interaction.options.getString('loai_nhan');
         const ring = RINGS.find(r => r.id === ringId);
 
         if (targetUser.id === interaction.user.id) {
@@ -71,14 +72,17 @@ const cauHonCommand = {
             return interaction.reply({ content: '⚠️ Không thể cầu hôn linh thú hay Bot!', flags: 64 });
         }
 
-        const proposerProfile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
-        const targetProfile = await UserProfile.getOrCreate(targetUser.id, targetUser.username);
+        const proposerName = getDisplayName(interaction);
+        const targetName = getDisplayName(interaction, targetUser);
+
+        const proposerProfile = await UserProfile.getOrCreate(interaction.user.id, proposerName);
+        const targetProfile = await UserProfile.getOrCreate(targetUser.id, targetName);
 
         if (proposerProfile.daoLu?.partnerId) {
-            return interaction.reply({ content: '⚠️ Đạo hữu đã kết thành Đạo Lữ rồi! Phải hủy duyên cũ bằng `/lyhon` trước.', flags: 64 });
+            return interaction.reply({ content: '⚠️ Đạo hữu đã kết thành Đạo Lữ rồi! Phải hủy duyên cũ bằng `/ly-hon` trước.', flags: 64 });
         }
         if (targetProfile.daoLu?.partnerId) {
-            return interaction.reply({ content: `⚠️ Đạo hữu **${targetUser.username}** đã có Đạo Lữ rồi!`, flags: 64 });
+            return interaction.reply({ content: `⚠️ Đạo hữu **${targetName}** đã có Đạo Lữ rồi!`, flags: 64 });
         }
 
         if (proposerProfile.linhThach < ring.price) {
@@ -91,9 +95,9 @@ const cauHonCommand = {
         const proposalKey = `${interaction.user.id}_${targetUser.id}`;
         activeProposals.set(proposalKey, {
             proposerId: interaction.user.id,
-            proposerName: interaction.user.username,
+            proposerName: proposerName,
             targetId: targetUser.id,
-            targetName: targetUser.username,
+            targetName: targetName,
             ring: ring
         });
 
@@ -110,9 +114,9 @@ const cauHonCommand = {
 
         const embed = new EmbedBuilder()
             .setColor('#FF1493')
-            .setTitle('💒 THỀ NGUYỆN CẦU HÔN • Thiên Thư MÔN')
+            .setTitle('💒 THỀ NGUYỆN CẦU HÔN • THIÊN THƯ MÔN')
             .setDescription(
-                `🌸 Đạo hữu **${interaction.user.username}** đã trao tặng **${ring.name}** và ngỏ lời cầu hôn **${targetUser.username}**!\n\n` +
+                `🌸 Đạo hữu **${proposerName}** đã trao tặng **${ring.name}** và ngỏ lời cầu hôn **${targetName}**!\n\n` +
                 `*"Lời thề trao nhẫn hồng trần,\nCùng nhau tu luyện trọn phần tiên duyên."*\n\n` +
                 `👉 **<@${targetUser.id}>**, đạo hữu có đồng ý kết thành **Đạo Lữ** cùng tu luyện trọn đời?`
             )
@@ -200,7 +204,8 @@ const daoLuCommand = {
         .setName('daolu')
         .setDescription('👩‍❤️‍👨 Xem thông tin Đạo Lữ kết duyên của bạn'),
     async execute(interaction) {
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
 
         if (!profile.daoLu?.partnerId) {
             return interaction.reply({
@@ -213,7 +218,7 @@ const daoLuCommand = {
 
         const embed = new EmbedBuilder()
             .setColor('#FF1493')
-            .setTitle(`👩‍❤️‍👨 ĐẠO LỮ TU TIÊN • ${interaction.user.username}`)
+            .setTitle(`👩‍❤️‍👨 ĐẠO LỮ TU TIÊN • ${displayName}`)
             .addFields(
                 { name: '💖 Bạn Song Tu', value: `**${profile.daoLu.partnerName}**`, inline: true },
                 { name: '💍 Nhẫn Đính Ước', value: `**${profile.daoLu.ringName}**`, inline: true },
@@ -231,7 +236,8 @@ const lyHonCommand = {
         .setName('ly-hon')
         .setDescription('💔 Hủy bỏ duyên nợ, giải trừ quan hệ Đạo Lữ'),
     async execute(interaction) {
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
 
         if (!profile.daoLu?.partnerId) {
             return interaction.reply({ content: '⚠️ Bạn chưa có Đạo Lữ nào để giải trừ duyên nợ!', flags: 64 });
@@ -251,7 +257,7 @@ const lyHonCommand = {
         }
 
         await interaction.reply(
-            `💔 **${interaction.user.username}** và **${partnerName}** đã chính thức cắt đứt duyên nợ, trở lại con đường tu tiên độc hành.`
+            `💔 **${displayName}** và **${partnerName}** đã chính thức cắt đứt duyên nợ, trở lại con đường tu tiên độc hành.`
         );
     }
 };

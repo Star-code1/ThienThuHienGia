@@ -360,95 +360,124 @@ async function getRandomEnglishStartWord() {
     }
 }
 
-// Hàm xáo trộn chữ cái bằng thuật toán Fisher-Yates
-function scrambleWord(word) {
-    const letters = word.replace(/\s+/g, '').toUpperCase().split('');
+// Hàm xáo trộn chữ cái 2 âm tiết giữ nguyên dấu cách ở giữa
+function scramble2Syllables(word) {
+    const parts = word.trim().split(/\s+/);
+    if (parts.length >= 2) {
+        return `${scrambleSingleWord(parts[0])} ${scrambleSingleWord(parts[1])}`;
+    }
+    return scrambleSingleWord(word);
+}
+
+function scrambleSingleWord(str) {
+    const letters = Array.from(str.toUpperCase());
     for (let i = letters.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [letters[i], letters[j]] = [letters[j], letters[i]];
     }
-    return letters.join(' ');
+    return letters.join('');
 }
 
-// Kho từ đố Vua Tiếng Việt phong phú (50+ từ)
+// Kho từ đố Vua Tiếng Việt phong phú (50+ từ 2 âm tiết)
 const FALLBACK_VUA_QUESTIONS = [
-    { word: 'NGHỊCH THỦY HÀN', hint: 'Thế giới giang hồ hội tụ chốn vạn người tranh đấu.' },
-    { word: 'HUYẾT HÀ', hint: 'Môn phái sử dụng trường thương, đao thương bất nhập.' },
-    { word: 'TỐ VẤN', hint: 'Bậc y giả tiên y ban trị liệu linh dược cứu người.' },
+    { word: 'HUYẾT HÀ', hint: 'Môn phái trường thương, đao thương bất nhập.' },
+    { word: 'TỐ VẤN', hint: 'Y giả tiên y, ban dược cứu người.' },
     { word: 'THÁI CỰC', hint: 'Âm dương chuyển hóa, kiếm khí vạn dặm.' },
-    { word: 'Thiên Thư MÔN', hint: 'Bang hội lừng lẫy quy tụ vô số đại năng tu sĩ.' },
     { word: 'THẦN TƯƠNG', hint: 'Cầm kiếm giao hòa, thiên địa biến sắc.' },
     { word: 'LONG NGÂM', hint: 'Thần kiếm xuất bao, rồng ngâm cuộn sóng.' },
     { word: 'CỨU LINH', hint: 'Linh hồn giao thoa, thiên hạ thái bình.' },
     { word: 'TOÁI MỘNG', hint: 'Song đao như chớp, ảo ảnh vạn ngàn.' },
     { word: 'THIẾT Y', hint: 'Thân như kim cang, chắn sóng cản gió.' },
-    { word: 'KIM ĐAN', hint: 'Linh khí ngưng tụ thành hạt kim quang trong đan điền.' },
+    { word: 'KIM ĐAN', hint: 'Linh khí ngưng tụ, đan điền tỏa sáng.' },
     { word: 'NGUYÊN ANH', hint: 'Biến hóa thần thông, anh nhi giáng thế.' },
-    { word: 'ĐỘ KIẾP', hint: 'Thiên lôi giáng xuống rèn luyện thân thể tu sĩ.' },
-    { word: 'BÁC HỌC', hint: 'Uyên bác tinh thông vạn quyển kinh thư.' },
-    { word: 'NGỘ TÍNH', hint: 'Khả năng thấu hiểu đạo lý thiên địa siêu việt.' },
-    { word: 'LINH THẠCH', hint: 'Tài nguyên trân quý nuôi dưỡng linh khí tu tiên.' },
-    { word: 'ANH HÙNG', hint: 'Bậc đại hiệp ra tay vì nghĩa lớn giang hồ.' },
-    { word: 'PHÚC KHÍ', hint: 'May mắn vạn năm ban cho người có duyên.' },
-    { word: 'TÂM MA', hint: 'Chướng ngại lớn nhất trên con đường tu tiên.' },
-    { word: 'VẠN VẬT', hint: 'Càn khôn thiên địa hóa sinh vô cùng.' },
-    { word: 'THƯƠNG KHUNG', hint: 'Bầu trời bao la vượt khỏi tầm mắt.' },
-    { word: 'CÀN KHÔN', hint: 'Trời đất âm dương xoay chuyển.' },
-    { word: 'PHÁP BẢO', hint: 'Binh khí linh thiêng chứa đựng thần lực.' },
-    { word: 'TRUYỀN KỲ', hint: 'Câu chuyện huyền thoại lưu danh ngàn đời.' },
-    { word: 'TIÊN NỮ', hint: 'Nhan sắc tuyệt trần chốn bồng lai tiên cảnh.' },
-    { word: 'THẠCH ANH', hint: 'Linh đá quý tỏa ánh sáng nhiệm màu.' },
-    { word: 'PHI THĂNG', hint: 'Vượt qua kiếp nạn bước lên tiên giới.' },
-    { word: 'TRÚC CƠ', hint: 'Nền móng vững chắc cho con đường tu đại đạo.' },
-    { word: 'HÓA THẦN', hint: 'Tâm trí hòa nhập cùng quy luật tự nhiên.' },
-    { word: 'CỔ PHONG', hint: 'Nét đẹp văn hóa cội nguồn từ ngàn xưa.' },
-    { word: 'KIM CANG', hint: 'Bất hoại kiên cố không thể phá vỡ.' },
-    { word: 'TÂM THIÊN', hint: 'Ý trời bao la thương xót chúng sinh.' },
-    { word: 'HỒNG TRẦN', hint: 'Thế giới nhân gian muôn màu ân nợ.' },
-    { word: 'DUYÊN PHẬN', hint: 'Sự gặp gỡ định sẵn bởi ý trời.' },
-    { word: 'BỒNG LAI', hint: 'Chốn tiên cảnh mây mù giăng lối.' },
-    { word: 'SƯ MÔN', hint: 'Nơi dung dưỡng truyền dạy đạo pháp.' },
-    { word: 'BẢO TẠNG', hint: 'Kho báu cất giấu bí thuật ngàn năm.' },
-    { word: 'HUYỀN THOẠI', hint: 'Chiến tích vang dội không ai sánh bằng.' },
-    { word: 'TRANG BỊ', hint: 'Binh khí giáp trụ rèn luyện thân thể.' },
-    { word: 'ĐẠO HỮU', hint: 'Bạn đồng hành trên con đường tu tiên.' },
-    { word: 'BANG CHIẾN', hint: 'Trận đại chiến giữa các thế lực lừng lẫy.' },
-    { word: 'GIANG HỒ', hint: 'Chốn võ lâm hiểm nguy nhưng đầy nghĩa khí.' },
-    { word: 'VŨ TRỤ', hint: 'Không gian vô tận chứa đựng vô vàn vì sao.' },
-    { word: 'THỜI GIAN', hint: 'Dòng chảy vô hình không bao giờ ngừng nghỉ.' },
-    { word: 'TRI KỶ', hint: 'Người thấu hiểu tâm tư dù không cần cất lời.' },
-    { word: 'TỰ DO', hint: 'Thỏa sức vẫy vùng giữa trời cao đất rộng.' },
-    { word: 'BÌNH AN', hint: 'Ước mơ giản đơn của mọi kiếp nhân sinh.' },
-    { word: 'HY VỌNG', hint: 'Ánh sáng dẫn đường qua đêm đen mù mịt.' },
-    { word: 'TRÍ TUỆ', hint: 'Chìa khóa mở ra mọi bí mật càn khôn.' }
+    { word: 'ĐỘ KIẾP', hint: 'Thiên lôi giáng xuống, rèn luyện thân thể.' },
+    { word: 'BÁC HỌC', hint: 'Uyên bác tinh thông, vạn quyển kinh thư.' },
+    { word: 'NGỘ TÍNH', hint: 'Thấu hiểu đạo lý, thiên địa siêu việt.' },
+    { word: 'LINH THẠCH', hint: 'Tài nguyên trân quý, nuôi dưỡng linh khí.' },
+    { word: 'ANH HÙNG', hint: 'Đại hiệp ra tay, vì nghĩa giang hồ.' },
+    { word: 'PHÚC KHÍ', hint: 'May mắn vạn năm, ban cho duyên số.' },
+    { word: 'TÂM MA', hint: 'Chướng ngại lớn nhất, con đường tu tiên.' },
+    { word: 'VẠN VẬT', hint: 'Càn khôn thiên địa, hóa sinh vô cùng.' },
+    { word: 'THƯƠNG KHUNG', hint: 'Bầu trời bao la, vượt tầm mắt ngắm.' },
+    { word: 'CÀN KHÔN', hint: 'Trời đất âm dương, xoay chuyển càn khôn.' },
+    { word: 'PHÁP BẢO', hint: 'Binh khí linh thiêng, chứa đựng thần lực.' },
+    { word: 'TRUYỀN KỲ', hint: 'Câu chuyện huyền thoại, lưu danh ngàn đời.' },
+    { word: 'TIÊN NỮ', hint: 'Nhan sắc tuyệt trần, chốn bồng lai cảnh.' },
+    { word: 'THẠCH ANH', hint: 'Linh đá quý tỏa, ánh sáng nhiệm màu.' },
+    { word: 'PHI THĂNG', hint: 'Vượt qua kiếp nạn, bước lên tiên giới.' },
+    { word: 'TRÚC CƠ', hint: 'Nền móng vững chắc, tu hành đại đạo.' },
+    { word: 'HÓA THẦN', hint: 'Tâm trí hòa nhập, quy luật tự nhiên.' },
+    { word: 'CỔ PHONG', hint: 'Nét đẹp cội nguồn, ngàn xưa để lại.' },
+    { word: 'KIM CANG', hint: 'Bất hoại kiên cố, không thể phá vỡ.' },
+    { word: 'TÂM THIÊN', hint: 'Ý trời bao la, thương xót chúng sinh.' },
+    { word: 'HỒNG TRẦN', hint: 'Thế giới nhân gian, muôn màu ân nợ.' },
+    { word: 'DUYÊN PHẬN', hint: 'Sự gặp gỡ được, định sẵn ý trời.' },
+    { word: 'BỒNG LAI', hint: 'Chốn tiên cảnh mây, giăng kín lối về.' },
+    { word: 'SƯ MÔN', hint: 'Nơi dung dưỡng truyền, dạy dỗ đạo pháp.' },
+    { word: 'BẢO TẠNG', hint: 'Kho báu cất giấu, bí thuật ngàn năm.' },
+    { word: 'HUYỀN THOẠI', hint: 'Chiến tích vang dội, không ai sánh bằng.' },
+    { word: 'TRANG BỊ', hint: 'Binh khí giáp trụ, rèn luyện thân thể.' },
+    { word: 'ĐẠO HỮU', hint: 'Bạn đồng hành trên, con đường tu tiên.' },
+    { word: 'BANG CHIẾN', hint: 'Trận đại chiến giữa, thế lực lừng lẫy.' },
+    { word: 'GIANG HỒ', hint: 'Võ lâm hiểm nguy, đầy ắp nghĩa khí.' },
+    { word: 'VŨ TRỤ', hint: 'Không gian vô tận, chứa vô vàn sao.' },
+    { word: 'THỜI GIAN', hint: 'Dòng chảy vô hình, chẳng hề dừng lại.' },
+    { word: 'TRI KỶ', hint: 'Thấu hiểu tâm tư, không cần cất lời.' },
+    { word: 'TỰ DO', hint: 'Thỏa sức vẫy vùng, giữa trời bao la.' },
+    { word: 'BÌNH AN', hint: 'Ước mơ giản đơn, mọi kiếp nhân sinh.' },
+    { word: 'HY VỌNG', hint: 'Ánh sáng dẫn đường, qua đêm mù mịt.' },
+    { word: 'TRÍ TUỆ', hint: 'Chìa khóa mở ra, bí mật càn khôn.' }
 ];
 
 /**
- * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (Tối ưu maxTokens = 150)
+ * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (Tiên Hiệp 2 âm tiết chuẩn prompt)
  */
 async function generateVuaTiengVietQuestion(difficulty = 'trung_binh', usedWords = []) {
-    const excludeStr = usedWords.length > 0 ? `Tránh trùng các từ: ${usedWords.join(', ')}.` : '';
-    const prompt = `Tạo 1 từ Tiếng Việt gồm 2 tiếng (có nghĩa, chủ đề: Tu Tiên, Nghịch Thủy Hàn, Thành Ngữ, Từ Hán Việt, hoặc Đời Sống).
-Độ khó: ${difficulty}. ${excludeStr}
-Trả về cấu trúc JSON:
+    const excludeStr = usedWords.length > 0 ? `Danh sách từ đã dùng (usedWords): [${usedWords.join(', ')}]. KHÔNG được trùng lặp với bất kỳ từ nào trong danh sách này.` : 'Danh sách từ đã dùng (usedWords): [].';
+    const prompt = `Bạn là "Thiên Thu Hiền Giả" - bậc tiên sinh uyên bác, chuyên sáng tác câu đố chữ cho trò chơi "Vua Tiếng Việt". Nhiệm vụ: tạo ra một từ ghép 2 âm tiết hợp lệ, thuộc một trong các chủ đề được chỉ định, sau đó xáo trộn các ký tự và đưa ra gợi ý phong cách tiên hiệp Nghịch Thủy Hàn.
+
+=== ĐẦU VÀO ===
+- Độ khó (difficulty): "${difficulty}".
+- ${excludeStr}
+
+=== QUY TẮC TẠO TỪ ===
+1. **Từ (originalWord)**: 
+   - Phải là một từ ghép **gồm đúng 2 âm tiết** (Ví dụ: "TU TIÊN", "HỌC SINH", "SƠN HÀ").
+   - Có nghĩa xác định trong tiếng Việt (từ Hán Việt, thành ngữ, hoặc từ thuần Việt).
+   - Chủ đề ưu tiên:
+        * Nếu difficulty = "dễ": ưu tiên chủ đề Đời Sống hoặc Từ Hán Việt phổ thông.
+        * Nếu difficulty = "trung bình": ưu tiên Thành Ngữ hoặc Tu Tiên.
+        * Nếu difficulty = "khó": ưu tiên Từ Hán Việt hiếm, Nghịch Thủy Hàn (mang triết lý), hoặc thành ngữ ít gặp.
+   - **Không** trùng lặp với bất kỳ từ nào trong usedWords.
+
+2. **Xáo trộn ký tự (scrambledLetters)**:
+   - Tách thành 2 âm tiết riêng biệt. Xáo trộn ngẫu nhiên các ký tự bên trong từng âm tiết, **giữ nguyên dấu cách ở giữa** (Ví dụ: "HỌC SINH" → "CỌH HSNI").
+
+3. **Gợi ý (hint)**:
+   - Là một câu thơ hoặc câu nói ngắn (khoảng 4–6 từ) mang phong cách "Tiên Hiệp Nghịch Thủy Hàn" – cổ kính, ẩn ý, có chất thiền hoặc triết lý.
+   - Gợi ý phải ám chỉ đúng nghĩa của từ, nhưng **không được chứa bất kỳ âm tiết nào của từ gốc**.
+
+=== ĐỊNH DẠNG ĐẦU RA ===
+Trả về CHÍNH XÁC cấu trúc JSON:
 {
-  "originalWord": "TỪ HOẶC CỤM TỪ IN HOA",
-  "scrambledLetters": "CÁC CHỮ CÁI XÁO TRỘN CÁCH DẤU CÁCH",
-  "hint": "Một câu thơ gợi ý ngắn phong cách Tiên Hiệp "
+  "originalWord": "TỪ GHÉP IN HOA (2 tiếng)",
+  "scrambledLetters": "KÝ TỰ XÁO TRỘN CỦA 2 TIẾNG, CÓ DẤU CÁCH Ở GIỮA",
+  "hint": "Câu thơ/ẩn dụ phong cách tiên hiệp 4-6 từ"
 }`;
 
     try {
         const rawJson = await callMultiProviderAI({
-            systemPrompt: SYSTEM_PROMPT + '\nTrả về CHÍNH XÁC cấu trúc JSON: {"originalWord": string, "scrambledLetters": string, "hint": string}.',
+            systemPrompt: 'Return ONLY valid JSON format: {"originalWord": string, "scrambledLetters": string, "hint": string}.',
             userPrompt: prompt,
             jsonMode: true,
-            maxTokens: 150
+            maxTokens: 200
         });
 
         const data = JSON.parse(rawJson);
         if (data && data.originalWord) {
+            data.originalWord = data.originalWord.trim().toUpperCase();
             if (!data.scrambledLetters || data.scrambledLetters === data.originalWord) {
-                data.scrambledLetters = scrambleWord(data.originalWord);
+                data.scrambledLetters = scramble2Syllables(data.originalWord);
             }
             return data;
         }
@@ -459,7 +488,7 @@ Trả về cấu trúc JSON:
         const chosen = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : FALLBACK_VUA_QUESTIONS[Math.floor(Math.random() * FALLBACK_VUA_QUESTIONS.length)];
         return {
             originalWord: chosen.word,
-            scrambledLetters: scrambleWord(chosen.word),
+            scrambledLetters: scramble2Syllables(chosen.word),
             hint: chosen.hint
         };
     }

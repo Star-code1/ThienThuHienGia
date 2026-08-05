@@ -8,8 +8,8 @@ const {
     TextInputBuilder,
     TextInputStyle
 } = require('discord.js');
-const { generateBaucuaCommentary } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
+const { getDisplayName } = require('../../shared/utils/nameHelper');
 
 const LINH_THU = [
     { id: 'bau', name: 'Bầu (Lô Tháp)', emoji: '🍈' },
@@ -249,12 +249,14 @@ const handleBaucuaModalSubmit = async (interaction) => {
             return interaction.reply({ content: '⚠️ Số Linh Thạch cược không hợp lệ!', flags: 64 });
         }
 
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
 
         // Tính tổng tiền cược hiện tại của user trong session
         if (!session.bets[interaction.user.id]) {
-            session.bets[interaction.user.id] = { username: interaction.user.username, beastBets: {} };
+            session.bets[interaction.user.id] = { username: displayName, beastBets: {} };
         }
+        session.bets[interaction.user.id].username = displayName;
         const userBetsObj = session.bets[interaction.user.id].beastBets;
         
         const currentTotalBet = Object.values(userBetsObj).reduce((a, b) => a + b, 0);
@@ -270,7 +272,7 @@ const handleBaucuaModalSubmit = async (interaction) => {
         userBetsObj[beastId] = (userBetsObj[beastId] || 0) + betAmount;
 
         await interaction.reply({
-            content: `✅ **Thành công:** Đạo hữu **${interaction.user.username}** đã cược **${betAmount.toLocaleString()} Linh Thạch** vào **${beast.emoji} ${beast.name}**!\n` +
+            content: `✅ **Thành công:** Đạo hữu **${displayName}** đã cược **${betAmount.toLocaleString()} Linh Thạch** vào **${beast.emoji} ${beast.name}**!\n` +
                      `💰 Tổng cược ván này của đạo hữu: \`${newTotalBet.toLocaleString()}\` Linh Thạch.`,
             flags: 64
         });

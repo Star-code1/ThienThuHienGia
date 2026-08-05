@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const UserProfile = require('../../shared/models/UserProfile');
+const { getDisplayName } = require('../../shared/utils/nameHelper');
 
 const tuviCommand = {
     data: new SlashCommandBuilder()
@@ -12,11 +13,12 @@ const tuviCommand = {
         ),
     async execute(interaction) {
         const targetUser = interaction.options.getUser('user') || interaction.user;
-        const profile = await UserProfile.getOrCreate(targetUser.id, targetUser.username);
+        const displayName = getDisplayName(interaction, targetUser);
+        const profile = await UserProfile.getOrCreate(targetUser.id, displayName);
 
         const embed = new EmbedBuilder()
             .setColor('#D4AF37')
-            .setTitle(`📜 Hồ Sơ Tu Tiên • ${targetUser.username}`)
+            .setTitle(`📜 Hồ Sơ Tu Tiên • ${displayName}`)
             .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
             .addFields(
                 { name: '✨ Cảnh Giới', value: `**${profile.canhGioi}**`, inline: true },
@@ -43,7 +45,8 @@ const diemdanhTuviCommand = {
         .setName('diemdanh-tuvi')
         .setDescription('🧘‍♂️ Báo danh tu luyện mỗi ngày để nhận Linh Thạch & Tu Vi'),
     async execute(interaction) {
-        const profile = await UserProfile.getOrCreate(interaction.user.id, interaction.user.username);
+        const displayName = getDisplayName(interaction);
+        const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
         const now = new Date();
 
         if (profile.lastDiemDanh) {
@@ -54,7 +57,7 @@ const diemdanhTuviCommand = {
 
             if (isSameDay) {
                 return interaction.reply({
-                    content: `⚠️ Đạo hữu **${interaction.user.username}** hôm nay đã báo danh tu luyện rồi. Hãy quay lại vào ngày mai!`,
+                    content: `⚠️ Đạo hữu **${displayName}** hôm nay đã báo danh tu luyện rồi. Hãy quay lại vào ngày mai!`,
                     flags: 64
                 });
             }
@@ -69,7 +72,7 @@ const diemdanhTuviCommand = {
         profile.lastDiemDanh = now;
         await profile.save();
 
-        let msg = `🧘‍♂️ **${interaction.user.username}** tiếp thu linh khí thiên địa!\n` +
+        let msg = `🧘‍♂️ **${displayName}** tiếp thu linh khí thiên địa!\n` +
                   `💎 Nhận thêm: **+${bonusLinhThach} Linh Thạch**\n` +
                   `🌌 Tu vi tăng: **+${bonusTuVi} Điểm**\n` +
                   `🔮 Cảnh giới hiện tại: **${newRealm}**`;
