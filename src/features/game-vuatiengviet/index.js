@@ -5,6 +5,7 @@ const {
     ButtonBuilder, 
     ButtonStyle 
 } = require('discord.js');
+const { generateVuaTiengVietQuestion } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
 
