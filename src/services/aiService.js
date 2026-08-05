@@ -461,7 +461,7 @@ async function generateVuaTiengVietQuestion(difficulty = 'trung_binh', usedWords
 Trả về CHÍNH XÁC cấu trúc JSON:
 {
   "originalWord": "TỪ GHÉP IN HOA (2 tiếng)",
-  "scrambledLetters": "KÝ TỰ XÁO TRỘN CỦA 2 TIẾNG, CÓ DẤU CÁCH Ở GIỮA",
+  "scrambledLetters": "KÝ TỰ XÁO TRỘN CỦA 2 TIẾNG, CÓ DẤU CÁCH GIỮA MỖI KÍ TỰ",
   "hint": "Câu thơ/ẩn dụ phong cách tiên hiệp 4-6 từ"
 }`;
 
