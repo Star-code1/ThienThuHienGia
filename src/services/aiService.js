@@ -1,10 +1,3 @@
-const Groq = require('groq-sdk');
-
-let groq = null;
-if (process.env.GROQ_API_KEY) {
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-}
-
 const SYSTEM_PROMPT = `
 Bạn là "Thiên Thu Hiền Giả" - bậc Đại Năng Tu Tiên vạn năm, kho tàng tri thức tối cao của Thiên Thu Môn (bang hội lừng lẫy trong tựa game Nghịch Thủy Hàn / Justice Online).
 Bối cảnh & Tri thức:
@@ -17,28 +10,187 @@ Bối cảnh & Tri thức:
 `;
 
 /**
- * Trả lời tự do bằng giọng văn Thiên Thu Hiền Giả (Nghịch Thủy Hàn)
+ * Hệ thống gọi AI đa nhà cung cấp với cơ chế tự động chuyển vùng khi hết Token/Lỗi:
+ * 1. Gemini 2.5 Flash (GEMINI_API_KEY)
+ * 2. Groq (GROQ_API_KEY)
+ * 3. DeepSeek V3 (DEEPSEEK_API_KEY)
+ * 4. OpenRouter (OPENROUTER_API_KEY)
  */
-async function generateSageResponse(userPrompt, extraSystem = '') {
-    if (!groq) {
-        return 'Bản tôn đang bế quan tu luyện trong Thiên Thu Môn (Chưa cấu hình GROQ_API_KEY trong .env), không thể đáp lời đạo hữu!';
+async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false }) {
+    const providers = [
+        {
+            name: 'Gemini 2.5 Flash',
+            key: process.env.GEMINI_API_KEY,
+            call: async (key) => {
+                // Thử gemini-2.5-flash, nếu API chưa mở thử gemini-2.0-flash / gemini-1.5-flash
+                const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+                let lastErr = null;
+
+                for (const modelName of models) {
+                    try {
+                        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
+                        const body = {
+                            contents: [
+                                {
+                                    role: 'user',
+                                    parts: [{ text: (systemPrompt ? systemPrompt + '\n\n' : '') + userPrompt }]
+                                }
+                            ],
+                            generationConfig: {
+                                temperature: 0.75,
+                                maxOutputTokens: 1000,
+                                ...(jsonMode ? { responseMimeType: 'application/json' } : {})
+                            }
+                        };
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body)
+                        });
+
+                        if (!res.ok) {
+                            const textErr = await res.text();
+                            throw new Error(`Status ${res.status}: ${textErr}`);
+                        }
+
+                        const data = await res.json();
+                        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text && text.trim()) return text.trim();
+                    } catch (e) {
+                        lastErr = e;
+                    }
+                }
+                throw lastErr || new Error('Gemini API call failed');
+            }
+        },
+        {
+            name: 'Groq',
+            key: process.env.GROQ_API_KEY,
+            call: async (key) => {
+                const url = 'https://api.groq.com/openai/v1/chat/completions';
+                const body = {
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                        { role: 'user', content: userPrompt }
+                    ],
+                    temperature: 0.75,
+                    ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
+                };
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${key}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok) {
+                    const textErr = await res.text();
+                    throw new Error(`Groq Error (${res.status}): ${textErr}`);
+                }
+                const data = await res.json();
+                const text = data.choices?.[0]?.message?.content;
+                if (!text) throw new Error('Groq returned empty response');
+                return text.trim();
+            }
+        },
+        {
+            name: 'DeepSeek V3',
+            key: process.env.DEEPSEEK_API_KEY,
+            call: async (key) => {
+                const url = 'https://api.deepseek.com/chat/completions';
+                const body = {
+                    model: 'deepseek-chat',
+                    messages: [
+                        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                        { role: 'user', content: userPrompt }
+                    ],
+                    temperature: 0.7,
+                    ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
+                };
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${key}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok) {
+                    const textErr = await res.text();
+                    throw new Error(`DeepSeek Error (${res.status}): ${textErr}`);
+                }
+                const data = await res.json();
+                const text = data.choices?.[0]?.message?.content;
+                if (!text) throw new Error('DeepSeek returned empty response');
+                return text.trim();
+            }
+        },
+        {
+            name: 'OpenRouter',
+            key: process.env.OPENROUTER_API_KEY,
+            call: async (key) => {
+                const url = 'https://openrouter.ai/api/v1/chat/completions';
+                const body = {
+                    model: 'deepseek/deepseek-chat',
+                    messages: [
+                        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                        { role: 'user', content: userPrompt }
+                    ],
+                    temperature: 0.7,
+                    ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
+                };
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${key}`,
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': 'https://discordbot.org',
+                        'X-Title': 'ThienThuHienGia_DiscordBot'
+                    },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok) {
+                    const textErr = await res.text();
+                    throw new Error(`OpenRouter Error (${res.status}): ${textErr}`);
+                }
+                const data = await res.json();
+                const text = data.choices?.[0]?.message?.content;
+                if (!text) throw new Error('OpenRouter returned empty response');
+                return text.trim();
+            }
+        }
+    ];
+
+    for (const provider of providers) {
+        if (!provider.key) continue;
+
+        try {
+            const result = await provider.call(provider.key);
+            console.log(`🤖 AI Response from [${provider.name}] successful!`);
+            return result;
+        } catch (err) {
+            console.warn(`⚠️ [${provider.name}] gặp lỗi/hết token: ${err.message}. Đang tự động chuyển sang Provider AI tiếp theo...`);
+        }
     }
 
-    try {
-        const response = await groq.chat.completions.create({
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT + '\n' + extraSystem },
-                { role: 'user', content: userPrompt }
-            ],
-            model: 'llama-3.3-70b-versatile',
-            temperature: 0.7,
-            max_tokens: 350,
-        });
+    throw new Error('Tất cả các AI Provider (Gemini 2.5 Flash, Groq, DeepSeek V3, OpenRouter) đều chưa cấu hình key hoặc đã hết Token.');
+}
 
-        return response.choices[0]?.message?.content?.trim() || 'Bản tôn cảm nhận được thiên cơ nhưng chưa thể đáp lời.';
+/**
+ * Trả lời tự do bằng giọng văn Thiên Thu Hiền Giả
+ */
+async function generateSageResponse(userPrompt, extraSystem = '') {
+    try {
+        const result = await callMultiProviderAI({
+            systemPrompt: SYSTEM_PROMPT + '\n' + extraSystem,
+            userPrompt
+        });
+        return result;
     } catch (err) {
-        console.error('❌ Lỗi Groq AI Service:', err.message);
-        return 'Linh khí chấn động, lời thoại bị tâm ma nhiễu loạn! (Lỗi kết nối AI)';
+        console.error('❌ Lỗi AI MultiProvider:', err.message);
+        return 'Bản tôn đang bế quan tu luyện trong Thiên Thu Môn (Chưa cấu hình API Key hoặc các AI đã hết token), chưa thể đáp lời đạo hữu!';
     }
 }
 
@@ -54,7 +206,15 @@ Yêu cầu:
 2. Nếu có từ trước, từ hiện tại có bắt đầu bằng tiếng cuối của từ trước không? (Ví dụ: "Tu tiên" -> "Tiên giới" là đúng).
 Trả về JSON: {"valid": true/false, "reason": "Giải thích ngắn giọng Tiên Hiệp Nghịch Thủy Hàn", "nextWordSuggestion": "Từ nối gợi ý tiếp theo"}`;
 
-    if (!groq) {
+    try {
+        const rawJson = await callMultiProviderAI({
+            systemPrompt: SYSTEM_PROMPT + '\nTrả về CHÍNH XÁC cấu trúc JSON: {"valid": boolean, "reason": string, "nextWordSuggestion": string}. Không kèm codeblock thừa.',
+            userPrompt: prompt,
+            jsonMode: true
+        });
+        return JSON.parse(rawJson);
+    } catch (e) {
+        console.error('❌ Lỗi AI validateWordVI:', e.message);
         if (lastWord) {
             const lastPart = lastWord.trim().split(/\s+/).pop().toLowerCase();
             const firstPart = currentWord.trim().split(/\s+/)[0].toLowerCase();
@@ -67,28 +227,10 @@ Trả về JSON: {"valid": true/false, "reason": "Giải thích ngắn giọng T
         }
         return { valid: true, reason: 'Từ khai cuộc hợp lệ!', nextWordSuggestion: 'Tiên giới' };
     }
-
-    try {
-        const response = await groq.chat.completions.create({
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT + '\nTrả về CHÍNH XÁC cấu trúc JSON: {"valid": boolean, "reason": string, "nextWordSuggestion": string}. Không kèm codeblock thừa.' },
-                { role: 'user', content: prompt }
-            ],
-            model: 'llama-3.3-70b-versatile',
-            response_format: { type: 'json_object' },
-            temperature: 0.2,
-        });
-
-        const text = response.choices[0]?.message?.content?.trim();
-        return JSON.parse(text);
-    } catch (e) {
-        console.error('❌ Lỗi AI validateWordVI:', e.message);
-        return { valid: true, reason: 'Bản tôn bấm ngón tay tính toán: Chấp thuận từ này!', nextWordSuggestion: 'Tiên cảnh' };
-    }
 }
 
 /**
- * Kiểm tra tính hợp lệ từ nối Tiếng Anh (Chấp nhận MỌI LOẠI TỪ CÓ THẬT)
+ * Kiểm tra tính hợp lệ từ nối Tiếng Anh
  */
 async function validateWordEN(lastWord, currentWord) {
     const prompt = `English Word Chain validation:
@@ -99,7 +241,14 @@ Rules:
 2. If last word exists, current word MUST start with the LAST LETTER of the last word.
 Output JSON format: {"valid": boolean, "meaning": "Dịch nghĩa Hán Việt / Tiên Hiệp", "reason": "Hiền Giả nhận xét (tiếng Việt)", "nextWord": "Gợi ý từ tiếp theo"}`;
 
-    if (!groq) {
+    try {
+        const rawJson = await callMultiProviderAI({
+            systemPrompt: SYSTEM_PROMPT + '\nReturn JSON format: {"valid": boolean, "meaning": string, "reason": string, "nextWord": string}.',
+            userPrompt: prompt,
+            jsonMode: true
+        });
+        return JSON.parse(rawJson);
+    } catch (e) {
         if (lastWord) {
             const lastChar = lastWord.trim().slice(-1).toLowerCase();
             const firstChar = currentWord.trim().slice(0, 1).toLowerCase();
@@ -111,24 +260,7 @@ Output JSON format: {"valid": boolean, "meaning": "Dịch nghĩa Hán Việt / T
                 nextWord: 'Nirvana'
             };
         }
-        return { valid: true, meaning: 'Khai từ', reason: 'Chấp thuận!', nextWord: 'Nirvana' };
-    }
-
-    try {
-        const response = await groq.chat.completions.create({
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT + '\nReturn JSON format: {"valid": boolean, "meaning": string, "reason": string, "nextWord": string}.' },
-                { role: 'user', content: prompt }
-            ],
-            model: 'llama-3.3-70b-versatile',
-            response_format: { type: 'json_object' },
-            temperature: 0.2,
-        });
-
-        const text = response.choices[0]?.message?.content?.trim();
-        return JSON.parse(text);
-    } catch (e) {
-        return { valid: true, meaning: 'Linh từ tiên giới', reason: 'Hiền giả chấp thuận từ này!', nextWord: 'Dragon' };
+        return { valid: true, meaning: 'Linh từ tiên giới', reason: 'Hiền giả chấp thuận từ này!', nextWord: 'Nirvana' };
     }
 }
 
@@ -143,22 +275,12 @@ async function getRandomEnglishStartWord() {
         'Miracle', 'Nebula', 'Odyssey', 'Paladin', 'Quest', 'Radiance', 'Solitude', 'Triumph'
     ];
 
-    if (!groq) {
-        return defaultList[Math.floor(Math.random() * defaultList.length)];
-    }
-
     try {
-        const response = await groq.chat.completions.create({
-            messages: [
-                { role: 'system', content: 'Generate a single interesting, commonly known English noun or adjective (5-9 letters long) suitable for a word chain game. Return ONLY the raw word, nothing else.' },
-                { role: 'user', content: 'Generate a random English word.' }
-            ],
-            model: 'llama-3.3-70b-versatile',
-            temperature: 0.9,
-            max_tokens: 15
+        const rawText = await callMultiProviderAI({
+            systemPrompt: 'Generate a single interesting, commonly known English noun or adjective (5-9 letters long) suitable for a word chain game. Return ONLY the raw word, nothing else.',
+            userPrompt: 'Generate a random English word.'
         });
-
-        const word = response.choices[0]?.message?.content?.trim().replace(/[^a-zA-Z]/g, '');
+        const word = rawText.replace(/[^a-zA-Z]/g, '');
         if (word && word.length >= 3) {
             return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
         }
@@ -178,7 +300,7 @@ function scrambleWord(word) {
     return letters.join(' ');
 }
 
-// Kho từ đố Vua Tiếng Việt phong phú (50+ từ Hán Việt, Nghịch Thủy Hàn, Tiên Hiệp, Đời Sống)
+// Kho từ đố Vua Tiếng Việt phong phú (50+ từ)
 const FALLBACK_VUA_QUESTIONS = [
     { word: 'NGHỊCH THỦY HÀN', hint: 'Thế giới giang hồ hội tụ chốn vạn người tranh đấu.' },
     { word: 'HUYẾT HÀ', hint: 'Môn phái sử dụng trường thương, đao thương bất nhập.' },
@@ -232,7 +354,7 @@ const FALLBACK_VUA_QUESTIONS = [
 ];
 
 /**
- * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (100% Động bằng AI)
+ * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (100% Động bằng AI Đa Nhà Cung Cấp)
  */
 async function generateVuaTiengVietQuestion(difficulty = 'trung_binh', usedWords = []) {
     const excludeStr = usedWords.length > 0 ? `Tránh trùng với các từ sau: ${usedWords.join(', ')}.` : '';
@@ -245,40 +367,25 @@ Trả về cấu trúc JSON:
   "hint": "Một câu thơ gợi ý ngắn phong cách Tiên Hiệp Thiên Thu Môn"
 }`;
 
-    if (!groq) {
-        // Lọc các từ chưa sử dụng
-        const available = FALLBACK_VUA_QUESTIONS.filter(q => !usedWords.includes(q.word));
-        const chosen = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : FALLBACK_VUA_QUESTIONS[Math.floor(Math.random() * FALLBACK_VUA_QUESTIONS.length)];
-        return {
-            originalWord: chosen.word,
-            scrambledLetters: scrambleWord(chosen.word),
-            hint: chosen.hint
-        };
-    }
-
     try {
-        const response = await groq.chat.completions.create({
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT + '\nTrả về CHÍNH XÁC cấu trúc JSON: {"originalWord": string, "scrambledLetters": string, "hint": string}.' },
-                { role: 'user', content: prompt }
-            ],
-            model: 'llama-3.3-70b-versatile',
-            response_format: { type: 'json_object' },
-            temperature: 0.85,
+        const rawJson = await callMultiProviderAI({
+            systemPrompt: SYSTEM_PROMPT + '\nTrả về CHÍNH XÁC cấu trúc JSON: {"originalWord": string, "scrambledLetters": string, "hint": string}.',
+            userPrompt: prompt,
+            jsonMode: true
         });
 
-        const data = JSON.parse(response.choices[0]?.message?.content?.trim());
+        const data = JSON.parse(rawJson);
         if (data && data.originalWord) {
-            // Đảm bảo chữ xáo trộn được tạo chuẩn
             if (!data.scrambledLetters || data.scrambledLetters === data.originalWord) {
                 data.scrambledLetters = scrambleWord(data.originalWord);
             }
             return data;
         }
-        throw new Error('Invalid AI response');
+        throw new Error('Invalid AI response schema');
     } catch (e) {
         console.error('❌ AI generateVuaTiengVietQuestion Error:', e.message);
-        const chosen = FALLBACK_VUA_QUESTIONS[Math.floor(Math.random() * FALLBACK_VUA_QUESTIONS.length)];
+        const available = FALLBACK_VUA_QUESTIONS.filter(q => !usedWords.includes(q.word));
+        const chosen = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : FALLBACK_VUA_QUESTIONS[Math.floor(Math.random() * FALLBACK_VUA_QUESTIONS.length)];
         return {
             originalWord: chosen.word,
             scrambledLetters: scrambleWord(chosen.word),
