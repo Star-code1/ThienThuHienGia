@@ -8,6 +8,7 @@ const {
 const { generateVuaTiengVietQuestion } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
+const { removeAccents } = require('../../shared/utils/vietnameseHelper');
 
 // Stores active Vua Tiếng Việt games per channel: channelId -> gameObject
 const activeVuaGames = new Map();
@@ -185,10 +186,13 @@ const onMessageCreate = {
         const game = activeVuaGames.get(message.channelId);
         if (!game) return;
 
-        const cleanUserWord = message.content.trim().toUpperCase().replace(/\s+/g, ' ');
-        const cleanAnswer = game.originalWord.trim().toUpperCase().replace(/\s+/g, ' ');
+        const cleanUserWord = message.content.trim().toUpperCase().replace(/\s+/g, ' ').normalize('NFC');
+        const cleanAnswer = game.originalWord.trim().toUpperCase().replace(/\s+/g, ' ').normalize('NFC');
 
-        if (cleanUserWord === cleanAnswer) {
+        const isExactMatch = cleanUserWord === cleanAnswer;
+        const isAccentlessMatch = removeAccents(cleanUserWord) === removeAccents(cleanAnswer);
+
+        if (isExactMatch || isAccentlessMatch) {
             // Đoán đúng!
             if (game.timer) clearTimeout(game.timer);
 

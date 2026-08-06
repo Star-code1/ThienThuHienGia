@@ -1,3 +1,5 @@
+const { scrambleVietnameseWord } = require('../shared/utils/vietnameseHelper');
+
 const SYSTEM_PROMPT = `
 Bạn là "Thiên Thư Hiền Giả" - bậc Đại Năng Tu Tiên vạn năm, kho tàng tri thức tối cao của Thiên Thư Môn (bang hội lừng lẫy trong tựa game Nghịch Thủy Hàn / Justice Online).
 Bối cảnh & Tri thức:
@@ -362,21 +364,9 @@ async function getRandomEnglishStartWord() {
 
 // Hàm xáo trộn chữ cái 2 âm tiết giữ nguyên dấu cách ở giữa
 function scramble2Syllables(word) {
-    const parts = word.trim().split(/\s+/);
-    if (parts.length >= 2) {
-        return `${scrambleSingleWord(parts[0])} ${scrambleSingleWord(parts[1])}`;
-    }
-    return scrambleSingleWord(word);
+    return scrambleVietnameseWord(word);
 }
 
-function scrambleSingleWord(str) {
-    const letters = Array.from(str.toUpperCase());
-    for (let i = letters.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [letters[i], letters[j]] = [letters[j], letters[i]];
-    }
-    return letters.join('');
-}
 
 // Kho từ đố Vua Tiếng Việt phong phú (50+ từ 2 âm tiết)
 const FALLBACK_VUA_QUESTIONS = [
@@ -451,7 +441,7 @@ async function generateVuaTiengVietQuestion(difficulty = 'trung_binh', usedWords
    - **Không** trùng lặp với bất kỳ từ nào trong usedWords.
 
 2. **Xáo trộn ký tự (scrambledLetters)**:
-   - Giữa mỗi kí tự có 1 khoảng cách. Xáo trộn ngẫu nhiên các ký tự bên trong, **giữ dấu cách ở giữa mỗi kí tự** (Ví dụ: "HỌC SINH" → "C Ọ H H S N I").
+   - Giữa mỗi kí tự có 1 khoảng cách. Xáo trộn ngẫu nhiên các ký tự bên trong, **giữ dấu cách ở giữa mỗi kí tự, kiểm tra kĩ mỗi kí tự đã xáo trộn đều phải có trong từ gốc** (Ví dụ: "HỌC SINH" → "C Ọ H H S N I").
 
 3. **Gợi ý (hint)**:
    - Là một câu thơ hoặc câu nói ngắn (khoảng 4–6 từ) mang phong cách "Tiên Hiệp Nghịch Thủy Hàn" – cổ kính, ẩn ý, có chất thiền hoặc triết lý.
@@ -475,10 +465,9 @@ Trả về CHÍNH XÁC cấu trúc JSON:
 
         const data = JSON.parse(rawJson);
         if (data && data.originalWord) {
-            data.originalWord = data.originalWord.trim().toUpperCase();
-            if (!data.scrambledLetters || data.scrambledLetters === data.originalWord) {
-                data.scrambledLetters = scramble2Syllables(data.originalWord);
-            }
+            data.originalWord = data.originalWord.trim().toUpperCase().normalize('NFC');
+            // Luôn luôn xáo trộn chữ cái bằng JS để đảm bảo 100% chính xác từng ký tự và dấu thanh
+            data.scrambledLetters = scrambleVietnameseWord(data.originalWord);
             return data;
         }
         throw new Error('Invalid AI response schema');
@@ -486,9 +475,10 @@ Trả về CHÍNH XÁC cấu trúc JSON:
         console.error('❌ AI generateVuaTiengVietQuestion Error:', e.message);
         const available = FALLBACK_VUA_QUESTIONS.filter(q => !usedWords.includes(q.word));
         const chosen = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : FALLBACK_VUA_QUESTIONS[Math.floor(Math.random() * FALLBACK_VUA_QUESTIONS.length)];
+        const word = chosen.word.normalize('NFC');
         return {
-            originalWord: chosen.word,
-            scrambledLetters: scramble2Syllables(chosen.word),
+            originalWord: word,
+            scrambledLetters: scrambleVietnameseWord(word),
             hint: chosen.hint
         };
     }
