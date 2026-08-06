@@ -15,11 +15,18 @@ const activeSummaryWork = new Set();
 async function processIncomingMessage(message) {
     if (!message || !message.guild || message.author.bot) return;
 
+    const channelId = message.channel.id;
+
+    // Phân quyền kênh riêng tư: Kiểm tra danh sách channel bị cấm lưu vết
+    const excludedChannels = (process.env.EXCLUDED_CHANNEL_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+    if (excludedChannels.includes(channelId)) {
+        return; // Bỏ qua 100% không lưu vết kênh cấm này
+    }
+
     const content = (message.content || '').trim();
     if (!content) return;
 
     const guildId = message.guild.id;
-    const channelId = message.channel.id;
     const messageId = message.id;
     const authorId = message.author.id;
     const username = message.member?.displayName || message.author.username;
@@ -163,13 +170,32 @@ ${transcriptText.slice(0, 8000)}`;
 }
 
 /**
- * Xây dựng Ngữ cảnh Bộ nhớ Tối ưu (Context Builder) khi User hỏi Hiền Giả
+ * Xây dựng Ngữ cảnh Bộ nhớ Tối ưu (Context Builder) phân quyền phân cấp:
+ * Kênh hỏi X sẽ có quyền đọc: Tất cả Kênh Public + Kênh X (nếu X là Private)
+ * Tuyệt đối KHÔNG đọc từ các kênh Private Y khác (Y != X)
  */
-async function buildSageContext({ guildId, channelId, query }) {
-    // 1. Short-term Memory: 20 tin nhắn gần nhất trong kênh
+async function buildSageContext({ guildId, channelId, query, guild }) {
+    const { PermissionFlagsBits } = require('discord.js');
+    const client = require('../core/client');
+
+    let allowedChannelIds = [channelId];
+
+    try {
+        const targetGuild = guild || (client.guilds?.cache.get(guildId));
+        if (targetGuild) {
+            const publicChannelIds = targetGuild.channels.cache
+                .filter(c => c.isTextBased() && c.permissionsFor(targetGuild.roles.everyone)?.has(PermissionFlagsBits.ViewChannel))
+                .map(c => c.id);
+            allowedChannelIds = Array.from(new Set([...publicChannelIds, channelId]));
+        }
+    } catch (err) {
+        console.warn('⚠️ Lỗi tính toán allowedChannelIds:', err.message);
+    }
+
+    // 1. Short-term Memory: 20 tin nhắn gần nhất trong các kênh được phép
     let recentChatText = '';
     try {
-        const recentMsgs = await ChatMessage.find({ guildId, channelId })
+        const recentMsgs = await ChatMessage.find({ guildId, channelId: { $in: allowedChannelIds } })
             .sort({ createdAt: -1 })
             .limit(20);
         
@@ -181,10 +207,10 @@ async function buildSageContext({ guildId, channelId, query }) {
         console.warn('⚠️ Lỗi lấy Recent Chat:', err.message);
     }
 
-    // 2. Semantic Memory: Qdrant Vector Search Top 5 tin nhắn liên quan nhất
+    // 2. Semantic Memory: Qdrant Vector Search Top 5 tin nhắn liên quan nhất (Lọc theo allowedChannelIds)
     let vectorMemoryText = '';
     try {
-        const vectorResults = await searchSimilarMessages({ text: query, guildId, topK: 5 });
+        const vectorResults = await searchSimilarMessages({ text: query, guildId, allowedChannelIds, topK: 5 });
         if (vectorResults.length > 0) {
             vectorMemoryText = vectorResults.map(v => `• [${v.username}]: ${v.content}`).join('\n');
         }
@@ -192,10 +218,10 @@ async function buildSageContext({ guildId, channelId, query }) {
         console.warn('⚠️ Lỗi lấy Vector Memory:', err.message);
     }
 
-    // 3. Summary Memory: 2 summary gần nhất của server/kênh
+    // 3. Summary Memory: 2 summary gần nhất của các kênh được phép
     let summariesText = '';
     try {
-        const summaries = await ChatSummary.find({ guildId })
+        const summaries = await ChatSummary.find({ guildId, channelId: { $in: allowedChannelIds } })
             .sort({ createdAt: -1 })
             .limit(2);
         
@@ -216,5 +242,6 @@ async function buildSageContext({ guildId, channelId, query }) {
 module.exports = {
     processIncomingMessage,
     buildSageContext,
-    generateChatSummary
+    generateChatSummary,
+    checkAndTriggerSummary
 };

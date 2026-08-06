@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "deploy": "node deploy.js",
+    "sync-history": "node scripts/syncHistory.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

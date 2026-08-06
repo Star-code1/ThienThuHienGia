@@ -1,41 +1,75 @@
 const QDRANT_URL = process.env.QDRANT_URL ? process.env.QDRANT_URL.replace(/\/$/, '') : null;
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY || null;
 const COLLECTION_NAME = 'discord_messages';
-const VECTOR_SIZE = 768; // Gemini text-embedding-004 vector dimension
+const VECTOR_SIZE = 1536; // OpenAI text-embedding-3-small (qua OpenRouter) dimension
 
 let isQdrantAvailable = null;
+let embeddingErrorLogged = false;
 
 /**
- * Sinh Embedding cho văn bản bằng Gemini text-embedding-004
+ * Sinh Embedding cho văn bản (Ưu tiên OpenRouter text-embedding-3-small, fallback Gemini)
  */
 async function generateEmbedding(text) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return null;
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
 
-    try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`;
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'models/text-embedding-004',
-                content: { parts: [{ text }] }
-            })
-        });
+    // 1. Thử OpenRouter Embedding (openai/text-embedding-3-small)
+    if (openrouterKey) {
+        try {
+            const res = await fetch('https://openrouter.ai/api/v1/embeddings', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${openrouterKey}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': 'https://discordbot.org',
+                    'X-Title': 'ThienThuHienGia_DiscordBot'
+                },
+                body: JSON.stringify({
+                    model: 'openai/text-embedding-3-small',
+                    input: text
+                })
+            });
 
-        if (!res.ok) {
-            const errText = await res.text();
-            console.warn(`⚠️ Lỗi sinh embedding Gemini (${res.status}): ${errText}`);
-            return null;
+            if (res.ok) {
+                const data = await res.json();
+                const embedding = data.data?.[0]?.embedding;
+                if (Array.isArray(embedding) && embedding.length > 0) {
+                    return embedding;
+                }
+            }
+        } catch (e) {
+            // Silence error and try next fallback
         }
+    }
 
-        const data = await res.json();
-        const values = data.embedding?.values;
-        if (Array.isArray(values) && values.length > 0) {
-            return values;
+    // 2. Thử Gemini Embedding
+    if (geminiKey) {
+        const embeddingModels = ['text-embedding-004', 'embedding-001'];
+        for (const modelName of embeddingModels) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:embedContent?key=${geminiKey}`;
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: { parts: [{ text }] }
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    const values = data.embedding?.values;
+                    if (Array.isArray(values) && values.length > 0) {
+                        return values;
+                    }
+                }
+            } catch (err) {}
         }
-    } catch (err) {
-        console.warn('⚠️ Lỗi gọi Embedding API:', err.message);
+    }
+
+    if (!embeddingErrorLogged) {
+        console.warn('⚠️ Cảnh báo: Không thể sinh Vector Embedding. Hệ thống vẫn lưu MongoDB & Summary bình thường!');
+        embeddingErrorLogged = true;
     }
     return null;
 }
@@ -73,9 +107,12 @@ async function ensureQdrantCollection() {
         });
 
         if (createRes.ok) {
-            console.log(`✅ Qdrant Collection "${COLLECTION_NAME}" đã sẵn sàng.`);
+            console.log(`✅ Qdrant Collection "${COLLECTION_NAME}" (size: ${VECTOR_SIZE}) đã khởi tạo thành công.`);
             isQdrantAvailable = true;
             return true;
+        } else {
+            const textErr = await createRes.text();
+            console.warn('⚠️ Không thể khởi tạo Qdrant Collection:', textErr);
         }
     } catch (e) {
         console.warn('⚠️ Không thể kết nối Qdrant Server:', e.message);
@@ -102,7 +139,6 @@ async function upsertMessageVector({ messageId, guildId, channelId, authorId, us
         const headers = { 'Content-Type': 'application/json' };
         if (QDRANT_API_KEY) headers['api-key'] = QDRANT_API_KEY;
 
-        // Qdrant point ID can be numeric or UUID. Generate a deterministic numeric ID from messageId string hash
         const pointId = stringToPositiveInt(messageId);
 
         const body = {
@@ -139,7 +175,7 @@ async function upsertMessageVector({ messageId, guildId, channelId, authorId, us
 /**
  * Tìm kiếm câu chat tương đồng nhất trong Qdrant
  */
-async function searchSimilarMessages({ text, guildId, topK = 5 }) {
+async function searchSimilarMessages({ text, guildId, channelId, allowedChannelIds, topK = 5 }) {
     if (isQdrantAvailable === false && !QDRANT_URL) return [];
     if (isQdrantAvailable === null) {
         await ensureQdrantCollection();
@@ -153,11 +189,16 @@ async function searchSimilarMessages({ text, guildId, topK = 5 }) {
         const headers = { 'Content-Type': 'application/json' };
         if (QDRANT_API_KEY) headers['api-key'] = QDRANT_API_KEY;
 
-        const filter = guildId ? {
-            must: [
-                { key: 'guildId', match: { value: guildId } }
-            ]
-        } : undefined;
+        const mustConditions = [];
+        if (guildId) mustConditions.push({ key: 'guildId', match: { value: guildId } });
+
+        if (Array.isArray(allowedChannelIds) && allowedChannelIds.length > 0) {
+            mustConditions.push({ key: 'channelId', match: { any: allowedChannelIds } });
+        } else if (channelId) {
+            mustConditions.push({ key: 'channelId', match: { value: channelId } });
+        }
+
+        const filter = mustConditions.length > 0 ? { must: mustConditions } : undefined;
 
         const body = {
             vector,
@@ -188,7 +229,6 @@ async function searchSimilarMessages({ text, guildId, topK = 5 }) {
     }
 }
 
-// Convert string ID (like Discord Snowflake string) to positive 64-bit safe integer for Qdrant numeric point IDs
 function stringToPositiveInt(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {

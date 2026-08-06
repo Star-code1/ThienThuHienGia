@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const ChatMessageSchema = new mongoose.Schema({
     guildId: { type: String, required: true, index: true },
     channelId: { type: String, required: true, index: true },
+    isPrivate: { type: Boolean, default: false, index: true },
     messageId: { type: String, required: true, unique: true, index: true },
     authorId: { type: String, required: true },
     username: { type: String, required: true },
@@ -13,5 +14,8 @@ const ChatMessageSchema = new mongoose.Schema({
     embedding: { type: Boolean, default: false, index: true },
     createdAt: { type: Date, default: Date.now, index: true }
 }, { timestamps: true });
+
+// ⚡ TỰ ĐỘNG 100%: MongoDB tự dọn dẹp tin nhắn thô cũ quá 60 ngày (60 * 24 * 3600 giây)
+ChatMessageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 24 * 3600 });
 
 module.exports = mongoose.model('ChatMessage', ChatMessageSchema);
