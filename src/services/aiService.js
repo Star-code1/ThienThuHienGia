@@ -17,7 +17,7 @@ Bối cảnh & Tri thức:
  * 3. DeepSeek V3 (DEEPSEEK_API_KEY)
  * 4. OpenRouter (OPENROUTER_API_KEY)
  */
-async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false, maxTokens = 250 }) {
+async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false, maxTokens = 250, temperature = 0.3 }) {
     const providers = [
         {
             name: 'Gemini 2.5 Flash',
@@ -37,7 +37,7 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
                                 }
                             ],
                             generationConfig: {
-                                temperature: 0.3,
+                                temperature,
                                 maxOutputTokens: maxTokens,
                                 ...(jsonMode ? { responseMimeType: 'application/json' } : {})
                             }
@@ -74,7 +74,7 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
                         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
                         { role: 'user', content: userPrompt }
                     ],
-                    temperature: 0.3,
+                    temperature,
                     max_tokens: maxTokens,
                     ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
                 };
@@ -107,7 +107,7 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
                         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
                         { role: 'user', content: userPrompt }
                     ],
-                    temperature: 0.3,
+                    temperature,
                     max_tokens: maxTokens,
                     ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
                 };
@@ -140,7 +140,7 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
                         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
                         { role: 'user', content: userPrompt }
                     ],
-                    temperature: 0.3,
+                    temperature,
                     max_tokens: maxTokens,
                     ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
                 };
@@ -368,119 +368,106 @@ function scramble2Syllables(word) {
 }
 
 
-// Kho từ đố Vua Tiếng Việt phong phú (50+ từ 2 âm tiết)
-const FALLBACK_VUA_QUESTIONS = [
-    { word: 'HUYẾT HÀ', hint: 'Môn phái trường thương, đao thương bất nhập.' },
-    { word: 'TỐ VẤN', hint: 'Y giả tiên y, ban dược cứu người.' },
-    { word: 'THÁI CỰC', hint: 'Âm dương chuyển hóa, kiếm khí vạn dặm.' },
-    { word: 'THẦN TƯƠNG', hint: 'Cầm kiếm giao hòa, thiên địa biến sắc.' },
-    { word: 'LONG NGÂM', hint: 'Thần kiếm xuất bao, rồng ngâm cuộn sóng.' },
-    { word: 'CỨU LINH', hint: 'Linh hồn giao thoa, thiên hạ thái bình.' },
-    { word: 'TOÁI MỘNG', hint: 'Song đao như chớp, ảo ảnh vạn ngàn.' },
-    { word: 'THIẾT Y', hint: 'Thân như kim cang, chắn sóng cản gió.' },
-    { word: 'KIM ĐAN', hint: 'Linh khí ngưng tụ, đan điền tỏa sáng.' },
-    { word: 'NGUYÊN ANH', hint: 'Biến hóa thần thông, anh nhi giáng thế.' },
-    { word: 'ĐỘ KIẾP', hint: 'Thiên lôi giáng xuống, rèn luyện thân thể.' },
-    { word: 'BÁC HỌC', hint: 'Uyên bác tinh thông, vạn quyển kinh thư.' },
-    { word: 'NGỘ TÍNH', hint: 'Thấu hiểu đạo lý, thiên địa siêu việt.' },
-    { word: 'LINH THẠCH', hint: 'Tài nguyên trân quý, nuôi dưỡng linh khí.' },
-    { word: 'ANH HÙNG', hint: 'Đại hiệp ra tay, vì nghĩa giang hồ.' },
-    { word: 'PHÚC KHÍ', hint: 'May mắn vạn năm, ban cho duyên số.' },
-    { word: 'TÂM MA', hint: 'Chướng ngại lớn nhất, con đường tu tiên.' },
-    { word: 'VẠN VẬT', hint: 'Càn khôn thiên địa, hóa sinh vô cùng.' },
-    { word: 'THƯƠNG KHUNG', hint: 'Bầu trời bao la, vượt tầm mắt ngắm.' },
-    { word: 'CÀN KHÔN', hint: 'Trời đất âm dương, xoay chuyển càn khôn.' },
-    { word: 'PHÁP BẢO', hint: 'Binh khí linh thiêng, chứa đựng thần lực.' },
-    { word: 'TRUYỀN KỲ', hint: 'Câu chuyện huyền thoại, lưu danh ngàn đời.' },
-    { word: 'TIÊN NỮ', hint: 'Nhan sắc tuyệt trần, chốn bồng lai cảnh.' },
-    { word: 'THẠCH ANH', hint: 'Linh đá quý tỏa, ánh sáng nhiệm màu.' },
-    { word: 'PHI THĂNG', hint: 'Vượt qua kiếp nạn, bước lên tiên giới.' },
-    { word: 'TRÚC CƠ', hint: 'Nền móng vững chắc, tu hành đại đạo.' },
-    { word: 'HÓA THẦN', hint: 'Tâm trí hòa nhập, quy luật tự nhiên.' },
-    { word: 'CỔ PHONG', hint: 'Nét đẹp cội nguồn, ngàn xưa để lại.' },
-    { word: 'KIM CANG', hint: 'Bất hoại kiên cố, không thể phá vỡ.' },
-    { word: 'TÂM THIÊN', hint: 'Ý trời bao la, thương xót chúng sinh.' },
-    { word: 'HỒNG TRẦN', hint: 'Thế giới nhân gian, muôn màu ân nợ.' },
-    { word: 'DUYÊN PHẬN', hint: 'Sự gặp gỡ được, định sẵn ý trời.' },
-    { word: 'BỒNG LAI', hint: 'Chốn tiên cảnh mây, giăng kín lối về.' },
-    { word: 'SƯ MÔN', hint: 'Nơi dung dưỡng truyền, dạy dỗ đạo pháp.' },
-    { word: 'BẢO TẠNG', hint: 'Kho báu cất giấu, bí thuật ngàn năm.' },
-    { word: 'HUYỀN THOẠI', hint: 'Chiến tích vang dội, không ai sánh bằng.' },
-    { word: 'TRANG BỊ', hint: 'Binh khí giáp trụ, rèn luyện thân thể.' },
-    { word: 'ĐẠO HỮU', hint: 'Bạn đồng hành trên, con đường tu tiên.' },
-    { word: 'BANG CHIẾN', hint: 'Trận đại chiến giữa, thế lực lừng lẫy.' },
-    { word: 'GIANG HỒ', hint: 'Võ lâm hiểm nguy, đầy ắp nghĩa khí.' },
-    { word: 'VŨ TRỤ', hint: 'Không gian vô tận, chứa vô vàn sao.' },
-    { word: 'THỜI GIAN', hint: 'Dòng chảy vô hình, chẳng hề dừng lại.' },
-    { word: 'TRI KỶ', hint: 'Thấu hiểu tâm tư, không cần cất lời.' },
-    { word: 'TỰ DO', hint: 'Thỏa sức vẫy vùng, giữa trời bao la.' },
-    { word: 'BÌNH AN', hint: 'Ước mơ giản đơn, mọi kiếp nhân sinh.' },
-    { word: 'HY VỌNG', hint: 'Ánh sáng dẫn đường, qua đêm mù mịt.' },
-    { word: 'TRÍ TUỆ', hint: 'Chìa khóa mở ra, bí mật càn khôn.' }
+// Chủ đề phong phú gợi ý cho AI tư duy 100% ngẫu nhiên
+const VUA_TOPIC_CATEGORIES = [
+    'Đời sống & Con người (ví dụ: Sum vầy, Kỷ niệm, Mái ấm, Bình an, Sáng tạo, Ước mơ)',
+    'Thiên nhiên & Bầu trời (ví dụ: Bình minh, Hoàng hôn, Sương mù, Bão tuyết, Hải đảo, Sơn hà)',
+    'Cảm xúc & Tâm hồn (ví dụ: Hy vọng, U buồn, Háo hức, Thấu hiểu, Nhẫn nại, Tri kỷ)',
+    'Cổ phong & Triết lý (ví dụ: Chân lý, Càn khôn, Hồng trần, Duyên phận, Đạo lý, Thời gian)',
+    'Ẩm thực & Hương vị (ví dụ: Trà đạo, Mỹ vị, Thưởng thức, Hương vị, Phong vị)',
+    'Võ học & Tiên hiệp (ví dụ: Linh khí, Kim đan, Độ kiếp, Kiếm khí, Phá kình, Pháp bảo)',
+    'Địa danh & Du ngoạn (ví dụ: Giang sơn, Bát ngát, Viễn phương, Cố hương, Phong cảnh)',
+    'Văn hóa & Thơ ca (ví dụ: Tuyệt tác, Thi văn, Giai điệu, Âm điệu, Cổ tích)',
+    'Động vật & Sinh giới (ví dụ: Phượng hoàng, Bạch hổ, Chim trĩ, Linh thú, Mẫu đơn)',
+    'Tri thức & Khai phá (ví dụ: Trí tuệ, Uyên bác, Khai phá, Kỳ tích, Bác học)'
 ];
 
 /**
- * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (Tiên Hiệp 2 âm tiết chuẩn prompt)
+ * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (100% AI tự duy duy nhất, KHÔNG DÙNG dataset cứng)
  */
 async function generateVuaTiengVietQuestion(difficulty = 'trung_binh', usedWords = []) {
-    const excludeStr = usedWords.length > 0 ? `Danh sách từ đã dùng (usedWords): [${usedWords.join(', ')}]. KHÔNG được trùng lặp với bất kỳ từ nào trong danh sách này.` : 'Danh sách từ đã dùng (usedWords): [].';
-    const prompt = `Bạn là "Thiên Thu Hiền Giả" - bậc tiên sinh uyên bác, chuyên sáng tác câu đố chữ cho trò chơi "Vua Tiếng Việt". Nhiệm vụ: tạo ra một từ ghép 2 âm tiết hợp lệ, thuộc một trong các chủ đề được chỉ định, sau đó xáo trộn các ký tự và đưa ra gợi ý phong cách tiên hiệp Nghịch Thủy Hàn.
+    const randomTopic = VUA_TOPIC_CATEGORIES[Math.floor(Math.random() * VUA_TOPIC_CATEGORIES.length)];
+    const excludeStr = usedWords.length > 0 
+        ? `Danh sách từ đã dùng: [${usedWords.join(', ')}]. KHÔNG ĐƯỢC trùng lặp với bất kỳ từ nào trong danh sách này.`
+        : '';
 
-=== ĐẦU VÀO ===
-- Độ khó (difficulty): "${difficulty}".
-- ${excludeStr}
+    const prompt = `Bạn là "Thiên Thu Hiền Giả" - bậc tiên sinh uyên bác. Nhiệm vụ: TỰ TƯ DUY NGHĨ RA 1 từ ghép tiếng Việt 2 âm tiết MỚI LẠ, ĐỘC ĐÁO, HỢP LÝ cho trò chơi "Vua Tiếng Việt".
+
+=== YÊU CẦU TƯ DUY (100% DYNAMIC) ===
+1. **Chủ đề gợi ý cho lượt này**: "${randomTopic}".
+2. **Độ khó**: "${difficulty}".
+3. ${excludeStr}
 
 === QUY TẮC TẠO TỪ ===
 1. **Từ (originalWord)**: 
-   - Phải là một từ ghép **gồm đúng 2 âm tiết** (Ví dụ: "TU TIÊN", "HỌC SINH", "SƠN HÀ").
-   - Có nghĩa xác định trong tiếng Việt (từ Hán Việt, thành ngữ, hoặc từ thuần Việt).
-   - Chủ đề ưu tiên:
-        * Nếu difficulty = "dễ": ưu tiên chủ đề Đời Sống hoặc Từ Hán Việt phổ thông.
-        * Nếu difficulty = "trung bình": ưu tiên Thành Ngữ hoặc Tu Tiên.
-        * Nếu difficulty = "khó": ưu tiên Từ Hán Việt hiếm, Nghịch Thủy Hàn (mang triết lý), hoặc thành ngữ ít gặp.
-   - **Không** trùng lặp với bất kỳ từ nào trong usedWords.
+   - Phải là từ ghép **gồm đúng 2 âm tiết** có nghĩa trong Tiếng Việt.
+   - LƯU Ý MẪU: Các từ như "BAN MAI", "ANH HÙNG", "PHONG BA", "HOÀNG HÔN" chỉ dùng làm mẫu cấu trúc 2 âm tiết. **KHÔNG ĐƯỢC** chọn các từ mẫu này, và **KHÔNG ĐƯỢC** lặp lại các từ rập khuôn quen thuộc (như "TU TIÊN", "THIÊN NHIÊN", "THIÊN TÀI").
+   - Hãy suy nghĩ sáng tạo ra một từ ghép 2 âm tiết hoàn toàn mới mẻ thuộc chủ đề được gợi ý ở trên.
 
-2. **Xáo trộn ký tự (scrambledLetters)**:
-   - Giữa mỗi kí tự có 1 khoảng cách. Xáo trộn ngẫu nhiên các ký tự bên trong, **giữ dấu cách ở giữa mỗi kí tự, kiểm tra kĩ mỗi kí tự đã xáo trộn đều phải có trong từ gốc** (Ví dụ: "HỌC SINH" → "C Ọ H H S N I").
-
-3. **Gợi ý (hint)**:
-   - Là một câu thơ hoặc câu nói ngắn (khoảng 4–6 từ) mang phong cách "Tiên Hiệp Nghịch Thủy Hàn" – cổ kính, ẩn ý, có chất thiền hoặc triết lý.
-   - Gợi ý phải ám chỉ đúng nghĩa của từ, nhưng **không được chứa bất kỳ âm tiết nào của từ gốc**.
+2. **Gợi ý (hint)**:
+   - Một câu thơ hoặc câu ẩn dụ ngắn (4–6 từ) mang phong cách tiên hiệp Nghịch Thủy Hàn, gợi ý nghĩa của từ.
+   - Gợi ý KHÔNG được chứa bất kỳ âm tiết nào của từ gốc.
 
 === ĐỊNH DẠNG ĐẦU RA ===
 Trả về CHÍNH XÁC cấu trúc JSON:
 {
-  "originalWord": "TỪ GHÉP IN HOA (2 tiếng)",
-  "scrambledLetters": "KÝ TỰ XÁO TRỘN CỦA 2 TIẾNG, CÓ DẤU CÁCH GIỮA MỖI KÍ TỰ",
-  "hint": "Câu thơ/ẩn dụ phong cách tiên hiệp 4-6 từ"
+  "originalWord": "TỪ GHÉP IN HOA 2 ÂM TIẾT",
+  "hint": "Câu thơ gợi ý 4-6 từ"
 }`;
 
     try {
         const rawJson = await callMultiProviderAI({
-            systemPrompt: 'Return ONLY valid JSON format: {"originalWord": string, "scrambledLetters": string, "hint": string}.',
+            systemPrompt: 'Return ONLY valid JSON format: {"originalWord": string, "hint": string}. Do not add extra text outside JSON.',
             userPrompt: prompt,
             jsonMode: true,
-            maxTokens: 200
+            maxTokens: 200,
+            temperature: 0.95
         });
 
         const data = JSON.parse(rawJson);
         if (data && data.originalWord) {
-            data.originalWord = data.originalWord.trim().toUpperCase().normalize('NFC');
-            // Luôn luôn xáo trộn chữ cái bằng JS để đảm bảo 100% chính xác từng ký tự và dấu thanh
-            data.scrambledLetters = scrambleVietnameseWord(data.originalWord);
-            return data;
+            const cleanWord = data.originalWord.trim().toUpperCase().normalize('NFC');
+            const parts = cleanWord.split(/\s+/);
+            if (parts.length === 2 && cleanWord.length >= 4) {
+                return {
+                    originalWord: cleanWord,
+                    scrambledLetters: scrambleVietnameseWord(cleanWord),
+                    hint: data.hint || 'Câu đố ẩn ngữ từ Thiên Thư Hiền Giả.'
+                };
+            }
         }
-        throw new Error('Invalid AI response schema');
+        throw new Error('AI generated invalid word format');
     } catch (e) {
         console.error('❌ AI generateVuaTiengVietQuestion Error:', e.message);
-        const available = FALLBACK_VUA_QUESTIONS.filter(q => !usedWords.includes(q.word));
-        const chosen = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : FALLBACK_VUA_QUESTIONS[Math.floor(Math.random() * FALLBACK_VUA_QUESTIONS.length)];
-        const word = chosen.word.normalize('NFC');
-        return {
-            originalWord: word,
-            scrambledLetters: scrambleVietnameseWord(word),
-            hint: chosen.hint
-        };
+        
+        // Thử lại 1 lần với prompt ngắn hơn & nhiệt độ tối đa
+        try {
+            const retryTopic = VUA_TOPIC_CATEGORIES[Math.floor(Math.random() * VUA_TOPIC_CATEGORIES.length)];
+            const retryPrompt = `Tự nghĩ 1 từ ghép tiếng Việt 2 âm tiết ngẫu nhiên thuộc chủ đề "${retryTopic}". KHÔNG dùng từ "TU TIÊN", "THIÊN NHIÊN", "THIÊN TÀI". Trả về JSON: {"originalWord": "TỪ IN HOA (2 tiếng)", "hint": "Gợi ý 4-6 từ"}`;
+            const retryRaw = await callMultiProviderAI({
+                systemPrompt: 'Return ONLY valid JSON format: {"originalWord": string, "hint": string}.',
+                userPrompt: retryPrompt,
+                jsonMode: true,
+                maxTokens: 150,
+                temperature: 1.0
+            });
+            const retryData = JSON.parse(retryRaw);
+            if (retryData && retryData.originalWord) {
+                const cleanWord = retryData.originalWord.trim().toUpperCase().normalize('NFC');
+                const parts = cleanWord.split(/\s+/);
+                if (parts.length === 2) {
+                    return {
+                        originalWord: cleanWord,
+                        scrambledLetters: scrambleVietnameseWord(cleanWord),
+                        hint: retryData.hint || 'Bổn Hiền Giả ban gợi ý.'
+                    };
+                }
+            }
+        } catch (retryErr) {
+            console.error('❌ AI Retry failed:', retryErr.message);
+        }
+
+        throw new Error('Bổn Hiền Giả đang bận nhập định suy nghĩ, xin hãy thử lại sau ít phút!');
     }
 }
 

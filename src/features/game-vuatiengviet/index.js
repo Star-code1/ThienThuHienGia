@@ -59,49 +59,52 @@ function startQuestionTimer(channelId, channel) {
 
         // Tạo câu đố tiếp theo
         const used = currentGame.usedWords || [];
-        const newQuestion = await generateVuaTiengVietQuestion(currentGame.difficulty, used);
-        currentGame.originalWord = newQuestion.originalWord;
-        currentGame.scrambledLetters = newQuestion.scrambledLetters;
-        currentGame.hint = newQuestion.hint;
-        if (!currentGame.usedWords) currentGame.usedWords = [];
-        currentGame.usedWords.push(newQuestion.originalWord);
+        try {
+            const newQuestion = await generateVuaTiengVietQuestion(currentGame.difficulty, used);
+            currentGame.originalWord = newQuestion.originalWord;
+            currentGame.scrambledLetters = newQuestion.scrambledLetters;
+            currentGame.hint = newQuestion.hint;
+            if (!currentGame.usedWords) currentGame.usedWords = [];
+            currentGame.usedWords.push(newQuestion.originalWord);
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId(`vtv_hint:${channelId}`)
-                .setLabel('💡 Gợi Ý Thơ Tiên Hiệp')
-                .setStyle(ButtonStyle.Primary),
-            new ButtonBuilder()
-                .setCustomId(`vtv_rules:${channelId}`)
-                .setLabel('📖 Luật Chơi')
-                .setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder()
-                .setCustomId(`vtv_giveup:${channelId}`)
-                .setLabel('🏳️ Đầu Hàng')
-                .setStyle(ButtonStyle.Danger)
-        );
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`vtv_hint:${channelId}`)
+                    .setLabel('💡 Gợi Ý Thơ Tiên Hiệp')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId(`vtv_rules:${channelId}`)
+                    .setLabel('📖 Luật Chơi')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId(`vtv_giveup:${channelId}`)
+                    .setLabel('🏳️ Đầu Hàng')
+                    .setStyle(ButtonStyle.Danger)
+            );
 
-        const newEmbed = new EmbedBuilder()
-            .setColor('#F1C40F')
-            .setTitle('👑 VUA TIẾNG VIỆT • CÂU ĐỐ MỚI 👑')
-            .setDescription(
-                `🔤 Ký tự xáo trộn: **\` ${newQuestion.scrambledLetters} \`**\n\n` +
-                `👉 Nhắn câu trả lời trực tiếp vào kênh này!\n` +
-                `⏱️ **Đếm ngược:** 1 phút | 🎁 **Thưởng:** +50 Linh Thạch & +25 Tu Vi`
-            )
-            .setFooter({ text: 'Thời gian giải đáp: 1 phút' });
+            const newEmbed = new EmbedBuilder()
+                .setColor('#F1C40F')
+                .setTitle('👑 VUA TIẾNG VIỆT • CÂU ĐỐ MỚI 👑')
+                .setDescription(
+                    `🔤 Ký tự xáo trộn: **\` ${newQuestion.scrambledLetters} \`**\n\n` +
+                    `👉 Nhắn câu trả lời trực tiếp vào kênh này!\n` +
+                    `⏱️ **Đếm ngược:** 1 phút | 🎁 **Thưởng:** +50 Linh Thạch & +25 Tu Vi`
+                )
+                .setFooter({ text: 'Thời gian giải đáp: 1 phút' });
 
-        await channel.send({ embeds: [newEmbed], components: [row] }).catch(() => {});
-
-        // Đặt lại đếm ngược 1 phút cho câu đố mới
-        startQuestionTimer(channelId, channel);
+            await channel.send({ embeds: [newEmbed], components: [row] }).catch(() => {});
+            startQuestionTimer(channelId, channel);
+        } catch (err) {
+            activeVuaGames.delete(channelId);
+            await channel.send(`⚠️ **Thiên Thư Hiền Giả:** "${err.message}"`).catch(() => {});
+        }
     }, 60000); // 1 phút = 60,000 ms
 }
 
 const vuatiengvietCommand = {
     data: new SlashCommandBuilder()
         .setName('vuatiengviet')
-        .setDescription('👑 Khai mở thử thách Vua Tiếng Việt (Nội dung Động 100% bằng AI)')
+        .setDescription('👑 Khai mở thử thách Vua Tiếng Việt')
         .addStringOption(option =>
             option.setName('dokho')
                 .setDescription('Chọn độ khó')
@@ -125,54 +128,56 @@ const vuatiengvietCommand = {
         await interaction.deferReply();
 
         const dokho = interaction.options.getString('dokho') || 'trung_binh';
-        const questionData = await generateVuaTiengVietQuestion(dokho, []);
+        try {
+            const questionData = await generateVuaTiengVietQuestion(dokho, []);
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId(`vtv_hint:${channelId}`)
-                .setLabel('💡 Gợi Ý Thơ Tiên Hiệp')
-                .setStyle(ButtonStyle.Primary),
-            new ButtonBuilder()
-                .setCustomId(`vtv_rules:${channelId}`)
-                .setLabel('📖 Luật Chơi')
-                .setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder()
-                .setCustomId(`vtv_giveup:${channelId}`)
-                .setLabel('🏳️ Đầu Hàng')
-                .setStyle(ButtonStyle.Danger)
-        );
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`vtv_hint:${channelId}`)
+                    .setLabel('💡 Gợi Ý Thơ Tiên Hiệp')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId(`vtv_rules:${channelId}`)
+                    .setLabel('📖 Luật Chơi')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId(`vtv_giveup:${channelId}`)
+                    .setLabel('🏳️ Đầu Hàng')
+                    .setStyle(ButtonStyle.Danger)
+            );
 
-        const embed = new EmbedBuilder()
-            .setColor('#F1C40F')
-            .setTitle('👑 VUA TIẾNG VIỆT • THỬ THÁCH NGỘ TÍNH (AI ĐỘNG) 👑')
-            .setDescription(
-                `🧙‍♂️ **Thiên Thư Hiền Giả** đã dùng AI sinh câu đố xáo trộn chữ cái:\n\n` +
-                `🔤 Ký tự xáo trộn: **\` ${questionData.scrambledLetters} \`**\n\n` +
-                `👉 Nhắn câu trả lời chính xác trực tiếp vào kênh này!\n` +
-                `⏱️ **Đếm ngược:** 1 phút (Bỏ trống 5 câu liên tiếp sẽ kết thúc trò chơi).\n` +
-                `🎁 **Thần thưởng:** +50 Linh Thạch | +25 Tu Vi`
-            )
-            .setFooter({ text: 'Thời gian giải đáp: 1 phút • Không cần dataset cố định' })
-            .setTimestamp();
+            const embed = new EmbedBuilder()
+                .setColor('#F1C40F')
+                .setTitle('👑 VUA TIẾNG VIỆT • THỬ THÁCH NGỘ TÍNH 👑')
+                .setDescription(
+                    `🧙‍♂️ **Thiên Thư Hiền Giả** đã vận dụng trí tuệ uyên bác tạo ra câu đố xáo trộn chữ cái:\n\n` +
+                    `🔤 Ký tự xáo trộn: **\` ${questionData.scrambledLetters} \`**\n\n` +
+                    `👉 Nhắn câu trả lời chính xác trực tiếp vào kênh này!\n` +
+                    `⏱️ **Đếm ngược:** 1 phút (Bỏ trống 5 câu liên tiếp sẽ kết thúc trò chơi).\n` +
+                    `🎁 **Thần thưởng:** +50 Linh Thạch | +25 Tu Vi`
+                )
+                .setFooter({ text: 'Thời gian giải đáp: 1 phút • Trí Tuệ Thiên Thư Hiền Giả' })
+                .setTimestamp();
 
-        const replyMsg = await interaction.editReply({ embeds: [embed], components: [row] });
+            const replyMsg = await interaction.editReply({ embeds: [embed], components: [row] });
 
-        const game = {
-            difficulty: dokho,
-            originalWord: questionData.originalWord,
-            scrambledLetters: questionData.scrambledLetters,
-            hint: questionData.hint,
-            usedWords: [questionData.originalWord],
-            replyMsgId: replyMsg.id,
-            authorId: interaction.user.id,
-            consecutiveTimeouts: 0,
-            timer: null
-        };
+            const game = {
+                difficulty: dokho,
+                originalWord: questionData.originalWord,
+                scrambledLetters: questionData.scrambledLetters,
+                hint: questionData.hint,
+                usedWords: [questionData.originalWord],
+                replyMsgId: replyMsg.id,
+                authorId: interaction.user.id,
+                consecutiveTimeouts: 0,
+                timer: null
+            };
 
-        activeVuaGames.set(channelId, game);
-
-        // Khởi động đếm ngược 1 phút
-        startQuestionTimer(channelId, interaction.channel);
+            activeVuaGames.set(channelId, game);
+            startQuestionTimer(channelId, interaction.channel);
+        } catch (err) {
+            return interaction.editReply(`⚠️ **Thiên Thư Hiền Giả:** "${err.message}"`);
+        }
     }
 };
 
@@ -213,7 +218,7 @@ const onMessageCreate = {
                     `✨ Đáp án đúng: **"${game.originalWord}"**\n` +
                     `🎁 Phần thưởng: **+50 💎 Linh Thạch** | **+25 ✨ Tu Vi**\n` +
                     `🔮 Cảnh giới hiện tại: **${newRealm}**\n\n` +
-                    `🔄 **Thiên Thư Hiền Giả** đang dùng AI tạo câu đố tiếp theo...`
+                    `🔄 **Thiên Thư Hiền Giả** đang luận giải câu đố tiếp theo...`
                 )
                 .setFooter({ text: 'Thiên Thư Hiền Giả Tán Thưởng' });
 
@@ -222,42 +227,45 @@ const onMessageCreate = {
             // Tự động chuyển sang câu đố mới & reset timeout count
             game.consecutiveTimeouts = 0;
             const used = game.usedWords || [];
-            const newQuestion = await generateVuaTiengVietQuestion(game.difficulty, used);
-            game.originalWord = newQuestion.originalWord;
-            game.scrambledLetters = newQuestion.scrambledLetters;
-            game.hint = newQuestion.hint;
-            if (!game.usedWords) game.usedWords = [];
-            game.usedWords.push(newQuestion.originalWord);
+            try {
+                const newQuestion = await generateVuaTiengVietQuestion(game.difficulty, used);
+                game.originalWord = newQuestion.originalWord;
+                game.scrambledLetters = newQuestion.scrambledLetters;
+                game.hint = newQuestion.hint;
+                if (!game.usedWords) game.usedWords = [];
+                game.usedWords.push(newQuestion.originalWord);
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`vtv_hint:${message.channelId}`)
-                    .setLabel('💡 Gợi Ý Thơ Tiên Hiệp')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId(`vtv_rules:${message.channelId}`)
-                    .setLabel('📖 Luật Chơi')
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId(`vtv_giveup:${message.channelId}`)
-                    .setLabel('🏳️ Đầu Hàng')
-                    .setStyle(ButtonStyle.Danger)
-            );
+                const row = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`vtv_hint:${message.channelId}`)
+                        .setLabel('💡 Gợi Ý Thơ Tiên Hiệp')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId(`vtv_rules:${message.channelId}`)
+                        .setLabel('📖 Luật Chơi')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId(`vtv_giveup:${message.channelId}`)
+                        .setLabel('🏳️ Đầu Hàng')
+                        .setStyle(ButtonStyle.Danger)
+                );
 
-            const nextEmbed = new EmbedBuilder()
-                .setColor('#F1C40F')
-                .setTitle('👑 VUA TIẾNG VIỆT • CÂU ĐỐ TIẾP THEO 👑')
-                .setDescription(
-                    `🔤 Ký tự xáo trộn: **\` ${newQuestion.scrambledLetters} \`**\n\n` +
-                    `👉 Nhắn câu trả lời trực tiếp vào kênh này!\n` +
-                    `⏱️ **Đếm ngược:** 1 phút | 🎁 **Thưởng:** +50 Linh Thạch & +25 Tu Vi`
-                )
-                .setFooter({ text: 'Thời gian giải đáp: 1 phút' });
+                const nextEmbed = new EmbedBuilder()
+                    .setColor('#F1C40F')
+                    .setTitle('👑 VUA TIẾNG VIỆT • CÂU ĐỐ TIẾP THEO 👑')
+                    .setDescription(
+                        `🔤 Ký tự xáo trộn: **\` ${newQuestion.scrambledLetters} \`**\n\n` +
+                        `👉 Nhắn câu trả lời trực tiếp vào kênh này!\n` +
+                        `⏱️ **Đếm ngược:** 1 phút | 🎁 **Thưởng:** +50 Linh Thạch & +25 Tu Vi`
+                    )
+                    .setFooter({ text: 'Thời gian giải đáp: 1 phút' });
 
-            await message.channel.send({ embeds: [nextEmbed], components: [row] });
-
-            // Đặt lại đếm ngược 1 phút
-            startQuestionTimer(message.channelId, message.channel);
+                await message.channel.send({ embeds: [nextEmbed], components: [row] });
+                startQuestionTimer(message.channelId, message.channel);
+            } catch (err) {
+                activeVuaGames.delete(message.channelId);
+                await message.channel.send(`⚠️ **Thiên Thư Hiền Giả:** "${err.message}"`).catch(() => {});
+            }
         }
     }
 };
@@ -271,10 +279,10 @@ const handleVuaButtons = async (interaction) => {
     if (customId.startsWith('vtv_rules:')) {
         const rulesEmbed = new EmbedBuilder()
             .setColor('#F1C40F')
-            .setTitle('📖 LUẬT CHƠI VUA TIẾNG VIỆT (AI ĐỘNG 100%)')
+            .setTitle('📖 LUẬT CHƠI VUA TIẾNG VIỆT')
             .setDescription(
                 `👑 **Thể loại:** Thử thách xếp lại các chữ cái lộn xộn thành từ/cụm từ Tiếng Việt đúng.\n\n` +
-                `🤖 **Nội dung:** Được sinh động ngẫu nhiên bằng AI với đa dạng chủ đề (Nghịch Thủy Hàn, Tiên Hiệp, Thành ngữ, Từ Hán Việt, Đời sống).\n\n` +
+                `🧙‍♂️ **Nội dung:** Do Thiên Thư Hiền Giả biến hóa ngẫu nhiên với đa dạng chủ đề (Nghịch Thủy Hàn, Tiên Hiệp, Thành ngữ, Từ Hán Việt, Đời sống).\n\n` +
                 `👉 **Cách chơi:** Nhắn trực tiếp đáp án viết có dấu hoặc không dấu vào kênh chat.\n` +
                 `⏱️ **Thời gian:** 1 phút/câu. Quá 1 phút không ai đoán đúng sẽ tự động sang câu đố mới. Bỏ trống 5 câu liên tiếp game kết thúc.\n` +
                 `🎁 **Thần thưởng:** +50 Linh Thạch & +25 Tu Vi cho người đoán đúng nhanh nhất!`
