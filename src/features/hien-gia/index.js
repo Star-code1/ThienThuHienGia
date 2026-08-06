@@ -21,24 +21,31 @@ const hiengiaCommand = {
 
         await interaction.deferReply();
 
-        const answer = await generateSageResponseWithContext({
-            question,
-            guildId: interaction.guildId,
-            channelId: interaction.channelId,
-            displayName
-        });
+        try {
+            const answer = await generateSageResponseWithContext({
+                question,
+                guildId: interaction.guildId,
+                channelId: interaction.channelId,
+                displayName
+            });
 
-        const embed = new EmbedBuilder()
-            .setColor('#7289DA')
-            .setTitle(`☯️ Thiên Thư Hiền Giả Luận Đạo`)
-            .addFields(
-                { name: '❓ Đạo Hữu Hỏi:', value: question },
-                { name: '🧙‍♂️ Hiền Giả Đáp:', value: answer }
-            )
-            .setFooter({ text: 'Thiên Thư Môn • Đạo pháp tự nhiên', iconURL: interaction.client.user.displayAvatarURL() })
-            .setTimestamp();
+            const embed = new EmbedBuilder()
+                .setColor('#7289DA')
+                .setTitle(`☯️ Thiên Thư Hiền Giả Luận Đạo`)
+                .addFields(
+                    { name: '❓ Đạo Hữu Hỏi:', value: question },
+                    { name: '🧙‍♂️ Hiền Giả Đáp:', value: answer }
+                )
+                .setFooter({ text: 'Thiên Thư Môn • Đạo pháp tự nhiên', iconURL: interaction.client.user.displayAvatarURL() })
+                .setTimestamp();
 
-        await interaction.editReply({ embeds: [embed] });
+            await interaction.editReply({ embeds: [embed] });
+        } catch (err) {
+            console.error('❌ Lỗi hiengia execute:', err);
+            await interaction.editReply({
+                content: '🧙‍♂️ Bản tôn đang nhập định bế quan diễn tính thiên cơ, tạm thời chưa thể đáp lời đạo hữu!'
+            }).catch(() => {});
+        }
     }
 };
 
@@ -59,7 +66,7 @@ const hienGiaAliasCommand = {
 const syncHistoryCommand = {
     data: new SlashCommandBuilder()
         .setName('sync-history')
-        .setDescription('📜 [Admin] Đồng bộ lịch sử tin nhắn cũ trước khi bot vào server vào MongoDB & Vector DB')
+        .setDescription('📜 [Admin] Đồng bộ lịch sử tin nhắn cũ vào Thiên Thư Kho & Linh Thức')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addIntegerOption(opt =>
             opt.setName('limit_per_channel')
@@ -158,8 +165,8 @@ const syncHistoryCommand = {
             .setTitle(`✅ Hoàn Thành Đồng Bộ Lịch Sử Chat`)
             .setDescription(`Bổn Hiền Giả đã ghi chép toàn bộ linh ký lịch sử của Server vào Thiên Thư Kho!`)
             .addFields(
-                { name: '📥 Tin nhắn mới nạp MongoDB:', value: `${totalSaved}`, inline: true },
-                { name: '🧠 Tin nhắn được tạo Vector:', value: `${totalEmbedded}`, inline: true }
+                { name: '📥 Tin nhắn đã lưu Tàng Kinh Môn:', value: `${totalSaved}`, inline: true },
+                { name: '🧠 Tin nhắn đã đúc kết Linh Thức:', value: `${totalEmbedded}`, inline: true }
             )
             .setTimestamp();
 
