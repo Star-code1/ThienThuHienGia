@@ -188,13 +188,37 @@ async function generateSageResponse(userPrompt, extraSystem = '') {
         const result = await callMultiProviderAI({
             systemPrompt: SYSTEM_PROMPT + '\n' + extraSystem,
             userPrompt,
-            maxTokens: 300
+            maxTokens: 350
         });
         return result;
     } catch (err) {
         console.error('❌ Lỗi AI MultiProvider:', err.message);
         return 'Bản tôn đang bế quan tu luyện trong Thiên Thư Môn (Chưa cấu hình API Key hoặc các AI đã hết token), chưa thể đáp lời đạo hữu!';
     }
+}
+
+/**
+ * Trả lời có kết hợp Ngữ cảnh Memory OS (Recent Chat + Vector Memory + Summaries)
+ */
+async function generateSageResponseWithContext({ question, guildId, channelId, displayName }) {
+    const { buildSageContext } = require('./memoryService');
+    const context = await buildSageContext({ guildId, channelId, query: question });
+
+    const contextPrompt = `
+=== TÓM TẮT DIỄN BIẾN GẦN ĐÂY CỦA SERVER (SUMMARY MEMORY) ===
+${context.summariesText}
+
+=== TIN NHẮN TRONG KÊNH CHAT GẦN ĐÂY (RECENT CHAT) ===
+${context.recentChatText}
+
+=== KÝ ỨC LIÊN QUAN TRONG QUÁ KHỨ (SEMANTIC VECTOR MEMORY) ===
+${context.vectorMemoryText}
+
+=== CÂU HỎI / LỜI THỈNH GIÁO CỦA ĐẠO HỮU (${displayName || 'Đạo hữu'}) ===
+${question}
+`;
+
+    return await generateSageResponse(contextPrompt, `Người hỏi: ${displayName || 'Đạo hữu'}`);
 }
 
 /**
@@ -499,7 +523,9 @@ Hãy đưa ra lời nhận xét 2 câu phong cách Tiên Hiệp Nghịch Thủy 
 }
 
 module.exports = {
+    callMultiProviderAI,
     generateSageResponse,
+    generateSageResponseWithContext,
     validateWordVI,
     validateWordEN,
     getRandomEnglishStartWord,

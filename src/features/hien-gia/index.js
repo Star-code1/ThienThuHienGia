@@ -1,11 +1,10 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { generateSageResponse } = require('../../services/aiService');
-
+const { generateSageResponseWithContext } = require('../../services/aiService');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
 
-const hienGiaCommand = {
+const hiengiaCommand = {
     data: new SlashCommandBuilder()
-        .setName('hien-gia')
+        .setName('hiengia')
         .setDescription('🔮 Thỉnh giáo hoặc trò chuyện luận đạo với Thiên Thư Hiền Giả')
         .addStringOption(option => 
             option.setName('cau_hoi')
@@ -18,7 +17,12 @@ const hienGiaCommand = {
 
         await interaction.deferReply();
 
-        const answer = await generateSageResponse(question, `Người hỏi: ${displayName}`);
+        const answer = await generateSageResponseWithContext({
+            question,
+            guildId: interaction.guildId,
+            channelId: interaction.channelId,
+            displayName
+        });
 
         const embed = new EmbedBuilder()
             .setColor('#7289DA')
@@ -34,7 +38,20 @@ const hienGiaCommand = {
     }
 };
 
+// Giữ thêm alias hien-gia để đảm bảo tương thích ngược
+const hienGiaAliasCommand = {
+    data: new SlashCommandBuilder()
+        .setName('hien-gia')
+        .setDescription('🔮 Thỉnh giáo hoặc trò chuyện luận đạo với Thiên Thư Hiền Giả (Alias)')
+        .addStringOption(option => 
+            option.setName('cau_hoi')
+                .setDescription('Vấn đề đạo hữu muốn thỉnh giáo Hiền Giả')
+                .setRequired(true)
+        ),
+    execute: hiengiaCommand.execute
+};
+
 module.exports = {
-    commands: [hienGiaCommand],
+    commands: [hiengiaCommand, hienGiaAliasCommand],
     interactions: {}
 };
