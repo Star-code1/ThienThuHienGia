@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { generateSageResponseWithContext } = require('../../services/aiService');
-const { getDisplayName } = require('../../shared/utils/nameHelper');
+const { getDisplayName, resolveUserMentions } = require('../../shared/utils/nameHelper');
 const ChatMessage = require('../../shared/models/ChatMessage');
 const { upsertMessageVector } = require('../../services/qdrantService');
 
@@ -16,7 +16,8 @@ const hiengiaCommand = {
                 .setRequired(true)
         ),
     async execute(interaction) {
-        const question = interaction.options.getString('cau_hoi');
+        const rawQuestion = interaction.options.getString('cau_hoi');
+        const question = resolveUserMentions(interaction, rawQuestion);
         const displayName = getDisplayName(interaction);
 
         await interaction.deferReply();
@@ -113,8 +114,10 @@ const syncHistoryCommand = {
                     channelFetched++;
 
                     if (msg.author.bot) continue;
-                    const content = (msg.content || '').trim();
-                    if (!content) continue;
+                    const rawContent = (msg.content || '').trim();
+                    if (!rawContent) continue;
+
+                    const content = resolveUserMentions(msg, rawContent);
 
                     const existing = await ChatMessage.findOne({ messageId: msgId });
                     if (existing) continue;

@@ -2,6 +2,7 @@ const ChatMessage = require('../shared/models/ChatMessage');
 const ChatSummary = require('../shared/models/ChatSummary');
 const { upsertMessageVector, searchSimilarMessages } = require('./qdrantService');
 const { callMultiProviderAI } = require('./aiService');
+const { resolveUserMentions } = require('../shared/utils/nameHelper');
 
 const EMBEDDING_MIN_LENGTH = 15;
 const SUMMARY_TRIGGER_COUNT = 500;
@@ -23,8 +24,11 @@ async function processIncomingMessage(message) {
         return; // Bỏ qua 100% không lưu vết kênh cấm này
     }
 
-    const content = (message.content || '').trim();
-    if (!content) return;
+    const rawContent = (message.content || '').trim();
+    if (!rawContent) return;
+
+    // Chuyển đổi các tag <@ID> trong tin nhắn thành @BiệtDanh để AI dễ dàng nhận diện tên thành viên
+    const content = resolveUserMentions(message, rawContent);
 
     const guildId = message.guild.id;
     const messageId = message.id;
@@ -232,10 +236,70 @@ async function buildSageContext({ guildId, channelId, query, guild }) {
         console.warn('⚠️ Lỗi lấy Summary Memory:', err.message);
     }
 
+    // 4. Target Member Search: Truy vấn chuyên sâu ký ức liên quan đến thành viên (Nickname / ID / Biệt danh thân mật)
+    let targetMemberText = '';
+    try {
+        const cleanQuery = query.toLowerCase();
+        let matchedUserIds = [];
+        let searchKeywords = [];
+
+        const targetGuild = guild || (client.guilds?.cache.get(guildId));
+        if (targetGuild) {
+            targetGuild.members.cache.forEach(member => {
+                const nickname = (member.displayName || '').toLowerCase();
+                const username = (member.user?.username || '').toLowerCase();
+                const globalName = (member.user?.globalName || '').toLowerCase();
+
+                const isMatched = 
+                    (nickname && cleanQuery.includes(nickname)) ||
+                    (username && cleanQuery.includes(username)) ||
+                    (globalName && cleanQuery.includes(globalName)) ||
+                    cleanQuery.includes(member.id) ||
+                    (nickname.includes('snake') && (cleanQuery.includes('rắn') || cleanQuery.includes('chú rắn')));
+
+                if (isMatched) {
+                    matchedUserIds.push(member.id);
+                    if (member.displayName) searchKeywords.push(member.displayName);
+                }
+            });
+        }
+
+        // Bổ sung keyword thủ công nếu câu hỏi đề cập đến "rắn" / "chú rắn" / user ID 377331972621467648
+        if (cleanQuery.includes('rắn') || cleanQuery.includes('snake')) {
+            matchedUserIds.push('377331972621467648');
+            searchKeywords.push('Snake', 'rắn', 'chú rắn');
+        }
+
+        if (matchedUserIds.length > 0 || searchKeywords.length > 0) {
+            const uniqueUserIds = Array.from(new Set(matchedUserIds));
+            const uniqueKeywords = Array.from(new Set(searchKeywords));
+
+            const memberMsgs = await ChatMessage.find({
+                guildId,
+                channelId: { $in: allowedChannelIds },
+                $or: [
+                    { authorId: { $in: uniqueUserIds } },
+                    { mentions: { $in: uniqueUserIds } },
+                    ...uniqueKeywords.map(kw => ({ content: { $regex: kw, $options: 'i' } }))
+                ]
+            })
+            .sort({ createdAt: -1 })
+            .limit(10);
+
+            if (memberMsgs.length > 0) {
+                memberMsgs.reverse();
+                targetMemberText = memberMsgs.map(m => `• [${m.username}]: ${m.content}`).join('\n');
+            }
+        }
+    } catch (err) {
+        console.warn('⚠️ Lỗi lấy Target Member Memory:', err.message);
+    }
+
     return {
         recentChatText: recentChatText || '(Không có tin nhắn gần đây)',
         vectorMemoryText: vectorMemoryText || '(Không tìm thấy ký ứng liên quan trực tiếp)',
-        summariesText: summariesText || '(Chưa có tóm tắt lịch sử)'
+        summariesText: summariesText || '(Chưa có tóm tắt lịch sử)',
+        targetMemberText: targetMemberText || '(Không tìm thấy tin nhắn riêng liên quan đến thành viên này)'
     };
 }
 

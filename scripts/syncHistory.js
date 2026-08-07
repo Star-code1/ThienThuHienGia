@@ -4,6 +4,7 @@ const { connectDB } = require('../src/core/database');
 const ChatMessage = require('../src/shared/models/ChatMessage');
 const { upsertMessageVector } = require('../src/services/qdrantService');
 const { checkAndTriggerSummary } = require('../src/services/memoryService');
+const { resolveUserMentions } = require('../src/shared/utils/nameHelper');
 
 const EMBEDDING_MIN_LENGTH = 15;
 const BATCH_SIZE = 100; // API Limit Discord per request
@@ -68,7 +69,7 @@ async function syncGuildHistory(guild, maxPerChannel = 1000000) {
             for (const msg of validMsgs) {
                 if (existingSet.has(msg.id)) continue;
 
-                const content = msg.content.trim();
+                const content = resolveUserMentions(msg, msg.content.trim());
                 const replyTo = msg.reference?.messageId || null;
                 const attachments = msg.attachments.map(att => att.url);
                 const mentions = msg.mentions.users.map(u => u.id);
