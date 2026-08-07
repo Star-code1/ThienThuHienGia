@@ -33,284 +33,275 @@ BỐI CẢNH & PHONG CÁCH DIỄN ĐẠT:
  * 4. DeepSeek V3 (DEEPSEEK_API_KEY)
  * 5. OpenRouter (OPENROUTER_API_KEY)
  */
+const RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
+
+/**
+ * Gọi API OpenAI-compatible với cơ chế Retry Exponential Backoff & Lọc Mã Lỗi
+ */
+async function fetchOpenAICompatibleWithRetry({ url, key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature, extraHeaders = {} }) {
+    let lastErr = null;
+
+    for (let retry = 0; retry < 2; retry++) {
+        try {
+            const body = {
+                model,
+                messages: [
+                    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature,
+                max_tokens: maxTokens,
+                ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
+            };
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json',
+                    ...extraHeaders
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!res.ok) {
+                const textErr = await res.text();
+                const status = res.status;
+                const err = new Error(`Status ${status}: ${textErr}`);
+                err.status = status;
+
+                if (RETRYABLE_STATUSES.includes(status) && retry < 1) {
+                    await new Promise(r => setTimeout(r, 1000 * (retry + 1)));
+                    continue;
+                }
+                throw err;
+            }
+
+            const data = await res.json();
+            const text = data.choices?.[0]?.message?.content;
+            if (text && text.trim()) return text.trim();
+            throw new Error('Nội dung trả về rỗng');
+        } catch (e) {
+            lastErr = e;
+            if (e.status && !RETRYABLE_STATUSES.includes(e.status)) {
+                break;
+            }
+        }
+    }
+    throw lastErr;
+}
+
+/**
+ * Gọi API Gemini với cơ chế Retry Exponential Backoff & Lọc Mã Lỗi
+ */
+async function fetchGeminiWithRetry({ key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature }) {
+    let lastErr = null;
+
+    for (let retry = 0; retry < 2; retry++) {
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+            const body = {
+                ...(systemPrompt ? {
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    }
+                } : {}),
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [{ text: userPrompt }]
+                    }
+                ],
+                generationConfig: {
+                    temperature,
+                    maxOutputTokens: maxTokens,
+                    ...(jsonMode ? { responseMimeType: 'application/json' } : {})
+                }
+            };
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (!res.ok) {
+                const textErr = await res.text();
+                const status = res.status;
+                const err = new Error(`Status ${status}: ${textErr}`);
+                err.status = status;
+
+                if (RETRYABLE_STATUSES.includes(status) && retry < 1) {
+                    await new Promise(r => setTimeout(r, 1000 * (retry + 1)));
+                    continue;
+                }
+                throw err;
+            }
+
+            const data = await res.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text && text.trim()) return text.trim();
+            throw new Error('Gemini trả về nội dung rỗng');
+        } catch (e) {
+            lastErr = e;
+            if (e.status && !RETRYABLE_STATUSES.includes(e.status)) {
+                break;
+            }
+        }
+    }
+    throw lastErr;
+}
+
+/**
+ * Gọi API Cloudflare Workers AI với cơ chế Retry Exponential Backoff & Lọc Mã Lỗi
+ */
+async function fetchCloudflareWithRetry({ key, accountId, model, systemPrompt, userPrompt, maxTokens, temperature }) {
+    let lastErr = null;
+
+    for (let retry = 0; retry < 2; retry++) {
+        try {
+            const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
+            const body = {
+                messages: [
+                    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                    { role: 'user', content: userPrompt }
+                ],
+                max_tokens: maxTokens,
+                temperature
+            };
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!res.ok) {
+                const textErr = await res.text();
+                const status = res.status;
+                const err = new Error(`Status ${status}: ${textErr}`);
+                err.status = status;
+
+                if (RETRYABLE_STATUSES.includes(status) && retry < 1) {
+                    await new Promise(r => setTimeout(r, 1000 * (retry + 1)));
+                    continue;
+                }
+                throw err;
+            }
+
+            const data = await res.json();
+            const text = data.result?.response || data.result?.choices?.[0]?.message?.content;
+            if (text && text.trim()) return text.trim();
+            throw new Error('Cloudflare Workers AI trả về nội dung rỗng');
+        } catch (e) {
+            lastErr = e;
+            if (e.status && !RETRYABLE_STATUSES.includes(e.status)) {
+                break;
+            }
+        }
+    }
+    throw lastErr;
+}
+
+/**
+ * Hệ thống gọi AI đa nhà cung cấp tối ưu 2026 với cơ chế Fallback Pipeline & Retry Exponential Backoff
+ */
 async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false, maxTokens = 250, temperature = 0.3 }) {
     const providers = [
         {
             name: 'Gemini',
             key: process.env.GEMINI_API_KEY,
-            call: async (key) => {
-                const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
-                let lastErr = null;
-
-                for (const modelName of models) {
-                    try {
-                        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
-                        const body = {
-                            ...(systemPrompt ? {
-                                systemInstruction: {
-                                    parts: [{ text: systemPrompt }]
-                                }
-                            } : {}),
-                            contents: [
-                                {
-                                    role: 'user',
-                                    parts: [{ text: userPrompt }]
-                                }
-                            ],
-                            generationConfig: {
-                                temperature,
-                                maxOutputTokens: maxTokens,
-                                ...(jsonMode ? { responseMimeType: 'application/json' } : {})
-                            }
-                        };
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(body)
-                        });
-
-                        if (!res.ok) {
-                            const textErr = await res.text();
-                            throw new Error(`Status ${res.status}: ${textErr}`);
-                        }
-
-                        const data = await res.json();
-                        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text && text.trim()) return text.trim();
-                    } catch (e) {
-                        lastErr = e;
-                    }
-                }
-                throw lastErr || new Error('Gemini API call failed');
-            }
+            models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'],
+            callModel: async (model, key) => fetchGeminiWithRetry({ key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature })
         },
         {
             name: 'Cerebras',
             key: process.env.CEREBRAS_API_KEY,
-            call: async (key) => {
-                const models = ['llama-3.3-70b', 'llama3.1-8b'];
-                let lastErr = null;
-
-                for (const modelName of models) {
-                    try {
-                        const url = 'https://api.cerebras.ai/v1/chat/completions';
-                        const body = {
-                            model: modelName,
-                            messages: [
-                                ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                                { role: 'user', content: userPrompt }
-                            ],
-                            temperature,
-                            max_tokens: maxTokens,
-                            ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
-                        };
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${key}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(body)
-                        });
-
-                        if (!res.ok) {
-                            const textErr = await res.text();
-                            throw new Error(`Status ${res.status}: ${textErr}`);
-                        }
-
-                        const data = await res.json();
-                        const text = data.choices?.[0]?.message?.content;
-                        if (text && text.trim()) return text.trim();
-                    } catch (e) {
-                        lastErr = e;
-                    }
-                }
-                throw lastErr || new Error('Cerebras API call failed');
-            }
+            models: ['gpt-oss-120b', 'qwen-3-32b', 'llama-4-scout', 'deepseek-r1-distill-70b'],
+            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
+                url: 'https://api.cerebras.ai/v1/chat/completions',
+                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
+            })
         },
         {
             name: 'Groq',
             key: process.env.GROQ_API_KEY,
-            call: async (key) => {
-                const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'];
-                let lastErr = null;
-
-                for (const modelName of models) {
-                    try {
-                        const url = 'https://api.groq.com/openai/v1/chat/completions';
-                        const body = {
-                            model: modelName,
-                            messages: [
-                                ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                                { role: 'user', content: userPrompt }
-                            ],
-                            temperature,
-                            max_tokens: maxTokens,
-                            ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
-                        };
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${key}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(body)
-                        });
-
-                        if (!res.ok) {
-                            const textErr = await res.text();
-                            throw new Error(`Status ${res.status}: ${textErr}`);
-                        }
-
-                        const data = await res.json();
-                        const text = data.choices?.[0]?.message?.content;
-                        if (text && text.trim()) return text.trim();
-                    } catch (e) {
-                        lastErr = e;
-                    }
-                }
-                throw lastErr || new Error('Groq API call failed');
-            }
+            models: ['llama-4-scout-17b-16e-instruct', 'qwen/qwen3-32b', 'gpt-oss-120b', 'deepseek-r1-distill-llama-70b', 'llama-3.3-70b-versatile'],
+            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
+                url: 'https://api.groq.com/openai/v1/chat/completions',
+                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
+            })
         },
         {
             name: 'Cloudflare Workers AI',
             key: process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN,
-            call: async (key) => {
+            models: [
+                '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+                '@cf/qwen/qwen3-32b',
+                '@cf/google/gemma-3-12b-it',
+                '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
+                '@cf/mistralai/mistral-small-3.1'
+            ],
+            callModel: async (model, key) => {
                 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
                 if (!accountId) throw new Error('Chưa cấu hình CLOUDFLARE_ACCOUNT_ID trong .env');
-
-                const models = [
-                    '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-                    '@cf/meta/llama-3.1-8b-instruct',
-                    '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
-                    '@cf/mistral/mistral-7b-instruct-v0.2'
-                ];
-                let lastErr = null;
-
-                for (const modelName of models) {
-                    try {
-                        const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${modelName}`;
-                        const body = {
-                            messages: [
-                                ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                                { role: 'user', content: userPrompt }
-                            ],
-                            max_tokens: maxTokens,
-                            temperature
-                        };
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${key}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(body)
-                        });
-
-                        if (!res.ok) {
-                            const textErr = await res.text();
-                            throw new Error(`Status ${res.status}: ${textErr}`);
-                        }
-
-                        const data = await res.json();
-                        const text = data.result?.response || data.result?.choices?.[0]?.message?.content;
-                        if (text && text.trim()) return text.trim();
-                    } catch (e) {
-                        lastErr = e;
-                    }
-                }
-                throw lastErr || new Error('Cloudflare Workers AI call failed');
+                return fetchCloudflareWithRetry({ key, accountId, model, systemPrompt, userPrompt, maxTokens, temperature });
             }
+        },
+        {
+            name: 'Chutes AI',
+            key: process.env.CHUTES_API_KEY,
+            models: ['qwen/qwen3-32b', 'deepseek-ai/deepseek-r1', 'meta-llama/llama4-scout'],
+            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
+                url: 'https://chutes-api.chutes.ai/v1/chat/completions',
+                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
+            })
         },
         {
             name: 'DeepSeek V3',
             key: process.env.DEEPSEEK_API_KEY,
-            call: async (key) => {
-                const url = 'https://api.deepseek.com/chat/completions';
-                const body = {
-                    model: 'deepseek-chat',
-                    messages: [
-                        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                        { role: 'user', content: userPrompt }
-                    ],
-                    temperature,
-                    max_tokens: maxTokens,
-                    ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
-                };
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${key}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(body)
-                });
-                if (!res.ok) {
-                    const textErr = await res.text();
-                    throw new Error(`DeepSeek Error (${res.status}): ${textErr}`);
-                }
-                const data = await res.json();
-                const text = data.choices?.[0]?.message?.content;
-                if (!text) throw new Error('DeepSeek returned empty response');
-                return text.trim();
-            }
+            models: ['deepseek-v3', 'deepseek-chat'],
+            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
+                url: 'https://api.deepseek.com/chat/completions',
+                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
+            })
         },
         {
             name: 'OpenRouter',
             key: process.env.OPENROUTER_API_KEY,
-            call: async (key) => {
-                const models = ['deepseek/deepseek-chat', 'meta-llama/llama-3.3-70b-instruct:free', 'google/gemini-2.0-flash-exp:free'];
-                let lastErr = null;
-
-                for (const modelName of models) {
-                    try {
-                        const url = 'https://openrouter.ai/api/v1/chat/completions';
-                        const body = {
-                            model: modelName,
-                            messages: [
-                                ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                                { role: 'user', content: userPrompt }
-                            ],
-                            temperature,
-                            max_tokens: maxTokens,
-                            ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
-                        };
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${key}`,
-                                'Content-Type': 'application/json',
-                                'HTTP-Referer': 'https://discordbot.org',
-                                'X-Title': 'ThienThuHienGia_DiscordBot'
-                            },
-                            body: JSON.stringify(body)
-                        });
-
-                        if (!res.ok) {
-                            const textErr = await res.text();
-                            throw new Error(`Status ${res.status}: ${textErr}`);
-                        }
-
-                        const data = await res.json();
-                        const text = data.choices?.[0]?.message?.content;
-                        if (text && text.trim()) return text.trim();
-                    } catch (e) {
-                        lastErr = e;
-                    }
+            models: [
+                'openrouter/auto',
+                'deepseek/deepseek-v3:free',
+                'google/gemini-2.5-flash:free',
+                'meta-llama/llama-4-scout:free',
+                'qwen/qwen3-32b:free',
+                'mistralai/mistral-small-3.1:free',
+                'gpt-oss-120b:free'
+            ],
+            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
+                url: 'https://openrouter.ai/api/v1/chat/completions',
+                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature,
+                extraHeaders: {
+                    'HTTP-Referer': 'https://discordbot.org',
+                    'X-Title': 'ThienThuHienGia_DiscordBot'
                 }
-                throw lastErr || new Error('OpenRouter API call failed');
-            }
+            })
         }
     ];
 
     for (const provider of providers) {
         if (!provider.key) continue;
 
-        try {
-            const result = await provider.call(provider.key);
-            return result;
-        } catch (err) {
-            console.warn(`⚠️ [${provider.name}] gặp lỗi/hết token: ${err.message}. Đang chuyển AI tiếp theo...`);
+        for (const modelName of provider.models) {
+            try {
+                const result = await provider.callModel(modelName, provider.key);
+                if (result && result.trim()) return result.trim();
+            } catch (err) {
+                console.warn(`⚠️ [${provider.name} -> ${modelName}] gặp lỗi: ${err.message}. Đang chuyển tiếp...`);
+            }
         }
     }
 
