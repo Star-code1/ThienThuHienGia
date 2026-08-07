@@ -31,20 +31,25 @@ BỐI CẢNH & PHONG CÁCH DIỄN ĐẠT:
 async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false, maxTokens = 250, temperature = 0.3 }) {
     const providers = [
         {
-            name: 'Gemini 2.5 Flash',
+            name: 'Gemini',
             key: process.env.GEMINI_API_KEY,
             call: async (key) => {
-                const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+                const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
                 let lastErr = null;
 
                 for (const modelName of models) {
                     try {
                         const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
                         const body = {
+                            ...(systemPrompt ? {
+                                systemInstruction: {
+                                    parts: [{ text: systemPrompt }]
+                                }
+                            } : {}),
                             contents: [
                                 {
                                     role: 'user',
-                                    parts: [{ text: (systemPrompt ? systemPrompt + '\n\n' : '') + userPrompt }]
+                                    parts: [{ text: userPrompt }]
                                 }
                             ],
                             generationConfig: {
@@ -122,33 +127,94 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
             name: 'Groq',
             key: process.env.GROQ_API_KEY,
             call: async (key) => {
-                const url = 'https://api.groq.com/openai/v1/chat/completions';
-                const body = {
-                    model: 'llama-3.3-70b-versatile',
-                    messages: [
-                        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                        { role: 'user', content: userPrompt }
-                    ],
-                    temperature,
-                    max_tokens: maxTokens,
-                    ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
-                };
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${key}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(body)
-                });
-                if (!res.ok) {
-                    const textErr = await res.text();
-                    throw new Error(`Groq Error (${res.status}): ${textErr}`);
+                const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'];
+                let lastErr = null;
+
+                for (const modelName of models) {
+                    try {
+                        const url = 'https://api.groq.com/openai/v1/chat/completions';
+                        const body = {
+                            model: modelName,
+                            messages: [
+                                ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                                { role: 'user', content: userPrompt }
+                            ],
+                            temperature,
+                            max_tokens: maxTokens,
+                            ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
+                        };
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${key}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(body)
+                        });
+
+                        if (!res.ok) {
+                            const textErr = await res.text();
+                            throw new Error(`Status ${res.status}: ${textErr}`);
+                        }
+
+                        const data = await res.json();
+                        const text = data.choices?.[0]?.message?.content;
+                        if (text && text.trim()) return text.trim();
+                    } catch (e) {
+                        lastErr = e;
+                    }
                 }
-                const data = await res.json();
-                const text = data.choices?.[0]?.message?.content;
-                if (!text) throw new Error('Groq returned empty response');
-                return text.trim();
+                throw lastErr || new Error('Groq API call failed');
+            }
+        },
+        {
+            name: 'Cloudflare Workers AI',
+            key: process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN,
+            call: async (key) => {
+                const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
+                if (!accountId) throw new Error('Chưa cấu hình CLOUDFLARE_ACCOUNT_ID trong .env');
+
+                const models = [
+                    '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+                    '@cf/meta/llama-3.1-8b-instruct',
+                    '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
+                    '@cf/mistral/mistral-7b-instruct-v0.2'
+                ];
+                let lastErr = null;
+
+                for (const modelName of models) {
+                    try {
+                        const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${modelName}`;
+                        const body = {
+                            messages: [
+                                ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                                { role: 'user', content: userPrompt }
+                            ],
+                            max_tokens: maxTokens,
+                            temperature
+                        };
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${key}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(body)
+                        });
+
+                        if (!res.ok) {
+                            const textErr = await res.text();
+                            throw new Error(`Status ${res.status}: ${textErr}`);
+                        }
+
+                        const data = await res.json();
+                        const text = data.result?.response || data.result?.choices?.[0]?.message?.content;
+                        if (text && text.trim()) return text.trim();
+                    } catch (e) {
+                        lastErr = e;
+                    }
+                }
+                throw lastErr || new Error('Cloudflare Workers AI call failed');
             }
         },
         {
@@ -188,35 +254,46 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
             name: 'OpenRouter',
             key: process.env.OPENROUTER_API_KEY,
             call: async (key) => {
-                const url = 'https://openrouter.ai/api/v1/chat/completions';
-                const body = {
-                    model: 'deepseek/deepseek-chat',
-                    messages: [
-                        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                        { role: 'user', content: userPrompt }
-                    ],
-                    temperature,
-                    max_tokens: maxTokens,
-                    ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
-                };
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${key}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': 'https://discordbot.org',
-                        'X-Title': 'ThienThuHienGia_DiscordBot'
-                    },
-                    body: JSON.stringify(body)
-                });
-                if (!res.ok) {
-                    const textErr = await res.text();
-                    throw new Error(`OpenRouter Error (${res.status}): ${textErr}`);
+                const models = ['deepseek/deepseek-chat', 'meta-llama/llama-3.3-70b-instruct:free', 'google/gemini-2.0-flash-exp:free'];
+                let lastErr = null;
+
+                for (const modelName of models) {
+                    try {
+                        const url = 'https://openrouter.ai/api/v1/chat/completions';
+                        const body = {
+                            model: modelName,
+                            messages: [
+                                ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                                { role: 'user', content: userPrompt }
+                            ],
+                            temperature,
+                            max_tokens: maxTokens,
+                            ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
+                        };
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${key}`,
+                                'Content-Type': 'application/json',
+                                'HTTP-Referer': 'https://discordbot.org',
+                                'X-Title': 'ThienThuHienGia_DiscordBot'
+                            },
+                            body: JSON.stringify(body)
+                        });
+
+                        if (!res.ok) {
+                            const textErr = await res.text();
+                            throw new Error(`Status ${res.status}: ${textErr}`);
+                        }
+
+                        const data = await res.json();
+                        const text = data.choices?.[0]?.message?.content;
+                        if (text && text.trim()) return text.trim();
+                    } catch (e) {
+                        lastErr = e;
+                    }
                 }
-                const data = await res.json();
-                const text = data.choices?.[0]?.message?.content;
-                if (!text) throw new Error('OpenRouter returned empty response');
-                return text.trim();
+                throw lastErr || new Error('OpenRouter API call failed');
             }
         }
     ];
