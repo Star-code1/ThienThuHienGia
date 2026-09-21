@@ -1,5 +1,5 @@
 const { EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { CLASSES, ROLES, DIVIDER } = require('../constants');
+const { CLASSES, DIVIDER } = require('../constants');
 
 function progressBar(current, max = 60) {
   const filled = Math.min(current, max);
@@ -45,31 +45,14 @@ function buildEventMessage(opts) {
 
     present.forEach(member => {
       if (!grouped[member.className]) grouped[member.className] = [];
-      grouped[member.className].push({ name: member.displayName, role: member.role });
-    });
-
-    const roleCounts = {};
-    ROLES.forEach(r => { roleCounts[r.label] = 0; });
-    present.forEach(m => { if (m.role && roleCounts[m.role] !== undefined) roleCounts[m.role]++; });
-
-    const roleStats = ROLES
-      .map(r => `${r.emoji} ${r.label}: **${roleCounts[r.label]}**`)
-      .join('  │  ');
-
-    embed.addFields({
-      name: `✅ CÓ MẶT ── ${present.length}/${totalSlots}`,
-      value: `📋 **Phân công:** ${roleStats}`,
-      inline: false,
+      grouped[member.className].push({ name: member.displayName });
     });
 
     CLASSES.forEach(c => {
       if (grouped[c.label].length === 0) return;
 
       const members = grouped[c.label]
-        .map(m => {
-          const role = ROLES.find(r => r.label === m.role);
-          return `• ${m.name}${role ? ` ${role.emoji} \`${role.label}\`` : ''}`;
-        })
+        .map(m => `• ${m.name}`)
         .join('\n');
 
       embed.addFields({
@@ -123,9 +106,8 @@ function buildEventMessage(opts) {
       `${DIVIDER}\n` +
       '📌 **Hướng dẫn báo danh**\n' +
       '> `1.` Chọn **class** ở menu bên dưới\n' +
-      '> `2.` Chọn **nhiệm vụ** (Đánh trụ / Đánh người / Vật tư)\n' +
-      '> `3.` Bấm 📝 **Ghi chú** nếu cần nhắn gì cho bang\n' +
-      '> `4.` Nếu bận → bấm ❌ **Vắng**',
+      '> `2.` Bấm 📝 **Ghi chú** nếu cần nhắn gì cho bang\n' +
+      '> `3.` Nếu bận → bấm ❌ **Vắng**',
   });
 
   embed.setFooter({
@@ -147,25 +129,6 @@ function buildEventMessage(opts) {
 
   const row1 = new ActionRowBuilder().addComponents(selectMenu);
 
-  const roleMenu = new StringSelectMenuBuilder()
-    .setCustomId(`select_role:${eventId}`)
-    .setPlaceholder('🎯 Chọn nhiệm vụ')
-    .addOptions(
-      ROLES.map(r =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(r.label)
-          .setValue(r.value)
-          .setEmoji(r.emoji)
-          .setDescription(
-            r.value === 'danhTru'   ? 'Tập trung phá trụ đối thủ' :
-            r.value === 'danhNguoi' ? 'PVP tiêu diệt địch' :
-            'Thu thập & vận chuyển vật tư'
-          )
-      )
-    );
-
-  const rowRole = new ActionRowBuilder().addComponents(roleMenu);
-
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`btn_bench:${eventId}`).setLabel('Dự bị').setStyle(ButtonStyle.Secondary).setEmoji('🪑'),
     new ButtonBuilder().setCustomId(`btn_late:${eventId}`).setLabel('Muộn').setStyle(ButtonStyle.Secondary).setEmoji('⏰'),
@@ -178,7 +141,7 @@ function buildEventMessage(opts) {
     new ButtonBuilder().setCustomId(`btn_cancel:${eventId}`).setLabel('Huỷ điểm danh').setStyle(ButtonStyle.Primary).setEmoji('🔄'),
   );
 
-  return { embeds: [embed], components: [row1, rowRole, row2, row3] };
+  return { embeds: [embed], components: [row1, row2, row3] };
 }
 
 module.exports = { buildEventMessage, progressBar };
