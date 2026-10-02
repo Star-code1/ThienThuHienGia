@@ -1,6 +1,9 @@
 const { PermissionsBitField, EmbedBuilder, Events } = require('discord.js');
 const { TRAP_CHANNEL_ID, LOG_CHANNEL_ID } = require('../constants');
 
+// Xóa tin nhắn trong 7 ngày qua (giới hạn tối đa của Discord API)
+const DELETE_MESSAGE_SECONDS = 7 * 24 * 60 * 60; // 604800s = 7 ngày
+
 module.exports = {
   name: Events.MessageCreate,
   once: false,
@@ -9,9 +12,9 @@ module.exports = {
     if (!message.guild) return;
     if (message.author.bot) return;
 
-    // Bỏ qua Admin
+    // Bỏ qua Admin và bản thân bot
     if (
-      message.member.permissions.has(
+      message.member?.permissions.has(
         PermissionsBitField.Flags.Administrator
       )
     ) return;
@@ -19,77 +22,66 @@ module.exports = {
     // Không phải kênh bẫy
     if (message.channel.id !== TRAP_CHANNEL_ID) return;
 
-    console.log(`[TRAP] ${message.author.tag}`);
+    console.log(`[TRAP TRIGGERED] User ${message.author.tag} (${message.author.id}) entered trap channel.`);
 
-    const oneMinutesAgo = Date.now() - 1 * 60 * 1000;
-    let deleted = 0;
+    const userTag = message.author.tag;
+    const userId = message.author.id;
+    const userAvatar = message.author.displayAvatarURL({ dynamic: true });
 
-    // Quét tất cả kênh text
-    for (const [, channel] of message.guild.channels.cache) {
-      if (!channel.isTextBased()) continue;
+    let banSuccess = false;
+    let banError = null;
 
-      try {
-        const messages = await channel.messages.fetch({ limit: 100 });
-
-        const targets = messages.filter(msg =>
-          msg.author.id === message.author.id &&
-          msg.createdTimestamp >= oneMinutesAgo
-        );
-
-        for (const msg of targets.values()) {
-          try {
-            await msg.delete();
-            deleted++;
-          } catch {}
-        }
-      } catch {}
+    // 1. Thực hiện BAN NGAY LẬP TỨC kèm xóa toàn bộ tin nhắn 7 ngày qua trên toàn server
+    try {
+      await message.guild.members.ban(userId, {
+        reason: '🚨 Kích hoạt kênh bẫy (Anti-Trap Honeypot / Spam Bot)',
+        deleteMessageSeconds: DELETE_MESSAGE_SECONDS
+      });
+      banSuccess = true;
+      console.log(`[TRAP BAN] Successfully banned ${userTag} and purged messages for the past 7 days.`);
+    } catch (err) {
+      banError = err.message || 'Lỗi không xác định';
+      console.error(`[TRAP BAN ERROR] Failed to ban ${userTag}:`, err);
     }
 
-    // Gửi log
+    // 2. Gửi thông báo log về kênh LOG_CHANNEL_ID
     try {
-      const logChannel = await message.client.channels.fetch(LOG_CHANNEL_ID);
+      const logChannel = await message.client.channels.fetch(LOG_CHANNEL_ID).catch(() => null);
 
-      const embed = new EmbedBuilder()
-        .setColor('Red')
-        .setTitle('🚨 Kích hoạt kênh bẫy')
-        .addFields(
-          {
-            name: '👤 Người dùng',
-            value: `${message.author.tag}\n${message.author.id}`
-          },
-          {
-            name: '🗑 Đã xóa',
-            value: `${deleted} tin nhắn`,
-            inline: true
-          },
-          {
-            name: '🔨 Hành động',
-            value: 'Ban khỏi server',
-            inline: true
-          },
-          {
-            name: '📍 Kênh bẫy',
-            value: `<#${TRAP_CHANNEL_ID}>`
-          }
-        )
-        .setTimestamp();
+      if (logChannel && logChannel.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setColor(banSuccess ? 'Red' : 'Orange')
+          .setTitle(banSuccess ? '🚨 Kích Hoạt Kênh Bẫy — Đã Ban & Dọn Tin Nhắn' : '⚠️ Kích Hoạt Kênh Bẫy — Ban Thất Bại')
+          .setThumbnail(userAvatar)
+          .addFields(
+            {
+              name: '👤 Đối tượng',
+              value: `**Tag:** ${userTag}\n**ID:** \`${userId}\`\n**Mention:** <@${userId}>`,
+              inline: false
+            },
+            {
+              name: '🔨 Hành động',
+              value: banSuccess ? '✅ **Đã Ban vĩnh viễn**' : `❌ **Thất bại:** ${banError}`,
+              inline: true
+            },
+            {
+              name: '🗑 Dọn dẹp tin nhắn',
+              value: banSuccess ? 'Toàn bộ tin trong **7 ngày** qua' : 'Chưa xóa',
+              inline: true
+            },
+            {
+              name: '📍 Kênh bẫy kích hoạt',
+              value: `<#${TRAP_CHANNEL_ID}>`,
+              inline: false
+            }
+          )
+          .setFooter({ text: 'Hệ Thống Phòng Thủ Thiên Thư Môn' })
+          .setTimestamp();
 
-      await logChannel.send({ embeds: [embed] });
+        await logChannel.send({ embeds: [embed] });
+      }
     } catch (err) {
-      console.log(err);
-    }
-
-    // Ban
-    try {
-      await message.guild.members.ban(
-        message.author.id,
-        {
-          reason: 'Kích hoạt Anti Trap',
-          deleteMessageSeconds: 0
-        }
-      );
-    } catch (err) {
-      console.log(err);
+      console.error('[TRAP LOG ERROR]', err);
     }
   },
 };
