@@ -7,6 +7,7 @@ const { startServer } = require('./src/core/server');
 const { loadFeatures, registerCoreEvents } = require('./src/core/loader');
 const { startEventScheduler } = require('./src/services/eventScheduler');
 const { startLineupWatcher } = require('./src/services/lineupWatcher');
+const { startMemberSync } = require('./src/services/memberSyncService');
 
 // ── Global Error Handlers ─────────────────────────────────────────────────────
 process.on('unhandledRejection', (reason, promise) => {
@@ -37,6 +38,9 @@ process.on('uncaughtException', (err) => {
   console.log('\n🔐 Logging in...');
   await client.login(process.env.DISCORD_TOKEN);
   console.log('✅ Discord login thành công.');
+
+  // Khởi động bộ đồng bộ thành viên vào MongoDB Atlas (chống Cloudflare rate limit trên Render)
+  startMemberSync(client);
 
   // Khởi động bộ lập lịch gửi thông báo sự kiện (Scheduler)
   startEventScheduler(client);
