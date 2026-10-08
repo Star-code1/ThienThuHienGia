@@ -78,6 +78,7 @@ function formatMemberData(member) {
     roleName: roleNames.join(', ') || 'Bang Chúng',
     canEdit: canEdit,
     inGuild: true,
+    joinedAt: member.joinedAt || (member.joinedTimestamp ? new Date(member.joinedTimestamp) : null),
     lastSyncedAt: new Date()
   };
 }

@@ -62,6 +62,9 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now
     },
+    joinedAt: {
+      type: Date
+    },
     lastSyncedAt: {
       type: Date,
       default: Date.now
