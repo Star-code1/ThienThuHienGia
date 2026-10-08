@@ -22,7 +22,7 @@ const TEST_USER_ID = process.argv[2] || '1499809147577958483';
 
   if (!event) {
     event = {
-      title: 'BANG CHIẾN THIÊN THU MÔN',
+      title: 'BANG CHIẾN THIÊN THƯ MÔN',
       date: new Date(),
       time: '20:00',
     };

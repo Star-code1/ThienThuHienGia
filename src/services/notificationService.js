@@ -90,7 +90,7 @@ function buildUnvotedReminderEmbed({ event, milestoneHours }) {
       `${DIVIDER}\n\n` +
       `👉 **Vui lòng vào kênh** <#${NOTIFICATION_CONFIG.TARGET_CHANNEL_ID}> để vote **Tham gia** hoặc **Báo vắng** giúp Ban Quản Trị kịp thời sắp xếp đội hình!`
     )
-    .setFooter({ text: 'Thiên Thu Môn • Hệ thống thông báo tự động' })
+    .setFooter({ text: 'Thiên Thư Môn • Hệ thống thông báo tự động' })
     .setTimestamp();
 }
 
@@ -100,7 +100,7 @@ function buildUnvotedReminderEmbed({ event, milestoneHours }) {
 function buildLineupAssignmentEmbed({ event, divisionName, teamName, slotIndex, roleName, note, skills = [] }) {
   const dateStr = event ? new Date(event.date).toLocaleDateString('vi-VN') : 'Sắp diễn ra';
   const eventTime = event ? event.time : '20:00';
-  const eventTitle = event ? event.title : 'BANG CHIẾN THIÊN THU MÔN';
+  const eventTitle = event ? event.title : 'BANG CHIẾN THIÊN THƯ MÔN';
 
   const skillList = skills.length > 0
     ? skills.map((s) => `• **${s.name || s.id}**`).join('\n')
@@ -115,7 +115,6 @@ function buildLineupAssignmentEmbed({ event, divisionName, teamName, slotIndex, 
       `Sơ đồ đội hình Bang Chiến đã được cập nhật. Dưới đây là vị trí và nhiệm vụ của bạn:\n\n` +
       `> 🚩 **Đoàn:** \`${divisionName || 'Đoàn Chưa Đặt Tên'}\`\n` +
       `> ⚔️ **Đội:** \`${teamName || 'Team'}\` (Vị trí: **Số ${slotIndex + 1}**)\n` +
-      `> 🎯 **Vai trò:** \`${roleName || 'Tự do / Mặc định'}\`\n` +
       `> 🗓️ **Thời gian:** \`${eventTime} - ${dateStr}\`\n` +
       `${DIVIDER}`
     )
@@ -123,7 +122,7 @@ function buildLineupAssignmentEmbed({ event, divisionName, teamName, slotIndex, 
       { name: '🔮 Kỹ Năng / Tuyệt Kỹ Yêu Cầu', value: skillList, inline: false },
       { name: '📝 Ghi Chú Riêng', value: note ? `\`${note}\`` : '*Không có ghi chú*', inline: false }
     )
-    .setFooter({ text: 'Thiên Thu Môn • Chúc toàn thể anh em bang chiến thắng lợi!' })
+    .setFooter({ text: 'Thiên Thư Môn • Chúc toàn thể anh em bang chiến thắng lợi!' })
     .setTimestamp();
 
   return embed;
@@ -149,7 +148,7 @@ function buildGameStartingSoonEmbed({ event, minutesLeft = 30 }) {
       `2. Di chuyển vào đúng phòng Voice theo Đoàn đã phân công.\n` +
       `3. Sẵn sàng nghe hiệu lệnh của Chỉ Huy.`
     )
-    .setFooter({ text: 'Thiên Thu Môn • Tập trung đúng giờ vì danh dự bang phái!' })
+    .setFooter({ text: 'Thiên Thư Môn • Tập trung đúng giờ vì danh dự bang phái!' })
     .setTimestamp();
 }
 
@@ -170,7 +169,7 @@ function buildTentativeConfirmEmbed({ event, hoursLeft = 24 }) {
       `${DIVIDER}\n\n` +
       `👉 **Vui lòng vào lại kênh** <#${NOTIFICATION_CONFIG.TARGET_CHANNEL_ID}> để **chốt dứt khoát phiếu vote** (Có mặt hoặc Báo vắng) để Ban Quản Trị khóa sơ đồ và chốt danh sách đội hình chính thức!`
     )
-    .setFooter({ text: 'Thiên Thu Môn • Hệ thống hỗ trợ quản lý bang chiến' })
+    .setFooter({ text: 'Thiên Thư Môn • Hệ thống hỗ trợ quản lý bang chiến' })
     .setTimestamp();
 }
 

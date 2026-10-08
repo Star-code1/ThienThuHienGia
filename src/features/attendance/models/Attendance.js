@@ -7,11 +7,15 @@ const attendanceSchema = new mongoose.Schema({
   displayName: { type: String },
   className: { type: String },
   role: { type: String },
+  roleName: { type: String },
   status: {
     type: String,
     enum: ['present', 'bench', 'late', 'tentative', 'absent'],
     default: 'present',
   },
+  noShow: { type: Boolean, default: false },
+  noShowMarkedBy: { type: String },
+  noShowMarkedAt: { type: Date },
   timestamp: { type: Date, default: Date.now },
 });
 
