@@ -1,13 +1,17 @@
 {
   "name": "discord-bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "Thien Thu Hien Gia Discord Bot with Automated DM Notifications",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "deploy": "node deploy.js",
     "sync-history": "node scripts/syncHistory.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test:unvoted": "node scripts/test-dm-unvoted.js",
+    "test:lineup": "node scripts/test-dm-lineup.js",
+    "test:30m": "node scripts/test-dm-30m.js",
+    "test:tentative": "node scripts/test-dm-24h-tentative.js",
+    "test:all-dm": "node scripts/test-all-dm.js"
   },
   "keywords": [],
   "author": "",

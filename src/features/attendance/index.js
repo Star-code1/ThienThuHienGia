@@ -2,6 +2,7 @@ const diemdanh = require('./commands/diemdanh');
 const danhsach = require('./commands/danhsach');
 const xoa = require('./commands/xoa');
 const ghichu = require('./commands/ghichu');
+const nhacdiemdanh = require('./commands/nhacdiemdanh');
 
 const handleSelectClass = require('./interactions/selectClass');
 const handleSelectRole = require('./interactions/selectRole');
@@ -10,7 +11,7 @@ const handleNoteModal = require('./interactions/noteModal');
 
 module.exports = {
   // Slash commands
-  commands: [diemdanh, danhsach, xoa, ghichu],
+  commands: [diemdanh, danhsach, xoa, ghichu, nhacdiemdanh],
 
   // Interaction handlers keyed by customId prefix
   interactions: {

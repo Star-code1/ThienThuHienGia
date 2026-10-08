@@ -9,6 +9,11 @@ const eventSchema = new mongoose.Schema({
   createdBy: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   active: { type: Boolean, default: true },
+  
+  // Tracking các mốc thông báo đã gửi
+  remindedMilestones: { type: [Number], default: [] }, // e.g. [48, 36, 24, 12]
+  notified30m: { type: Boolean, default: false },
+  notified24hTentative: { type: Boolean, default: false },
 });
 
 module.exports = mongoose.model('Event', eventSchema);

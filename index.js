@@ -5,6 +5,7 @@ const client = require('./src/core/client');
 const { connectDB } = require('./src/core/database');
 const { startServer } = require('./src/core/server');
 const { loadFeatures, registerCoreEvents } = require('./src/core/loader');
+const { startEventScheduler } = require('./src/services/eventScheduler');
 
 // ── Global Error Handlers ─────────────────────────────────────────────────────
 process.on('unhandledRejection', (reason, promise) => {
@@ -20,8 +21,8 @@ process.on('uncaughtException', (err) => {
   // Kết nối MongoDB
   await connectDB();
 
-  // Khởi động web server (keep-alive)
-  startServer();
+  // Khởi động web server API nội bộ
+  startServer(client);
 
   // Load tất cả features (commands, interactions, events)
   console.log('\n📦 Loading features...');
@@ -35,4 +36,7 @@ process.on('uncaughtException', (err) => {
   console.log('\n🔐 Logging in...');
   await client.login(process.env.DISCORD_TOKEN);
   console.log('✅ Discord login thành công.');
+
+  // Khởi động bộ lập lịch gửi thông báo sự kiện (Scheduler)
+  startEventScheduler(client);
 })();
