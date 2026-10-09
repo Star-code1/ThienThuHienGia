@@ -321,7 +321,7 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
         {
             name: 'Cerebras',
             key: process.env.CEREBRAS_API_KEY,
-            models: ['llama-3.3-70b', 'llama3.1-8b', 'llama3.1-70b'],
+            models: ['llama-3.3-70b', 'llama3.1-8b'],
             callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
                 url: 'https://api.cerebras.ai/v1/chat/completions',
                 key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
@@ -332,9 +332,7 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
             key: process.env.GROQ_API_KEY,
             models: [
                 'llama-3.3-70b-versatile',
-                'llama-3.1-8b-instant',
-                'gemma2-9b-it',
-                'mixtral-8x7b-32768'
+                'llama-3.1-8b-instant'
             ],
             callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
                 url: 'https://api.groq.com/openai/v1/chat/completions',
