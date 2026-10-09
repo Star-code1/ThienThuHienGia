@@ -12,7 +12,7 @@ const ChatMessageSchema = new mongoose.Schema({
     attachments: { type: Array, default: [] },
     mentions: { type: Array, default: [] },
     embedding: { type: Boolean, default: false, index: true },
-    createdAt: { type: Date, default: Date.now, index: true }
+    createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
 // ⚡ TỰ ĐỘNG 100%: MongoDB tự dọn dẹp tin nhắn thô cũ quá 60 ngày (60 * 24 * 3600 giây)

@@ -309,13 +309,19 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
         {
             name: 'Gemini',
             key: process.env.GEMINI_API_KEY,
-            models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+            models: [
+                'gemini-2.0-flash',
+                'gemini-2.0-flash-lite',
+                'gemini-1.5-flash',
+                'gemini-1.5-flash-8b',
+                'gemini-1.5-pro'
+            ],
             callModel: async (model, key) => fetchGeminiWithRetry({ key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature })
         },
         {
             name: 'Cerebras',
             key: process.env.CEREBRAS_API_KEY,
-            models: ['gemma-4-31b', 'gpt-oss-120b', 'glm-4.7', 'llama-3.1-8b-instruct', 'qwen3-235b-instruct'],
+            models: ['llama-3.3-70b', 'llama3.1-8b', 'llama3.1-70b'],
             callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
                 url: 'https://api.cerebras.ai/v1/chat/completions',
                 key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
@@ -324,7 +330,12 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
         {
             name: 'Groq',
             key: process.env.GROQ_API_KEY,
-            models: ['llama-3.3-70b-versatile', 'deepseek-r1-distill-llama-70b', 'qwen3-32b', 'llama-3.1-8b-instant'],
+            models: [
+                'llama-3.3-70b-versatile',
+                'llama-3.1-8b-instant',
+                'gemma2-9b-it',
+                'mixtral-8x7b-32768'
+            ],
             callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
                 url: 'https://api.groq.com/openai/v1/chat/completions',
                 key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
@@ -348,7 +359,7 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
         {
             name: 'Chutes AI',
             key: process.env.CHUTES_API_KEY,
-            models: ['qwen/qwen-2.5-72b-instruct', 'deepseek-ai/deepseek-r1', 'meta-llama/llama-3.3-70b-instruct'],
+            models: ['deepseek-ai/DeepSeek-V3', 'deepseek-ai/DeepSeek-R1', 'meta-llama/Llama-3.3-70B-Instruct', 'Qwen/Qwen2.5-72B-Instruct'],
             callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
                 url: 'https://chutes-api.chutes.ai/v1/chat/completions',
                 key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
@@ -357,7 +368,7 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
         {
             name: 'DeepSeek V3',
             key: process.env.DEEPSEEK_API_KEY,
-            models: ['deepseek-chat'],
+            models: ['deepseek-chat', 'deepseek-reasoner'],
             callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
                 url: 'https://api.deepseek.com/chat/completions',
                 key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
@@ -367,11 +378,13 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
             name: 'OpenRouter',
             key: process.env.OPENROUTER_API_KEY,
             models: [
-                'openrouter/auto',
                 'google/gemini-2.0-flash-exp:free',
                 'meta-llama/llama-3.3-70b-instruct:free',
+                'meta-llama/llama-3.1-8b-instruct:free',
+                'deepseek/deepseek-r1:free',
                 'deepseek/deepseek-chat:free',
-                'qwen/qwen-2.5-72b-instruct:free'
+                'qwen/qwen-2.5-72b-instruct:free',
+                'mistralai/mistral-7b-instruct:free'
             ],
             callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
                 url: 'https://openrouter.ai/api/v1/chat/completions',
