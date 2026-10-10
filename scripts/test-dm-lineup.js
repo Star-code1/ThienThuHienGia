@@ -34,14 +34,27 @@ const TEST_USER_ID = process.argv[2] || '1499809147577958483';
     { id: 'skill_3', name: 'Cấm Trị Liệu AoE' },
   ];
 
+  const mockTeammates = [
+    { slotIndex: 0, userId: TEST_USER_ID, displayName: 'Chỉ Huy Trưởng', className: 'Thiết Y', roleName: 'Leader', note: 'Ưu tiên cắn buff thủ' },
+    { slotIndex: 1, userId: '1438967271149146302', displayName: 'Phó Tướng A', className: 'Long Ngâm', roleName: 'DPS', note: '' },
+    { slotIndex: 2, userId: null, displayName: 'Thần Y B', className: 'Tố Vấn', roleName: 'Heal', note: 'Theo sát tank' },
+    { slotIndex: 3, userId: null, displayName: '', className: '', roleName: '', note: '' },
+    { slotIndex: 4, userId: null, displayName: '', className: '', roleName: '', note: '' },
+    { slotIndex: 5, userId: null, displayName: '', className: '', roleName: '', note: '' },
+  ];
+
   const embed = buildLineupAssignmentEmbed({
     event,
     divisionName: 'Đoàn 1 - Tiên Phong Phá Trụ',
+    divisionNote: 'Tập trung phá trụ cánh trái trước 20h15',
     teamName: 'Team 1 - Đánh Trụ Cánh Trái',
+    teamNote: 'Bọc lót cho Healer, cấm giao tranh lẻ',
     slotIndex: 0,
     roleName: 'Đánh trụ ở Cánh 🏰',
     note: 'Ưu tiên cắn buff thủ và gom địch cho DPS xả skill',
     skills: mockSkills,
+    teammates: mockTeammates,
+    currentUserId: TEST_USER_ID,
   });
 
   console.log('📤 Đang gửi DM...');

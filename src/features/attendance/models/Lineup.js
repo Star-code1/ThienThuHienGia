@@ -18,12 +18,14 @@ const slotSchema = new mongoose.Schema({
 const teamSchema = new mongoose.Schema({
   teamName: { type: String, required: true },
   teamTag: { type: String, default: '' },
+  note: { type: String, default: '' },
   slots: [slotSchema],
 }, { _id: false, strict: false });
 
 const divisionSchema = new mongoose.Schema({
   divisionName: { type: String, required: true },
   isCollapsed: { type: Boolean, default: false },
+  note: { type: String, default: '' },
   teams: [teamSchema],
 }, { _id: false, strict: false });
 

@@ -1,15 +1,25 @@
 const { Events } = require('discord.js');
+const { logCommandUsage } = require('../services/notificationService');
 
 module.exports = {
     name: Events.InteractionCreate,
     once: false,
     async execute(interaction, client) {
         try {
-            // 1. Slash Commands
-            if (interaction.isChatInputCommand()) {
+            // 1. Slash Commands & Context Menu Commands
+            if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {
                 const command = client.commands.get(interaction.commandName);
                 if (!command) return;
-                await command.execute(interaction, client);
+
+                try {
+                    await command.execute(interaction, client);
+                    // Ghi nhận log sử dụng lệnh thành công về NOTIFICATION_REPORT_CHANNEL_ID
+                    await logCommandUsage(client, interaction);
+                } catch (cmdErr) {
+                    // Ghi nhận log sử dụng lệnh gặp lỗi
+                    await logCommandUsage(client, interaction, cmdErr);
+                    throw cmdErr;
+                }
                 return;
             }
 

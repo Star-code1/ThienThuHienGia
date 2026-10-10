@@ -3,8 +3,9 @@ const Attendance = require('../features/attendance/models/Attendance');
 const Event = require('../features/attendance/models/Event');
 
 const NOTIFICATION_CONFIG = {
-  TARGET_ROLE_ID: '1438967271149146302',
-  TARGET_CHANNEL_ID: '1515709357856264212',
+  TARGET_ROLE_ID: process.env.TARGET_ROLE_ID || '1438967271149146302',
+  TARGET_CHANNEL_ID: process.env.TARGET_CHANNEL_ID || '1515709357856264212',
+  REPORT_CHANNEL_ID: process.env.NOTIFICATION_REPORT_CHANNEL_ID || '1438974225154183219',
   DELAY_BETWEEN_DMS_MS: 150, // Delay tránh chạm rate-limit của Discord
 };
 
@@ -97,7 +98,19 @@ function buildUnvotedReminderEmbed({ event, milestoneHours }) {
 /**
  * 2. Embed thông báo xếp đội hình & kỹ năng
  */
-function buildLineupAssignmentEmbed({ event, divisionName, teamName, slotIndex, roleName, note, skills = [] }) {
+function buildLineupAssignmentEmbed({
+  event,
+  divisionName,
+  divisionNote,
+  teamName,
+  teamNote,
+  slotIndex,
+  roleName,
+  note,
+  skills = [],
+  teammates = [],
+  currentUserId,
+}) {
   const dateStr = event ? new Date(event.date).toLocaleDateString('vi-VN') : 'Sắp diễn ra';
   const eventTime = event ? event.time : '20:00';
   const eventTitle = event ? event.title : 'BANG CHIẾN THIÊN THƯ MÔN';
@@ -106,23 +119,76 @@ function buildLineupAssignmentEmbed({ event, divisionName, teamName, slotIndex, 
     ? skills.map((s) => `• **${s.name || s.id}**`).join('\n')
     : '• *Chưa có kỹ năng chỉ định riêng (sử dụng theo vai trò)*';
 
+  // Định dạng danh sách đồng đội cùng đội (Requirement 3)
+  let teammatesText = '*Chưa có thông tin đồng đội*';
+  if (teammates && teammates.length > 0) {
+    teammatesText = teammates.map((m) => {
+      const isMe = m.userId && m.userId === currentUserId;
+      const slotNum = `Vị trí ${m.slotIndex + 1}:`;
+
+      if (!m.userId && !m.displayName) {
+        return `• ${slotNum} *(Trống)*`;
+      }
+
+      const userTag = m.userId ? `<@${m.userId}>` : `**${m.displayName}**`;
+      const classTag = m.className ? `[${m.className}]` : '';
+      const roleTag = m.roleName ? `(${m.roleName})` : '';
+      const noteTag = m.note ? `— 💬 *"${m.note}"*` : '';
+
+      if (isMe) {
+        return `👉 **${slotNum}** ${userTag} ${classTag} ${roleTag} 🌟 **[BẠN]** ${noteTag}`;
+      }
+      return `• **${slotNum}** ${userTag} ${classTag} ${roleTag} ${noteTag}`;
+    }).join('\n');
+  }
+
   const embed = new EmbedBuilder()
     .setColor(0x3498DB)
     .setAuthor({ name: '🛡️ THIÊN THƯ HIỀN GIẢ - PHÂN CÔNG ĐỘI HÌNH 🛡️' })
     .setTitle(`📋 ${eventTitle}`)
     .setDescription(
       `${DIVIDER}\n` +
-      `Sơ đồ đội hình Bang Chiến đã được cập nhật. Dưới đây là vị trí và nhiệm vụ của bạn:\n\n` +
+      `Sơ đồ đội hình Bang Chiến đã được cập nhật. Dưới đây là vị trí và đồng đội của bạn:\n\n` +
       `> 🚩 **Đoàn:** \`${divisionName || 'Đoàn Chưa Đặt Tên'}\`\n` +
       `> ⚔️ **Đội:** \`${teamName || 'Team'}\` (Vị trí: **Số ${slotIndex + 1}**)\n` +
       `> 🗓️ **Thời gian:** \`${eventTime} - ${dateStr}\`\n` +
       `${DIVIDER}`
     )
     .addFields(
-      { name: '🔮 Kỹ Năng / Tuyệt Kỹ Yêu Cầu', value: skillList, inline: false },
-      { name: '📝 Ghi Chú Riêng', value: note ? `\`${note}\`` : '*Không có ghi chú*', inline: false }
-    )
-    .setFooter({ text: 'Thiên Thư Môn • Chúc toàn thể anh em bang chiến thắng lợi!' })
+      {
+        name: `👥 Danh Sách Đồng Đội Cùng Team (${teamName})`,
+        value: teammatesText.slice(0, 1024),
+        inline: false,
+      },
+      {
+        name: '🔮 Kỹ Năng / Tuyệt Kỹ Yêu Cầu',
+        value: skillList.slice(0, 1024),
+        inline: false,
+      },
+      {
+        name: '📝 Ghi Chú Cá Nhân',
+        value: note ? `\`${note}\`` : '*Không có ghi chú*',
+        inline: false,
+      }
+    );
+
+  if (teamNote) {
+    embed.addFields({
+      name: `🚩 Ghi Chú Toàn Đội (${teamName})`,
+      value: `\`${teamNote}\``.slice(0, 1024),
+      inline: false,
+    });
+  }
+
+  if (divisionNote) {
+    embed.addFields({
+      name: `📢 Ghi Chú Toàn Đoàn (${divisionName})`,
+      value: `\`${divisionNote}\``.slice(0, 1024),
+      inline: false,
+    });
+  }
+
+  embed.setFooter({ text: 'Thiên Thư Môn • Chúc toàn thể anh em bang chiến thắng lợi!' })
     .setTimestamp();
 
   return embed;
@@ -176,6 +242,61 @@ function buildTentativeConfirmEmbed({ event, hoursLeft = 24 }) {
 // ── Service Execution Handlers ──────────────────────────────────────────────────
 
 /**
+ * Gửi phản hồi báo cáo kết quả gửi thông báo tới kênh chỉ định (Kênh ID: 1438974225154183219)
+ */
+async function sendNotificationReport(client, { typeTitle, eventTitle, total, sent, failed, failedList = [] }) {
+  try {
+    const reportChannelId = NOTIFICATION_CONFIG.REPORT_CHANNEL_ID;
+    let channel = client.channels.cache.get(reportChannelId);
+    if (!channel) {
+      channel = await client.channels.fetch(reportChannelId).catch(() => null);
+    }
+
+    if (!channel) {
+      console.warn(`[Notification Report] Không thể tìm thấy kênh phản hồi có ID: ${reportChannelId}`);
+      return;
+    }
+
+    const isAllSuccess = failed === 0;
+    const embed = new EmbedBuilder()
+      .setColor(isAllSuccess ? 0x2ECC71 : (sent > 0 ? 0xF39C12 : 0xE74C3C))
+      .setAuthor({ name: '📊 BÁO CÁO TIẾN ĐỘ THÔNG BÁO (NOTIFICATION FEEDBACK)' })
+      .setTitle(`🔔 ${typeTitle}`)
+      .setDescription(
+        `${DIVIDER}\n` +
+        `> ⚔️ **Sự kiện:** \`${eventTitle || 'Bang Chiến Thiên Thư Môn'}\`\n` +
+        `> 🎯 **Tổng số thành viên:** **${total}**\n` +
+        `> ✅ **Đã gửi thành công:** **${sent}**\n` +
+        `> ❌ **Gửi thất bại (Lỗi):** **${failed}**\n` +
+        `${DIVIDER}`
+      )
+      .setFooter({ text: 'Thiên Thư Môn • Hệ thống phản hồi thông báo' })
+      .setTimestamp();
+
+    if (failedList.length > 0) {
+      const maxShow = 12;
+      const displayFailures = failedList.slice(0, maxShow).map((f) => {
+        const uMention = f.userId ? `<@${f.userId}>` : f.name || 'Thành viên';
+        return `• ${uMention} (${f.name || f.userId}): \`${f.reason || 'DM bị khóa / lỗi'}\``;
+      }).join('\n');
+
+      const extra = failedList.length > maxShow ? `\n*...và ${failedList.length - maxShow} thành viên khác*` : '';
+
+      embed.addFields({
+        name: `⚠️ Chi Tiết Gửi Thất Bại (${failedList.length})`,
+        value: `${displayFailures}${extra}`.slice(0, 1024),
+        inline: false,
+      });
+    }
+
+    await channel.send({ embeds: [embed] });
+    console.log(`[Notification Report] 📨 Đã gửi phản hồi báo cáo tới kênh ${reportChannelId} (Sent: ${sent}, Failed: ${failed})`);
+  } catch (err) {
+    console.error(`[Notification Report] ❌ Lỗi khi gửi phản hồi tới kênh:`, err.message);
+  }
+}
+
+/**
  * Yêu cầu 1: Gửi thông báo đến những người CHƯA điểm danh
  */
 async function notifyUnvotedMembers(client, event, milestoneHours) {
@@ -186,6 +307,13 @@ async function notifyUnvotedMembers(client, event, milestoneHours) {
   const targetMembers = await getTargetGuildMembers(client);
   if (targetMembers.size === 0) {
     console.log(`[Notification Service] Không tìm thấy member nào có Role ${NOTIFICATION_CONFIG.TARGET_ROLE_ID}`);
+    await sendNotificationReport(client, {
+      typeTitle: `Nhắc Nhở Chưa Điểm Danh (Mốc ${milestoneHours}h)`,
+      eventTitle: event.title,
+      total: 0,
+      sent: 0,
+      failed: 0,
+    });
     return { total: 0, sent: 0, failed: 0 };
   }
 
@@ -200,16 +328,36 @@ async function notifyUnvotedMembers(client, event, milestoneHours) {
 
   let sent = 0;
   let failed = 0;
+  const failedList = [];
   const embed = buildUnvotedReminderEmbed({ event, milestoneHours });
 
   for (const member of unvotedMembers) {
     const result = await sendDirectMessage(client, member.id, { embeds: [embed] });
-    if (result.success) sent++;
-    else failed++;
+    if (result.success) {
+      sent++;
+    } else {
+      failed++;
+      failedList.push({
+        userId: member.id,
+        name: member.displayName || member.user?.username || member.id,
+        reason: result.reason,
+      });
+    }
     await sleep(NOTIFICATION_CONFIG.DELAY_BETWEEN_DMS_MS);
   }
 
   console.log(`[Notification Service] ✅ Hoàn thành nhắc chưa điểm danh: Đã gửi ${sent}/${unvotedMembers.length} (Lỗi: ${failed})`);
+
+  // Gửi phản hồi báo cáo tới kênh chỉ định
+  await sendNotificationReport(client, {
+    typeTitle: `Nhắc Nhở Chưa Điểm Danh (Mốc ${milestoneHours}h)`,
+    eventTitle: event.title,
+    total: unvotedMembers.length,
+    sent,
+    failed,
+    failedList,
+  });
+
   return { total: unvotedMembers.length, sent, failed };
 }
 
@@ -223,24 +371,42 @@ async function notifyLineupAssignment(client, eventId, lineupData) {
   const divisions = lineupData?.divisions || [];
   const targetMembers = await getTargetGuildMembers(client);
 
-  const assignments = []; // { userId, divisionName, teamName, slotIndex, roleName, note, skills }
+  const assignments = [];
 
   divisions.forEach((div) => {
     const divName = div.divisionName || 'Đoàn';
+    const divNote = div.note || '';
+
     (div.teams || []).forEach((team) => {
       const teamName = team.teamName || 'Team';
+      const teamNote = team.note || '';
+
+      // Thu thập thông tin toàn bộ slot trong team để làm danh sách đồng đội
+      const teammates = (team.slots || []).map((slot, sIdx) => ({
+        slotIndex: sIdx,
+        userId: slot.userId || null,
+        displayName: slot.displayName || '',
+        className: slot.className || slot.class || '',
+        roleName: slot.roleName || slot.role || '',
+        note: slot.note || '',
+      }));
+
       (team.slots || []).forEach((slot, sIdx) => {
         if (slot.userId) {
           // Kiểm tra xem user có thuộc role mục tiêu không
           if (targetMembers.has(slot.userId)) {
             assignments.push({
               userId: slot.userId,
+              displayName: slot.displayName || targetMembers.get(slot.userId)?.displayName || '',
               divisionName: divName,
+              divisionNote: divNote,
               teamName: teamName,
+              teamNote: teamNote,
               slotIndex: sIdx,
               roleName: slot.roleName || slot.role || '',
               note: slot.note || '',
               skills: slot.skills || [],
+              teammates,
             });
           }
         }
@@ -252,25 +418,49 @@ async function notifyLineupAssignment(client, eventId, lineupData) {
 
   let sent = 0;
   let failed = 0;
+  const failedList = [];
 
   for (const item of assignments) {
     const embed = buildLineupAssignmentEmbed({
       event,
       divisionName: item.divisionName,
+      divisionNote: item.divisionNote,
       teamName: item.teamName,
+      teamNote: item.teamNote,
       slotIndex: item.slotIndex,
       roleName: item.roleName,
       note: item.note,
       skills: item.skills,
+      teammates: item.teammates,
+      currentUserId: item.userId,
     });
 
     const result = await sendDirectMessage(client, item.userId, { embeds: [embed] });
-    if (result.success) sent++;
-    else failed++;
+    if (result.success) {
+      sent++;
+    } else {
+      failed++;
+      failedList.push({
+        userId: item.userId,
+        name: item.displayName || item.userId,
+        reason: result.reason,
+      });
+    }
     await sleep(NOTIFICATION_CONFIG.DELAY_BETWEEN_DMS_MS);
   }
 
   console.log(`[Notification Service] ✅ Hoàn thành gửi thông báo đội hình: ${sent}/${assignments.length} (Lỗi: ${failed})`);
+
+  // Gửi phản hồi báo cáo tới kênh chỉ định
+  await sendNotificationReport(client, {
+    typeTitle: 'Thông Báo Phân Công Đội Hình Bang Chiến',
+    eventTitle: event?.title || 'Sơ Đồ Trận Phái',
+    total: assignments.length,
+    sent,
+    failed,
+    failedList,
+  });
+
   return { total: assignments.length, sent, failed };
 }
 
@@ -297,16 +487,37 @@ async function notifyGameStartingSoon(client, event, minutesLeft = 30) {
 
   let sent = 0;
   let failed = 0;
+  const failedList = [];
   const embed = buildGameStartingSoonEmbed({ event, minutesLeft });
 
   for (const userId of activeVotedMembers) {
+    const memberObj = targetMembers.get(userId);
     const result = await sendDirectMessage(client, userId, { embeds: [embed] });
-    if (result.success) sent++;
-    else failed++;
+    if (result.success) {
+      sent++;
+    } else {
+      failed++;
+      failedList.push({
+        userId: userId,
+        name: memberObj?.displayName || memberObj?.user?.username || userId,
+        reason: result.reason,
+      });
+    }
     await sleep(NOTIFICATION_CONFIG.DELAY_BETWEEN_DMS_MS);
   }
 
   console.log(`[Notification Service] ✅ Hoàn thành nhắc vào game 30p: ${sent}/${activeVotedMembers.length} (Lỗi: ${failed})`);
+
+  // Gửi phản hồi báo cáo tới kênh chỉ định
+  await sendNotificationReport(client, {
+    typeTitle: `Nhắc Chuẩn Bị Vào Trận (Trước ${minutesLeft} phút)`,
+    eventTitle: event.title,
+    total: activeVotedMembers.length,
+    sent,
+    failed,
+    failedList,
+  });
+
   return { total: activeVotedMembers.length, sent, failed };
 }
 
@@ -332,17 +543,114 @@ async function notifyTentativeMembers(client, event, hoursLeft = 24) {
 
   let sent = 0;
   let failed = 0;
+  const failedList = [];
   const embed = buildTentativeConfirmEmbed({ event, hoursLeft });
 
   for (const userId of targetTentativeUserIds) {
+    const memberObj = targetMembers.get(userId);
     const result = await sendDirectMessage(client, userId, { embeds: [embed] });
-    if (result.success) sent++;
-    else failed++;
+    if (result.success) {
+      sent++;
+    } else {
+      failed++;
+      failedList.push({
+        userId: userId,
+        name: memberObj?.displayName || memberObj?.user?.username || userId,
+        reason: result.reason,
+      });
+    }
     await sleep(NOTIFICATION_CONFIG.DELAY_BETWEEN_DMS_MS);
   }
 
   console.log(`[Notification Service] ✅ Hoàn thành nhắc chốt vote: ${sent}/${targetTentativeUserIds.length} (Lỗi: ${failed})`);
+
+  // Gửi phản hồi báo cáo tới kênh chỉ định
+  await sendNotificationReport(client, {
+    typeTitle: `Nhắc Xác Nhận Phiếu Vote "Chưa Chắc Chắn" (Mốc ${hoursLeft}h)`,
+    eventTitle: event.title,
+    total: targetTentativeUserIds.length,
+    sent,
+    failed,
+    failedList,
+  });
+
   return { total: targetTentativeUserIds.length, sent, failed };
+}
+
+/**
+ * Gửi noti ghi nhận việc ai đã sử dụng command gì về NOTIFICATION_REPORT_CHANNEL_ID
+ */
+async function logCommandUsage(client, interaction, error = null) {
+  try {
+    const reportChannelId = NOTIFICATION_CONFIG.REPORT_CHANNEL_ID;
+    let channel = client.channels.cache.get(reportChannelId);
+    if (!channel) {
+      channel = await client.channels.fetch(reportChannelId).catch(() => null);
+    }
+
+    if (!channel) {
+      console.warn(`[Command Logger] Không tìm thấy kênh report: ${reportChannelId}`);
+      return;
+    }
+
+    // Format options nếu có
+    const formatOptions = (optionsData) => {
+      if (!optionsData || optionsData.length === 0) return '*(Không có)*';
+      const lines = [];
+      for (const opt of optionsData) {
+        if (opt.value !== undefined) {
+          lines.push(`• **${opt.name}**: \`${opt.value}\``);
+        } else if (opt.options && opt.options.length > 0) {
+          const sub = opt.options
+            .map((s) => (s.value !== undefined ? `**${s.name}**: \`${s.value}\`` : s.name))
+            .join(', ');
+          lines.push(`• **${opt.name}** [${sub}]`);
+        } else {
+          lines.push(`• **${opt.name}**`);
+        }
+      }
+      return lines.length > 0 ? lines.join('\n') : '*(Không có)*';
+    };
+
+    const optionsText = formatOptions(interaction.options?.data);
+    const channelDisplay = interaction.guild
+      ? `<#${interaction.channelId}>`
+      : '💬 DM (Tin nhắn riêng)';
+
+    const isSuccess = !error;
+    const embed = new EmbedBuilder()
+      .setColor(isSuccess ? 0x3498DB : 0xED4245)
+      .setAuthor({
+        name: `${interaction.user.tag} (${interaction.user.id})`,
+        iconURL: interaction.user.displayAvatarURL(),
+      })
+      .setTitle(`⌨️ Sử Dụng Command: /${interaction.commandName}`)
+      .setDescription(
+        `${DIVIDER}\n` +
+        `> 👤 **Người dùng:** <@${interaction.user.id}> (\`${interaction.user.tag}\`)\n` +
+        `> 📍 **Kênh:** ${channelDisplay}\n` +
+        `> ⚡ **Lệnh:** \`/${interaction.commandName}\`\n` +
+        `> 📊 **Trạng thái:** ${isSuccess ? '✅ Thành công' : '❌ Thất bại'}\n` +
+        `${DIVIDER}`
+      )
+      .addFields(
+        { name: '📝 Tham Số (Options)', value: optionsText.slice(0, 1024), inline: false }
+      )
+      .setFooter({ text: 'Thiên Thư Môn • Nhật Ký Hoạt Động Command' })
+      .setTimestamp();
+
+    if (error) {
+      embed.addFields({
+        name: '⚠️ Chi Tiết Lỗi',
+        value: `\`\`\`${(error.message || error).toString().slice(0, 1000)}\`\`\``,
+        inline: false,
+      });
+    }
+
+    await channel.send({ embeds: [embed] });
+  } catch (err) {
+    console.error('[Command Logger] Lỗi khi gửi log command:', err.message);
+  }
 }
 
 module.exports = {
@@ -350,6 +658,8 @@ module.exports = {
   getEventDateTime,
   sendDirectMessage,
   getTargetGuildMembers,
+  sendNotificationReport,
+  logCommandUsage,
   // Embed Builders
   buildUnvotedReminderEmbed,
   buildLineupAssignmentEmbed,
@@ -361,3 +671,4 @@ module.exports = {
   notifyGameStartingSoon,
   notifyTentativeMembers,
 };
+
