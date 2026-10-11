@@ -3,15 +3,18 @@ const danhsach = require('./commands/danhsach');
 const xoa = require('./commands/xoa');
 const ghichu = require('./commands/ghichu');
 const nhacdiemdanh = require('./commands/nhacdiemdanh');
+const xemdiem = require('./commands/xemdiem');
+const ranking = require('./commands/ranking');
 
 const handleSelectClass = require('./interactions/selectClass');
 const handleSelectRole = require('./interactions/selectRole');
 const { handleNoteButton, handleCancelButton, handleStatusButton } = require('./interactions/buttons');
 const handleNoteModal = require('./interactions/noteModal');
+const handleRankingButtons = require('./interactions/rankingButtons');
 
 module.exports = {
   // Slash commands
-  commands: [diemdanh, danhsach, xoa, ghichu, nhacdiemdanh],
+  commands: [diemdanh, danhsach, xoa, ghichu, nhacdiemdanh, xemdiem, ranking],
 
   // Interaction handlers keyed by customId prefix
   interactions: {
@@ -24,5 +27,7 @@ module.exports = {
     'btn_tentative': handleStatusButton,
     'btn_absent':   handleStatusButton,
     'modal_note':   handleNoteModal,
+    'btn_view_bxh_top': handleRankingButtons,
+    'btn_view_my_rank': handleRankingButtons,
   },
 };
