@@ -3,7 +3,6 @@ const {
   NOTIFICATION_CONFIG,
   getEventDateTime,
   notifyUnvotedMembers,
-  notifyGameStartingSoon,
   notifyTentativeMembers,
 } = require('./notificationService');
 
@@ -55,14 +54,6 @@ async function checkAndSendEventNotifications(client) {
         console.log(`[Scheduler] ⚖️ Chạm mốc 24h nhắc chốt vote Chưa chắc chắn cho [${event.title}]`);
         await notifyTentativeMembers(client, event, 24);
         event.notified24hTentative = true;
-        isModified = true;
-      }
-
-      // 3. Kiểm tra mốc nhắc vào game trước 30 phút
-      if (diffMinutes <= 30 && diffMinutes > 0 && !event.notified30m) {
-        console.log(`[Scheduler] 🔥 Chạm mốc 30 phút nhắc vào game cho [${event.title}]`);
-        await notifyGameStartingSoon(client, event, Math.max(1, Math.round(diffMinutes)));
-        event.notified30m = true;
         isModified = true;
       }
 
