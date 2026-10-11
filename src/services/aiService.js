@@ -74,10 +74,25 @@ function isReasoningModel(model) {
 function extractJsonObject(rawText) {
     if (!rawText) throw new Error('Nội dung rỗng, không có gì để parse JSON');
 
-    let text = rawText.trim();
+    if (typeof rawText === 'object' && rawText !== null) {
+        return rawText;
+    }
+
+    let text = typeof rawText === 'string' ? rawText.trim() : String(rawText).trim();
 
     // Loại bỏ khối reasoning kiểu <think>...</think> nếu có
     text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    // Nếu thẻ <think> dở dang (không có </think>), tìm xem có { sau nó không
+    if (text.includes('<think>')) {
+        const thinkIdx = text.indexOf('<think>');
+        const firstBrace = text.indexOf('{', thinkIdx);
+        if (firstBrace !== -1) {
+            text = text.slice(firstBrace);
+        } else {
+            throw new Error('Mô hình đang suy nghĩ dở trong <think> và chưa sinh JSON');
+        }
+    }
 
     // Loại bỏ code fence ```json ... ``` hoặc ``` ... ```
     const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -88,11 +103,32 @@ function extractJsonObject(rawText) {
     // Nếu vẫn còn text thừa quanh JSON, cắt từ dấu { đầu tiên đến } cuối cùng
     const firstBrace = text.indexOf('{');
     const lastBrace = text.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
         text = text.slice(firstBrace, lastBrace + 1);
+    } else if (firstBrace !== -1 && (lastBrace === -1 || lastBrace < firstBrace)) {
+        // Có { mở nhưng chưa có } đóng (bị cắt ngắn giữa chừng do hết maxTokens)
+        text = text.slice(firstBrace);
+        if ((text.match(/"/g) || []).length % 2 === 1) {
+            text += '"';
+        }
+        text += '\n}';
     }
 
-    return JSON.parse(text);
+    try {
+        return JSON.parse(text);
+    } catch (primaryErr) {
+        // Thử clean các lỗi cú pháp JSON phổ biến
+        let cleaned = text
+            .replace(/,\s*([}\]])/g, '$1') // Xóa trailing comma
+            .replace(/'([^'\\]*(?:\\.[^'\\]*)*)'\s*:/g, '"$1":') // Chuyển single-quoted key thành double-quoted
+            .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":'); // Chuyển unquoted key thành double-quoted
+
+        try {
+            return JSON.parse(cleaned);
+        } catch (secondaryErr) {
+            throw primaryErr;
+        }
+    }
 }
 
 /**
@@ -279,8 +315,11 @@ async function fetchCloudflareWithRetry({ key, accountId, model, systemPrompt, u
             }
 
             const data = await res.json();
-            const text = data.result?.response || data.result?.choices?.[0]?.message?.content;
-            if (text && text.trim()) return text.trim();
+            let text = data.result?.response ?? data.result?.choices?.[0]?.message?.content;
+            if (typeof text === 'object' && text !== null) {
+                text = JSON.stringify(text);
+            }
+            if (typeof text === 'string' && text.trim()) return text.trim();
             throw new Error('Cloudflare Workers AI trả về nội dung rỗng');
         } catch (e) {
             lastErr = e;
@@ -299,10 +338,6 @@ async function fetchCloudflareWithRetry({ key, accountId, model, systemPrompt, u
 
 /**
  * Hệ thống gọi AI đa nhà cung cấp tối ưu 2026 với cơ chế Fallback Pipeline & Retry Exponential Backoff
- *
- * LƯU Ý: danh sách models bên dưới giữ nguyên theo cấu hình gốc của bạn.
- * Nếu một provider liên tục lỗi 404/model-not-found, khả năng cao tên model
- * đã đổi phía nhà cung cấp — nên kiểm tra lại doc mới nhất của họ định kỳ.
  */
 async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false, maxTokens = 250, temperature = 0.3 }) {
     const providers = [
@@ -310,29 +345,18 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
             name: 'Gemini',
             key: process.env.GEMINI_API_KEY,
             models: [
-                'gemini-2.0-flash',
-                'gemini-2.0-flash-lite',
-                'gemini-1.5-flash',
-                'gemini-1.5-flash-8b',
-                'gemini-1.5-pro'
+                'gemini-3.5-flash-lite',
+                'gemini-3.8-flash'
             ],
             callModel: async (model, key) => fetchGeminiWithRetry({ key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature })
-        },
-        {
-            name: 'Cerebras',
-            key: process.env.CEREBRAS_API_KEY,
-            models: ['llama-3.3-70b', 'llama3.1-8b'],
-            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
-                url: 'https://api.cerebras.ai/v1/chat/completions',
-                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
-            })
         },
         {
             name: 'Groq',
             key: process.env.GROQ_API_KEY,
             models: [
-                'llama-3.3-70b-versatile',
-                'llama-3.1-8b-instant'
+                'qwen/qwen3.8-27b',
+                'openai/gpt-oss-120b',
+                'openai/gpt-oss-20b'
             ],
             callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
                 url: 'https://api.groq.com/openai/v1/chat/completions',
@@ -345,7 +369,6 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
             models: [
                 '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
                 '@cf/meta/llama-3.1-8b-instruct',
-                '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
                 '@cf/mistral/mistral-7b-instruct-v0.2'
             ],
             callModel: async (model, key) => {
@@ -355,34 +378,12 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
             }
         },
         {
-            name: 'Chutes AI',
-            key: process.env.CHUTES_API_KEY,
-            models: ['deepseek-ai/DeepSeek-V3', 'deepseek-ai/DeepSeek-R1', 'meta-llama/Llama-3.3-70B-Instruct', 'Qwen/Qwen2.5-72B-Instruct'],
-            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
-                url: 'https://chutes-api.chutes.ai/v1/chat/completions',
-                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
-            })
-        },
-        {
-            name: 'DeepSeek V3',
-            key: process.env.DEEPSEEK_API_KEY,
-            models: ['deepseek-chat', 'deepseek-reasoner'],
-            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
-                url: 'https://api.deepseek.com/chat/completions',
-                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
-            })
-        },
-        {
             name: 'OpenRouter',
             key: process.env.OPENROUTER_API_KEY,
             models: [
-                'google/gemini-2.0-flash-exp:free',
-                'meta-llama/llama-3.3-70b-instruct:free',
-                'meta-llama/llama-3.1-8b-instruct:free',
-                'deepseek/deepseek-r1:free',
-                'deepseek/deepseek-chat:free',
-                'qwen/qwen-2.5-72b-instruct:free',
-                'mistralai/mistral-7b-instruct:free'
+                'google/gemma-4-31b-it:free',
+                'google/gemma-4-26b-a4b-it:free',
+                'nvidia/nemotron-3-super-120b-a12b:free'
             ],
             callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
                 url: 'https://openrouter.ai/api/v1/chat/completions',
@@ -391,6 +392,33 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
                     'HTTP-Referer': 'https://discordbot.org',
                     'X-Title': 'ThienThuHienGia_DiscordBot'
                 }
+            })
+        },
+        {
+            name: 'Cerebras',
+            key: process.env.CEREBRAS_API_KEY,
+            models: ['gpt-oss-120b', 'qwen-3.8-27b'],
+            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
+                url: 'https://api.cerebras.ai/v1/chat/completions',
+                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
+            })
+        },
+        {
+            name: 'DeepSeek V3',
+            key: process.env.DEEPSEEK_API_KEY,
+            models: ['deepseek-chat'],
+            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
+                url: 'https://api.deepseek.com/chat/completions',
+                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
+            })
+        },
+        {
+            name: 'Chutes AI',
+            key: process.env.CHUTES_API_KEY,
+            models: ['deepseek-ai/DeepSeek-V3', 'meta-llama/Llama-3.3-70B-Instruct'],
+            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
+                url: 'https://chutes-api.chutes.ai/v1/chat/completions',
+                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
             })
         }
     ];
@@ -428,7 +456,12 @@ async function callMultiProviderAIJson(options) {
     } catch (parseErr) {
         console.warn(`⚠️ Parse JSON lần 1 thất bại (${parseErr.message}), thử lại với prompt siết chặt hơn...`);
         const strictPrompt = `${options.userPrompt}\n\nCHỈ trả về đúng một đối tượng JSON hợp lệ, không thêm bất kỳ ký tự, lời dẫn, hay code fence nào khác.`;
-        const rawSecond = await callMultiProviderAI({ ...options, userPrompt: strictPrompt, jsonMode: true });
+        const rawSecond = await callMultiProviderAI({
+            ...options,
+            userPrompt: strictPrompt,
+            jsonMode: true,
+            maxTokens: Math.max(options.maxTokens || 250, 400)
+        });
         return extractJsonObject(rawSecond);
     }
 }
@@ -510,27 +543,20 @@ async function validateWordVI(lastWord, currentWord) {
         }
     }
 
-    const prompt = `Bạn là một vị Tiên trưởng lão khó tính, phụ trách kiểm duyệt trò chơi "Nối từ Tiếng Việt". Nhiệm vụ: xác định từ hiện tại có hợp lệ và nối đúng với từ trước hay không.
+    const prompt = `Bạn là một vị Tiên trưởng lão uyên bác, phụ trách thẩm định trò chơi "Nối từ Tiếng Việt".
 
-DỮ LIỆU ĐẦU VÀO:
-- Từ trước (lastWord): "${cleanLast || 'Không có'}"
-- Từ hiện tại (currentWord): "${cleanCurr}"
+TỪ CẦN KIỂM ĐỊNH: "${cleanCurr}" (nối tiếp từ "${cleanLast || 'Không có'}")
 
-QUY TẮC BẮT BUỘC (phải thoả mãn đồng thời):
-1. Tính hợp lệ của từ:
-   - currentWord phải là một từ ghép hoặc cụm từ có nghĩa xác thực, được ghi nhận trong tiếng Việt hiện đại (có thể tra từ điển).
-   - Không chấp nhận: từ viết tắt (VD: "THPT"), tên riêng (trừ khi đã thành danh từ chung), tiếng lóng không chính thống, hoặc âm tiết rời rạc vô nghĩa.
-
-2. Luật nối âm tiết (chỉ áp dụng nếu lastWord tồn tại):
-   - Tách lastWord và currentWord thành các âm tiết.
-   - Âm tiết cuối cùng của lastWord PHẢI trùng khớp HOÀN TOÀN (cả chữ và dấu) với âm tiết đầu tiên của currentWord.
-   - Ví dụ ĐÚNG: "Tu tiên" → "Tiên giới" (nối "tiên").
-   - Ví dụ SAI: "Công pháp" → "Phép màu" (SAI, vì âm cuối "pháp" khác âm đầu "phép" – khác dấu).
-   - Trường hợp đặc biệt: Nếu từ chỉ có 1 âm tiết (VD: "Nhà"), từ tiếp theo phải bắt đầu bằng chính âm tiết đó (VD: "Nhà cửa" là ĐÚNG).
+QUY TẮC QUAN TRỌNG:
+1. QUY TẮC NỐI ÂM TIẾT ĐÃ ĐƯỢC HỆ THỐNG XÁC THỰC 100% HỢP LỆ (tiếng đầu trùng khớp với tiếng cuối). Tuyệt đối KHÔNG kiểm tra hay bắt bẻ lại luật nối âm tiết.
+2. KHÔNG ĐÒI HỎI LIÊN QUAN NGỮ NGHĨA: Hai từ KHÔNG CẦN cùng chủ đề hay ngữ cảnh (ví dụ: "Cây cối" -> "Cối xay", "Tu tiên" -> "Tiên giới" đều 100% hợp lệ).
+3. NHIỆM VỤ DUY NHẤT: Xác thực xem "${cleanCurr}" có phải là một từ ghép hoặc cụm từ có nghĩa xác thực, hợp lệ trong Tiếng Việt hay không.
+   - Hợp lệ: Từ ghép có nghĩa trong từ điển / đời sống / văn học / kiếm hiệp Nghịch Thủy Hàn.
+   - Không hợp lệ: Từ vô nghĩa bịa đặt, tiếng lóng vô nghĩa, từ viết tắt rời rạc.
 
 PHONG CÁCH PHẢN HỒI:
-- Giọng điệu của một tiền bối cổ xưa, hài hước, có phần mỉa mai, mang chất triết lý "Nghịch Thủy Hàn".
-- Đưa ra nhận xét ngắn gọn (dưới 30 từ) về lý do đúng/sai, chỉ rõ lỗi nếu có.
+- Giọng điệu của một tiền bối cổ xưa, dí dỏm, mang chất tiên hiệp Nghịch Thủy Hàn.
+- Đưa ra nhận xét ngắn gọn (dưới 25 từ).
 
 ĐỊNH DẠNG ĐẦU RA (JSON):
 Chỉ trả về một đối tượng JSON hợp lệ:
@@ -544,7 +570,7 @@ Chỉ trả về một đối tượng JSON hợp lệ:
         return await callMultiProviderAIJson({
             systemPrompt: 'Trả về CHÍNH XÁC cấu trúc JSON: {"valid": boolean, "reason": string, "nextWord": string}. Không kèm codeblock thừa.',
             userPrompt: prompt,
-            maxTokens: 200
+            maxTokens: 350
         });
     } catch (e) {
         console.error('❌ Lỗi AI validateWordVI:', e.message);
@@ -577,40 +603,33 @@ async function validateWordEN(lastWord, currentWord) {
         }
     }
 
-    const prompt = `You are a strict, ancient librarian and word-game referee. Your task: verify whether the current word is a valid English word and, if there is a previous word, whether it correctly continues the chain by its last letter.
+    const prompt = `You are a fair English dictionary referee for a Word Chain game.
 
-INPUT DATA:
-- Previous word (lastWord): "${cleanLast || 'None'}"
-- Current word (currentWord): "${cleanCurr}"
+INPUT WORD TO CHECK: "${cleanCurr}" (following "${cleanLast || 'None'}")
 
-MANDATORY RULES (must satisfy ALL):
-1. Lexical validity:
-   - currentWord must be a real English word (noun, verb, adjective, adverb, plural, past tense, etc.). Accept any form listed in standard dictionaries.
-   - Do NOT accept: abbreviations (e.g., "LOL"), proper nouns (unless commonly used as common nouns, e.g., "sandwich"), made-up words, or non-standard slang.
-
-2. Letter‑chaining rule (only applies if lastWord is not empty):
-   - The LAST letter of lastWord (ignoring case) MUST be exactly the FIRST letter of currentWord (ignoring case).
-   - Example CORRECT: "apple" → "elephant" (last letter 'e' = first letter 'e').
-   - Example WRONG: "dog" → "cat" (last letter 'g' ≠ first letter 'c').
-   - For words with apostrophes or hyphens, use the last alphabetic character (e.g., "don't" → last letter 't').
+CRITICAL RULES:
+1. LETTER-CHAINING RULE HAS ALREADY BEEN VERIFIED AND PASSED BY SYSTEM CODE. Do NOT check or reject based on letter matching.
+2. SEMANTIC INDEPENDENCE: In Word Chain, words DO NOT need to be related in meaning, theme, or topic at all. Any legitimate English word starting with the required letter is valid (e.g., "Tetris" -> "Sandwich" is 100% valid).
+3. YOUR ONLY TASK: Verify if "${cleanCurr}" is a real, legitimate English word found in standard English dictionaries (nouns, verbs, adjectives, adverbs, plurals, past tense, etc.).
+   - Valid: Any standard English word, common noun, loanword, or recognized term.
+   - Invalid: Random gibberish (e.g., "asdfjkl"), acronyms/abbreviations (e.g., "LOL"), or severe misspellings.
 
 RESPONSE STYLE:
-- Adopt the tone of a witty, slightly sarcastic old scholar (think of a retired English professor).
-- Provide a brief comment (under 30 words) explaining why the chain is valid or invalid, pinpointing the exact error if any.
+- Brief comment (under 20 words) explaining validity.
 
-OUTPUT FORMAT (JSON):
-Return ONLY a valid JSON object:
+OUTPUT FORMAT (JSON only):
 {
   "valid": boolean,
+  "meaning": "Short Vietnamese translation (1-3 words)",
   "reason": "string",
   "nextWord": "string"
 }`;
 
     try {
         const data = await callMultiProviderAIJson({
-            systemPrompt: 'Return ONLY valid JSON format: {"valid": boolean, "reason": string, "nextWord": string}.',
+            systemPrompt: 'Return ONLY valid JSON format: {"valid": boolean, "meaning": string, "reason": string, "nextWord": string}.',
             userPrompt: prompt,
-            maxTokens: 200
+            maxTokens: 350
         });
         data.meaning = data.meaning || 'English Lexicon';
         return data;
@@ -725,14 +744,14 @@ Trả về CHÍNH XÁC cấu trúc JSON:
     };
 
     try {
-        return await tryGenerate(randomTopic, 0.95, 250);
+        return await tryGenerate(randomTopic, 0.95, 400);
     } catch (e) {
         console.error('❌ AI generateVuaTiengVietQuestion Error:', e.message);
 
         // Thử lại 1 lần với chủ đề khác & nhiệt độ tối đa
         try {
             const retryTopic = VUA_TOPIC_CATEGORIES[Math.floor(Math.random() * VUA_TOPIC_CATEGORIES.length)];
-            return await tryGenerate(retryTopic, 1.0, 250);
+            return await tryGenerate(retryTopic, 1.0, 400);
         } catch (retryErr) {
             console.error('❌ AI Retry failed:', retryErr.message);
             throw new Error('Bổn Hiền Giả đang bận nhập định suy nghĩ, xin hãy thử lại sau ít phút!');
