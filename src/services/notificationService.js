@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const Attendance = require('../features/attendance/models/Attendance');
 const Event = require('../features/attendance/models/Event');
+const LineupNotification = require('../features/attendance/models/LineupNotification');
 
 const NOTIFICATION_CONFIG = {
   TARGET_ROLE_ID: process.env.TARGET_ROLE_ID || '1438967271149146302',
@@ -43,11 +44,34 @@ async function sendDirectMessage(client, userId, payload) {
       console.warn(`[DM Service] Không tìm thấy user: ${userId}`);
       return { success: false, reason: 'User not found' };
     }
-    await user.send(payload);
-    return { success: true };
+    const sentMsg = await user.send(payload);
+    return { success: true, messageId: sentMsg?.id, channelId: sentMsg?.channelId };
   } catch (error) {
     // Error 50007: Cannot send messages to this user (DM disabled / bot blocked)
     console.warn(`[DM Service] Không thể gửi DM tới ${userId}: ${error.message}`);
+    return { success: false, reason: error.message };
+  }
+}
+
+/**
+ * Chỉnh sửa tin nhắn riêng (DM) đã gửi trước đó cho một User ID
+ */
+async function editDirectMessage(client, userId, messageId, payload) {
+  try {
+    const user = await client.users.fetch(userId);
+    if (!user) {
+      console.warn(`[DM Service] Không tìm thấy user để sửa DM: ${userId}`);
+      return { success: false, reason: 'User not found' };
+    }
+    const dmChannel = user.dmChannel || (await user.createDM());
+    const message = await dmChannel.messages.fetch(messageId);
+    if (!message) {
+      return { success: false, reason: 'Message not found' };
+    }
+    const updatedMsg = await message.edit(payload);
+    return { success: true, messageId: updatedMsg.id, channelId: updatedMsg.channelId };
+  } catch (error) {
+    console.warn(`[DM Service] Không thể sửa DM ${messageId} của ${userId}: ${error.message}`);
     return { success: false, reason: error.message };
   }
 }
@@ -110,6 +134,7 @@ function buildLineupAssignmentEmbed({
   skills = [],
   teammates = [],
   currentUserId,
+  isUpdate = false,
 }) {
   const dateStr = event ? new Date(event.date).toLocaleDateString('vi-VN') : 'Sắp diễn ra';
   const eventTime = event ? event.time : '20:00';
@@ -142,12 +167,21 @@ function buildLineupAssignmentEmbed({
     }).join('\n');
   }
 
+  const updateHeader = isUpdate
+    ? `🔄 **THÔNG BÁO: VỊ TRÍ CỦA BẠN CÓ SỰ CẬP NHẬT!**\n> *Sơ đồ và phân công trận Bang Chiến đã được cập nhật mới nhất. Dưới đây là vị trí mới của bạn:*\n\n`
+    : '';
+
   const embed = new EmbedBuilder()
-    .setColor(0x3498DB)
-    .setAuthor({ name: '🛡️ THIÊN THƯ HIỀN GIẢ - PHÂN CÔNG ĐỘI HÌNH 🛡️' })
+    .setColor(isUpdate ? 0xF39C12 : 0x3498DB)
+    .setAuthor({
+      name: isUpdate
+        ? '🔄 THIÊN THƯ HIỀN GIẢ - CẬP NHẬT VỊ TRÍ ĐỘI HÌNH 🔄'
+        : '🛡️ THIÊN THƯ HIỀN GIẢ - PHÂN CÔNG ĐỘI HÌNH 🛡️',
+    })
     .setTitle(`📋 ${eventTitle}`)
     .setDescription(
       `${DIVIDER}\n` +
+      updateHeader +
       `Sơ đồ đội hình Bang Chiến đã được cập nhật. Dưới đây là vị trí và đồng đội của bạn:\n\n` +
       `> 🚩 **Đoàn:** \`${divisionName || 'Đoàn Chưa Đặt Tên'}\`\n` +
       `> ⚔️ **Đội:** \`${teamName || 'Team'}\` (Vị trí: **Số ${slotIndex + 1}**)\n` +
@@ -188,10 +222,38 @@ function buildLineupAssignmentEmbed({
     });
   }
 
-  embed.setFooter({ text: 'Thiên Thư Môn • Chúc toàn thể anh em bang chiến thắng lợi!' })
-    .setTimestamp();
+  embed.setFooter({
+    text: isUpdate
+      ? 'Thiên Thư Môn • Vị trí của bạn có sự cập nhật'
+      : 'Thiên Thư Môn • Chúc toàn thể anh em bang chiến thắng lợi!',
+  }).setTimestamp();
 
   return embed;
+}
+
+/**
+ * Embed thông báo rút khỏi sơ đồ thi đấu chính (về dự bị)
+ */
+function buildUnassignedNoticeEmbed({ event }) {
+  const dateStr = event ? new Date(event.date).toLocaleDateString('vi-VN') : 'Sắp diễn ra';
+  const eventTime = event ? event.time : '20:00';
+  const eventTitle = event ? event.title : 'BANG CHIẾN THIÊN THƯ MÔN';
+
+  return new EmbedBuilder()
+    .setColor(0xE74C3C)
+    .setAuthor({ name: '⚠️ THIÊN THƯ HIỀN GIẢ - CẬP NHẬT ĐỘI HÌNH ⚠️' })
+    .setTitle(`📋 ${eventTitle}`)
+    .setDescription(
+      `${DIVIDER}\n` +
+      `🔄 **THÔNG BÁO: VỊ TRÍ CỦA BẠN CÓ SỰ CẬP NHẬT!**\n\n` +
+      `Hiện tại đạo hữu đã được chuyển **ra khỏi sơ đồ đội hình thi đấu chính thức** (chuyển sang hàng chờ / dự bị).\n\n` +
+      `> 🗓️ **Thời gian trận:** \`${eventTime} - ${dateStr}\`\n` +
+      `> 📍 **Trạng thái hiện tại:** \`Dự bị / Đang chờ sắp xếp lại\`\n` +
+      `${DIVIDER}\n\n` +
+      `👉 Vui lòng sẵn sàng tiếp ứng hoặc theo dõi thông báo mới nhất từ Ban Quản Trị!`
+    )
+    .setFooter({ text: 'Thiên Thư Môn • Vị trí của bạn có sự cập nhật' })
+    .setTimestamp();
 }
 
 /**
@@ -244,7 +306,7 @@ function buildTentativeConfirmEmbed({ event, hoursLeft = 24 }) {
 /**
  * Gửi phản hồi báo cáo kết quả gửi thông báo tới kênh chỉ định (Kênh ID: 1438974225154183219)
  */
-async function sendNotificationReport(client, { typeTitle, eventTitle, total, sent, failed, failedList = [] }) {
+async function sendNotificationReport(client, { typeTitle, eventTitle, total, sent, failed, detailsSummary = null, failedList = [] }) {
   try {
     const reportChannelId = NOTIFICATION_CONFIG.REPORT_CHANNEL_ID;
     let channel = client.channels.cache.get(reportChannelId);
@@ -258,18 +320,30 @@ async function sendNotificationReport(client, { typeTitle, eventTitle, total, se
     }
 
     const isAllSuccess = failed === 0;
+    let descriptionText =
+      `${DIVIDER}\n` +
+      `> ⚔️ **Sự kiện:** \`${eventTitle || 'Bang Chiến Thiên Thư Môn'}\`\n` +
+      `> 🎯 **Tổng số thành viên:** **${total}**\n`;
+
+    if (detailsSummary) {
+      descriptionText +=
+        `> 🆕 **Gửi mới:** **${detailsSummary.sentNew || 0}**\n` +
+        `> 🔄 **Đã cập nhật (sửa tin cũ):** **${detailsSummary.updated || 0}**\n` +
+        `> ⏭️ **Không đổi (bỏ qua):** **${detailsSummary.skipped || 0}**\n` +
+        (detailsSummary.unassigned > 0 ? `> ⚠️ **Rút khỏi đội hình:** **${detailsSummary.unassigned}**\n` : '');
+    } else {
+      descriptionText += `> ✅ **Đã gửi thành công:** **${sent}**\n`;
+    }
+
+    descriptionText +=
+      `> ❌ **Gửi thất bại (Lỗi):** **${failed}**\n` +
+      `${DIVIDER}`;
+
     const embed = new EmbedBuilder()
       .setColor(isAllSuccess ? 0x2ECC71 : (sent > 0 ? 0xF39C12 : 0xE74C3C))
       .setAuthor({ name: '📊 BÁO CÁO TIẾN ĐỘ THÔNG BÁO (NOTIFICATION FEEDBACK)' })
       .setTitle(`🔔 ${typeTitle}`)
-      .setDescription(
-        `${DIVIDER}\n` +
-        `> ⚔️ **Sự kiện:** \`${eventTitle || 'Bang Chiến Thiên Thư Môn'}\`\n` +
-        `> 🎯 **Tổng số thành viên:** **${total}**\n` +
-        `> ✅ **Đã gửi thành công:** **${sent}**\n` +
-        `> ❌ **Gửi thất bại (Lỗi):** **${failed}**\n` +
-        `${DIVIDER}`
-      )
+      .setDescription(descriptionText)
       .setFooter({ text: 'Thiên Thư Môn • Hệ thống phản hồi thông báo' })
       .setTimestamp();
 
@@ -361,11 +435,25 @@ async function notifyUnvotedMembers(client, event, milestoneHours) {
   return { total: unvotedMembers.length, sent, failed };
 }
 
+const lineupProcessingLocks = new Map(); // eventId -> timestamp
+
 /**
  * Yêu cầu 2: Gửi thông báo xếp đội hình & kỹ năng khi Lưu trên Web
+ * - Lần đầu: Gửi thông báo DM mới với embed chi tiết.
+ * - Khi có sự thay đổi: Sửa lại thông báo trước đó kèm text "Vị trí của bạn có sự cập nhật".
+ * - Khi không đổi: Bỏ qua để tránh spam thành viên.
+ * - Khi bị rút khỏi đội hình: Sửa lại thông báo báo trạng thái về dự bị.
  */
 async function notifyLineupAssignment(client, eventId, lineupData) {
   console.log(`[Notification Service] 🚀 Xử lý gửi thông báo xếp đội hình cho eventId: ${eventId}`);
+
+  const now = Date.now();
+  const lastRun = lineupProcessingLocks.get(eventId) || 0;
+  if (now - lastRun < 2000) {
+    console.log(`[Notification Service] ⏳ Đang có lượt xử lý lineup vừa chạy cho event ${eventId}. Bỏ qua trùng lặp.`);
+    return { total: 0, sent: 0, updated: 0, skipped: 0, failed: 0 };
+  }
+  lineupProcessingLocks.set(eventId, now);
 
   const event = await Event.findOne({ messageId: eventId }).lean();
   const divisions = lineupData?.divisions || [];
@@ -416,52 +504,190 @@ async function notifyLineupAssignment(client, eventId, lineupData) {
 
   console.log(`[Notification Service] Tìm thấy ${assignments.length} thành viên có role được xếp đội hình.`);
 
-  let sent = 0;
+  // Truy vấn lịch sử thông báo đã gửi cho event này
+  const existingNotifications = await LineupNotification.find({ eventId });
+  const notiMap = new Map(existingNotifications.map((n) => [n.userId, n]));
+
+  let sentNew = 0;
+  let updated = 0;
+  let skipped = 0;
+  let unassigned = 0;
   let failed = 0;
   const failedList = [];
 
   for (const item of assignments) {
-    const embed = buildLineupAssignmentEmbed({
-      event,
-      divisionName: item.divisionName,
-      divisionNote: item.divisionNote,
-      teamName: item.teamName,
-      teamNote: item.teamNote,
-      slotIndex: item.slotIndex,
-      roleName: item.roleName,
-      note: item.note,
-      skills: item.skills,
-      teammates: item.teammates,
-      currentUserId: item.userId,
-    });
+    const prevNoti = notiMap.get(item.userId);
+    const skillsHash = (item.skills || []).map((s) => (s.name || s.id || '').trim()).sort().join('|');
+    const teammatesHash = (item.teammates || []).map((t) => `${t.slotIndex}:${t.userId || ''}:${t.displayName || ''}:${t.roleName || ''}:${t.className || ''}`).join(';');
 
-    const result = await sendDirectMessage(client, item.userId, { embeds: [embed] });
-    if (result.success) {
-      sent++;
-    } else {
-      failed++;
-      failedList.push({
-        userId: item.userId,
-        name: item.displayName || item.userId,
-        reason: result.reason,
+    if (!prevNoti) {
+      // 1. Chưa từng gửi DM trước đó -> Gửi tin nhắn mới
+      const embed = buildLineupAssignmentEmbed({
+        event,
+        divisionName: item.divisionName,
+        divisionNote: item.divisionNote,
+        teamName: item.teamName,
+        teamNote: item.teamNote,
+        slotIndex: item.slotIndex,
+        roleName: item.roleName,
+        note: item.note,
+        skills: item.skills,
+        teammates: item.teammates,
+        currentUserId: item.userId,
+        isUpdate: false,
       });
+
+      const result = await sendDirectMessage(client, item.userId, { embeds: [embed] });
+      if (result.success && result.messageId) {
+        sentNew++;
+        await LineupNotification.create({
+          eventId,
+          userId: item.userId,
+          messageId: result.messageId,
+          channelId: result.channelId,
+          divisionName: item.divisionName,
+          divisionNote: item.divisionNote,
+          teamName: item.teamName,
+          teamNote: item.teamNote,
+          slotIndex: item.slotIndex,
+          roleName: item.roleName,
+          note: item.note,
+          skills: item.skills,
+          skillsHash,
+          teammatesHash,
+          isAssigned: true,
+          lastNotifiedAt: new Date(),
+        }).catch((err) => console.warn(`[LineupNotification] Lỗi lưu DB:`, err.message));
+      } else {
+        failed++;
+        failedList.push({
+          userId: item.userId,
+          name: item.displayName || item.userId,
+          reason: result.reason || 'Send failed',
+        });
+      }
+    } else {
+      // 2. Đã từng gửi trước đó -> Kiểm tra xem vị trí hoặc thông tin có thay đổi không
+      const hasChanged = !prevNoti.isAssigned ||
+        prevNoti.divisionName !== item.divisionName ||
+        prevNoti.teamName !== item.teamName ||
+        prevNoti.slotIndex !== item.slotIndex ||
+        prevNoti.roleName !== item.roleName ||
+        (prevNoti.note || '') !== (item.note || '') ||
+        (prevNoti.divisionNote || '') !== (item.divisionNote || '') ||
+        (prevNoti.teamNote || '') !== (item.teamNote || '') ||
+        prevNoti.skillsHash !== skillsHash ||
+        prevNoti.teammatesHash !== teammatesHash;
+
+      if (!hasChanged) {
+        skipped++;
+        console.log(`[Notification Service] ⏭️ ${item.displayName} (${item.userId}): Vị trí không đổi, giữ nguyên.`);
+        continue;
+      }
+
+      console.log(`[Notification Service] 🔄 ${item.displayName} (${item.userId}): Vị trí có sự cập nhật, sửa lại thông báo trước đó...`);
+      const embed = buildLineupAssignmentEmbed({
+        event,
+        divisionName: item.divisionName,
+        divisionNote: item.divisionNote,
+        teamName: item.teamName,
+        teamNote: item.teamNote,
+        slotIndex: item.slotIndex,
+        roleName: item.roleName,
+        note: item.note,
+        skills: item.skills,
+        teammates: item.teammates,
+        currentUserId: item.userId,
+        isUpdate: true,
+      });
+
+      const updatePayload = {
+        content: '🔔 **Vị trí của bạn có sự cập nhật**',
+        embeds: [embed],
+      };
+
+      let editResult = await editDirectMessage(client, item.userId, prevNoti.messageId, updatePayload);
+      if (!editResult.success) {
+        console.warn(`[Notification Service] Sửa DM cũ của ${item.userId} thất bại (${editResult.reason}), gửi DM mới...`);
+        editResult = await sendDirectMessage(client, item.userId, updatePayload);
+      }
+
+      if (editResult.success) {
+        updated++;
+        prevNoti.messageId = editResult.messageId || prevNoti.messageId;
+        prevNoti.channelId = editResult.channelId || prevNoti.channelId;
+        prevNoti.divisionName = item.divisionName;
+        prevNoti.divisionNote = item.divisionNote;
+        prevNoti.teamName = item.teamName;
+        prevNoti.teamNote = item.teamNote;
+        prevNoti.slotIndex = item.slotIndex;
+        prevNoti.roleName = item.roleName;
+        prevNoti.note = item.note;
+        prevNoti.skills = item.skills;
+        prevNoti.skillsHash = skillsHash;
+        prevNoti.teammatesHash = teammatesHash;
+        prevNoti.isAssigned = true;
+        prevNoti.lastNotifiedAt = new Date();
+        await prevNoti.save().catch((err) => console.warn(`[LineupNotification] Lỗi lưu update:`, err.message));
+      } else {
+        failed++;
+        failedList.push({
+          userId: item.userId,
+          name: item.displayName || item.userId,
+          reason: editResult.reason || 'Edit & fallback failed',
+        });
+      }
     }
+
     await sleep(NOTIFICATION_CONFIG.DELAY_BETWEEN_DMS_MS);
   }
 
-  console.log(`[Notification Service] ✅ Hoàn thành gửi thông báo đội hình: ${sent}/${assignments.length} (Lỗi: ${failed})`);
+  // 3. Xử lý các thành viên trước đó được xếp slot, nhưng lần lưu này bị rút ra khỏi đội hình
+  const currentAssignedIds = new Set(assignments.map((a) => a.userId));
+  for (const [prevUserId, prevNoti] of notiMap.entries()) {
+    if (prevNoti.isAssigned && !currentAssignedIds.has(prevUserId)) {
+      console.log(`[Notification Service] ⚠️ ${prevUserId}: Đã bị rút ra khỏi đội hình, sửa lại thông báo...`);
+      const unassignedEmbed = buildUnassignedNoticeEmbed({ event });
+      const unassignedPayload = {
+        content: '🔔 **Vị trí của bạn có sự cập nhật**',
+        embeds: [unassignedEmbed],
+      };
+
+      let editResult = await editDirectMessage(client, prevUserId, prevNoti.messageId, unassignedPayload);
+      if (!editResult.success) {
+        editResult = await sendDirectMessage(client, prevUserId, unassignedPayload);
+      }
+
+      if (editResult.success) {
+        unassigned++;
+        prevNoti.isAssigned = false;
+        prevNoti.messageId = editResult.messageId || prevNoti.messageId;
+        prevNoti.lastNotifiedAt = new Date();
+        await prevNoti.save().catch((err) => console.warn(`[LineupNotification] Lỗi lưu unassigned:`, err.message));
+      }
+      await sleep(NOTIFICATION_CONFIG.DELAY_BETWEEN_DMS_MS);
+    }
+  }
+
+  console.log(`[Notification Service] ✅ Hoàn thành gửi thông báo đội hình: Mới: ${sentNew}, Cập nhật: ${updated}, Giữ nguyên: ${skipped}, Rút slot: ${unassigned}, Lỗi: ${failed}`);
 
   // Gửi phản hồi báo cáo tới kênh chỉ định
   await sendNotificationReport(client, {
     typeTitle: 'Thông Báo Phân Công Đội Hình Bang Chiến',
     eventTitle: event?.title || 'Sơ Đồ Trận Phái',
     total: assignments.length,
-    sent,
+    sent: sentNew + updated,
     failed,
+    detailsSummary: {
+      sentNew,
+      updated,
+      skipped,
+      unassigned,
+    },
     failedList,
   });
 
-  return { total: assignments.length, sent, failed };
+  return { total: assignments.length, sent: sentNew, updated, skipped, unassigned, failed };
 }
 
 /**
@@ -657,12 +883,14 @@ module.exports = {
   NOTIFICATION_CONFIG,
   getEventDateTime,
   sendDirectMessage,
+  editDirectMessage,
   getTargetGuildMembers,
   sendNotificationReport,
   logCommandUsage,
   // Embed Builders
   buildUnvotedReminderEmbed,
   buildLineupAssignmentEmbed,
+  buildUnassignedNoticeEmbed,
   buildGameStartingSoonEmbed,
   buildTentativeConfirmEmbed,
   // High-Level Notification Handlers
