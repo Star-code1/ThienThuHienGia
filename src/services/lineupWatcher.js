@@ -1,28 +1,32 @@
 const Lineup = require('../features/attendance/models/Lineup');
 const { notifyLineupAssignment } = require('./notificationService');
 
-let lastCheckedTimestamp = new Date();
-const processedEvents = new Map(); // eventId -> lastUpdatedAt
+let lastCheckedNotifyTimestamp = new Date();
+const processedNotifyEvents = new Map(); // eventId -> lastNotifyRequestedAt
 
 /**
- * Lắng nghe và xử lý sự kiện lưu đội hình từ MongoDB (hoạt động độc lập không cần HTTP nội bộ)
+ * Lắng nghe và xử lý sự kiện truyền tin đội hình từ MongoDB
+ * CHỈ kích hoạt khi người dùng bấm nút "Truyền Tin Đội Hình" trên Web (thông qua trường notifyRequestedAt)
+ * Hoàn toàn KHÔNG gửi khi chỉ lưu sơ đồ đội hình thông thường.
  */
 async function checkLineupUpdates(client) {
   try {
-    // Tìm các lineup được cập nhật kể từ lần check trước
-    const updatedLineups = await Lineup.find({
-      updatedAt: { $gt: lastCheckedTimestamp },
+    // Chỉ tìm các lineup có yêu cầu truyền tin mới kể từ lần check trước
+    const requestedLineups = await Lineup.find({
+      notifyRequestedAt: { $gt: lastCheckedNotifyTimestamp },
     }).lean();
 
-    if (updatedLineups && updatedLineups.length > 0) {
-      for (const lineup of updatedLineups) {
-        const lastProcessed = processedEvents.get(lineup.eventId);
-        const lineupUpdatedAt = new Date(lineup.updatedAt).getTime();
+    if (requestedLineups && requestedLineups.length > 0) {
+      for (const lineup of requestedLineups) {
+        if (!lineup.notifyRequestedAt) continue;
 
-        // Kiểm tra tránh xử lý lặp lại cùng một lần cập nhật
-        if (!lastProcessed || lineupUpdatedAt > lastProcessed) {
-          console.log(`[Lineup Watcher] 🔔 Phát hiện sơ đồ đội hình mới được lưu cho event: ${lineup.eventId}`);
-          processedEvents.set(lineup.eventId, lineupUpdatedAt);
+        const lastProcessed = processedNotifyEvents.get(lineup.eventId);
+        const notifyTime = new Date(lineup.notifyRequestedAt).getTime();
+
+        // Kiểm tra tránh xử lý lặp lại cùng một lần bấm nút truyền tin
+        if (!lastProcessed || notifyTime > lastProcessed) {
+          console.log(`[Lineup Watcher] 📢 Nhận yêu cầu truyền tin đội hình cho event: ${lineup.eventId}`);
+          processedNotifyEvents.set(lineup.eventId, notifyTime);
 
           if (client && client.isReady()) {
             notifyLineupAssignment(client, lineup.eventId, lineup)
@@ -31,7 +35,7 @@ async function checkLineupUpdates(client) {
           }
         }
       }
-      lastCheckedTimestamp = new Date();
+      lastCheckedNotifyTimestamp = new Date();
     }
   } catch (error) {
     console.warn('[Lineup Watcher] Lỗi kiểm tra update Lineup:', error.message);
@@ -42,23 +46,27 @@ async function checkLineupUpdates(client) {
  * Khởi động watcher: Thử MongoDB Change Stream trước, nếu không hỗ trợ thì tự động fallback sang polling chu kỳ 5s
  */
 function startLineupWatcher(client) {
-  console.log('📡 Khởi động Lineup Watcher (Đồng bộ thời gian thực qua MongoDB)...');
-  lastCheckedTimestamp = new Date(Date.now() - 5000); // Lùi 5s để đón các event vừa diễn ra
+  console.log('📡 Khởi động Lineup Watcher (Lắng nghe sự kiện truyền tin qua MongoDB)...');
+  lastCheckedNotifyTimestamp = new Date(Date.now() - 5000); // Lùi 5s để đón các event vừa kích hoạt
 
   // 1. Thử dùng Change Stream của MongoDB Atlas (nhanh tức thì < 100ms)
   try {
     const changeStream = Lineup.watch([], { fullDocument: 'updateLookup' });
 
     changeStream.on('change', (change) => {
-      if (change.operationType === 'insert' || change.operationType === 'update' || change.operationType === 'replace') {
-        const doc = change.fullDocument;
-        if (doc && doc.eventId) {
-          console.log(`[Change Stream] ⚡ Nhận sự kiện lưu đội hình cho event: ${doc.eventId}`);
-          const lineupUpdatedAt = doc.updatedAt ? new Date(doc.updatedAt).getTime() : Date.now();
-          const lastProcessed = processedEvents.get(doc.eventId);
+      // Chỉ kích hoạt khi trường notifyRequestedAt được cập nhật trong document
+      const updatedFields = change.updateDescription?.updatedFields;
+      const isNotifyRequested = updatedFields && 'notifyRequestedAt' in updatedFields && updatedFields.notifyRequestedAt != null;
 
-          if (!lastProcessed || (lineupUpdatedAt - lastProcessed) > 3000) {
-            processedEvents.set(doc.eventId, lineupUpdatedAt);
+      if (isNotifyRequested) {
+        const doc = change.fullDocument;
+        if (doc && doc.eventId && doc.notifyRequestedAt) {
+          const notifyTime = new Date(doc.notifyRequestedAt).getTime();
+          const lastProcessed = processedNotifyEvents.get(doc.eventId);
+
+          if (!lastProcessed || (notifyTime - lastProcessed) > 3000) {
+            console.log(`[Change Stream] ⚡ Nhận yêu cầu truyền tin đội hình cho event: ${doc.eventId}`);
+            processedNotifyEvents.set(doc.eventId, notifyTime);
             if (client && client.isReady()) {
               notifyLineupAssignment(client, doc.eventId, doc)
                 .then((res) => console.log(`[Change Stream] ✅ Đã gửi DM đội hình:`, res))

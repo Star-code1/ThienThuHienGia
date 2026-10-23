@@ -35,6 +35,7 @@ const lineupSchema = new mongoose.Schema({
   divisions: [divisionSchema],
   updatedBy: { type: String },
   updatedAt: { type: Date, default: Date.now },
+  notifyRequestedAt: { type: Date, default: null },
 }, { strict: false });
 
 module.exports = mongoose.model('Lineup', lineupSchema);
