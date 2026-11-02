@@ -19,16 +19,34 @@ function parseRoleChoices(input, guild, botMember) {
   for (const line of lines) {
     const customEmoji = line.match(/^(<a?:[a-zA-Z0-9_]+:\d+>)\s*:\s*(.+)$/);
     const separatorIndex = customEmoji ? -1 : line.indexOf(':');
-    const emoji = (customEmoji ? customEmoji[1] : line.slice(0, separatorIndex)).trim();
+    let emoji = (customEmoji ? customEmoji[1] : line.slice(0, separatorIndex)).trim();
     const roleName = (customEmoji ? customEmoji[2] : line.slice(separatorIndex + 1)).trim();
 
     if (separatorIndex === 0 || (!customEmoji && separatorIndex < 0) || !emoji || !roleName) {
       throw new Error(`Dòng không đúng định dạng: "${line}". Dùng <emoji>:<tên role>.`);
     }
 
-    const emojiKey = customEmoji
-      ? `custom:${customEmoji[1].match(/:(\d+)>$/)[1]}`
-      : `unicode:${emoji}`;
+    const emojiName = emoji.match(/^:([a-zA-Z0-9_]+):$/)?.[1] || emoji;
+    const isEmojiName = /^[a-zA-Z0-9_]+$/.test(emojiName);
+    let emojiKey;
+
+    if (customEmoji) {
+      emojiKey = `custom:${customEmoji[1].match(/:(\d+)>$/)[1]}`;
+    } else if (isEmojiName) {
+      const matchingEmojis = guild.emojis.cache.filter((serverEmoji) => serverEmoji.name === emojiName);
+      if (matchingEmojis.size === 0) {
+        throw new Error(`Không tìm thấy emoji "${emojiName}" trong server. Có thể dùng cú pháp <:tên:ID> thay thế.`);
+      }
+      if (matchingEmojis.size > 1) {
+        throw new Error(`Có nhiều emoji tên "${emojiName}". Hãy dùng cú pháp <:tên:ID> để chọn chính xác.`);
+      }
+
+      const serverEmoji = matchingEmojis.first();
+      emoji = serverEmoji.toString();
+      emojiKey = `custom:${serverEmoji.id}`;
+    } else {
+      emojiKey = `unicode:${emoji}`;
+    }
 
     if (seenEmojis.has(emojiKey)) {
       throw new Error(`Emoji ${emoji} đang được dùng cho nhiều role.`);
@@ -58,13 +76,34 @@ function parseRoleChoices(input, guild, botMember) {
 }
 
 function parseRoleChoiceLines(embed) {
-  if (!embed || !embed.footer?.text?.startsWith('reaction-role:v1')) return [];
+  if (!embed) return [];
 
-  return embed.fields
-    .filter((field) => field.name.startsWith('Role '))
-    .flatMap((field) => field.value.split('\n'))
+  if (embed.footer?.text?.startsWith('reaction-role:v1')) {
+    return embed.fields
+      .filter((field) => field.name.startsWith('Role '))
+      .flatMap((field) => field.value.split('\n'))
+      .map((line) => {
+        const match = line.match(/^(.+?) → <@&(\d+)>$/);
+        if (!match) return null;
+
+        const emoji = match[1].trim();
+        const customEmoji = emoji.match(/^<a?:[^:]+:(\d+)>$/);
+        return {
+          emoji,
+          emojiId: customEmoji ? customEmoji[1] : null,
+          roleId: match[2],
+        };
+      })
+      .filter(Boolean);
+  }
+
+  if (!embed.description) return [];
+
+  const choicesText = embed.description.slice(embed.description.lastIndexOf('\n\n') + 2);
+  return choicesText
+    .split('\n')
     .map((line) => {
-      const match = line.match(/^(.+?) → <@&(\d+)>$/);
+      const match = line.match(/^(.+?)\s*:\s*<@&(\d+)>$/);
       if (!match) return null;
 
       const emoji = match[1].trim();

@@ -17,6 +17,7 @@ const {
 } = require('./utils');
 
 const SESSION_TTL_MS = 15 * 60 * 1000;
+const MAX_TITLE_LENGTH = 256;
 const sessions = new Map();
 
 function createSession(interaction) {
@@ -59,15 +60,24 @@ function cancelRow(id) {
   );
 }
 
-function descriptionModal(id) {
+function detailsModal(id) {
   return new ModalBuilder()
     .setCustomId(`rr_description:${id}`)
-    .setTitle('Mô tả bảng chọn role')
+    .setTitle('Thông tin bảng chọn role')
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
+          .setCustomId('title')
+          .setLabel('Tiêu đề')
+          .setPlaceholder('Chọn Phái')
+          .setMaxLength(MAX_TITLE_LENGTH)
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
           .setCustomId('description')
-          .setLabel('Mô tả hiển thị trong tin nhắn')
+          .setLabel('Lời nhắn')
+          .setPlaceholder('Kêu gọi mọi người chọn một phái để sát cánh cùng nhau.')
           .setStyle(TextInputStyle.Paragraph)
           .setMaxLength(MAX_DESCRIPTION_LENGTH)
           .setRequired(true)
@@ -83,8 +93,8 @@ function rolesModal(id) {
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('choices')
-          .setLabel('Mỗi dòng: emoji:tên role (tối đa 20)')
-          .setPlaceholder('😀:Hiền triết\n🎮:Game thủ\n<:emoji_ten:123456789012345678>:Tên role')
+          .setLabel('Mỗi dòng: emoji hoặc tên emoji:tên role')
+          .setPlaceholder('😀:Hiền triết\n🎮:Game thủ\nemoji_ten:Thần Tướng')
           .setStyle(TextInputStyle.Paragraph)
           .setMaxLength(4000)
           .setRequired(true)
@@ -93,21 +103,14 @@ function rolesModal(id) {
 }
 
 function buildPreviewEmbed(session) {
-  const fields = [];
-  for (let index = 0; index < session.choices.length; index += 5) {
-    const group = session.choices.slice(index, index + 5);
-    fields.push({
-      name: `Role ${Math.floor(index / 5) + 1}`,
-      value: group.map((choice) => `${choice.emoji} → <@&${choice.roleId}>`).join('\n'),
-    });
-  }
+  const choices = session.choices
+    .map((choice) => `${choice.emoji} : <@&${choice.roleId}>`)
+    .join('\n');
 
   return new EmbedBuilder()
     .setColor('#7289DA')
-    .setTitle('Chọn role bằng reaction')
-    .setDescription(session.description)
-    .addFields(fields)
-    .setFooter({ text: 'reaction-role:v1' });
+    .setTitle(session.title)
+    .setDescription(`${session.description}\n\n${choices}`);
 }
 
 function previewButtons(id) {
@@ -134,7 +137,7 @@ async function handleReactionRoleInteraction(interaction) {
     }
 
     session.channelId = interaction.values[0];
-    await interaction.showModal(descriptionModal(sessionId));
+    await interaction.showModal(detailsModal(sessionId));
     return;
   }
 
@@ -145,14 +148,19 @@ async function handleReactionRoleInteraction(interaction) {
       return;
     }
 
+    session.title = interaction.fields.getTextInputValue('title').trim();
     session.description = interaction.fields.getTextInputValue('description').trim();
+    if (!session.title || session.title.length > MAX_TITLE_LENGTH) {
+      await interaction.reply({ content: `Tiêu đề phải có từ 1 đến ${MAX_TITLE_LENGTH} ký tự.`, ephemeral: true });
+      return;
+    }
     if (!session.description || session.description.length > MAX_DESCRIPTION_LENGTH) {
       await interaction.reply({ content: `Mô tả phải có từ 1 đến ${MAX_DESCRIPTION_LENGTH} ký tự.`, ephemeral: true });
       return;
     }
 
     await interaction.reply({
-      content: 'Tiếp theo, nhập các lựa chọn theo định dạng **emoji:tên role**, mỗi lựa chọn một dòng.',
+      content: 'Tiếp theo, nhập mỗi lựa chọn một dòng theo định dạng **emoji:tên role**. Emoji custom có thể nhập bằng tên.',
       components: [
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -303,7 +311,7 @@ module.exports = {
       .setMinValues(1)
       .setMaxValues(1);
     return interaction.reply({
-      content: 'Chọn kênh đăng tin nhắn, sau đó nhập mô tả và danh sách role.',
+      content: 'Chọn kênh đăng tin nhắn, sau đó nhập tiêu đề, lời nhắn và danh sách role.',
       components: [
         new ActionRowBuilder().addComponents(channelMenu),
         cancelRow(sessionId),

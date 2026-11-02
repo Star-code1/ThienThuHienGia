@@ -20,9 +20,7 @@ async function handleReaction(reaction, user, addRole) {
     if (reaction.message.partial) await reaction.message.fetch();
     if (reaction.message.author.id !== reaction.message.client.user.id) return;
 
-    const embed = reaction.message.embeds.find((item) =>
-      item.footer?.text?.startsWith('reaction-role:v1')
-    );
+    const embed = reaction.message.embeds.find((item) => parseRoleChoiceLines(item).length > 0);
     const choice = parseRoleChoiceLines(embed).find((item) =>
       reactionMatchesEmoji(reaction.emoji, item)
     );
