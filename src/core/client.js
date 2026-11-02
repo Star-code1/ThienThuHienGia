@@ -1,5 +1,5 @@
 const dns = require('dns');
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 
 // Ép DNS Google
 try {
@@ -12,9 +12,11 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
     ],
+    partials: [Partials.Channel, Partials.Message, Partials.Reaction],
 });
 
 // Collections để loader đăng ký commands & interactions
