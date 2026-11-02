@@ -5,6 +5,7 @@ const ROLE_DUONG_CHU = '1438966724082012290';
 const ROLE_BANG_CHUNG = '1438967271149146302';
 
 const CLASS_ROLE_MAP = {
+  '1566703589605249115': 'Huyền Cơ',
   '1479112953813795038': 'Long Ngâm',
   '1439916836895588493': 'Toái Mộng',
   '1439916573031796767': 'Thần Tương',
@@ -15,6 +16,7 @@ const CLASS_ROLE_MAP = {
 };
 
 const CLASS_KEYWORDS = [
+  { name: 'Huyền Cơ', keys: ['huyền cơ', 'huyen co', 'huyenco', '[hc]', 'hc_'] },
   { name: 'Tố Vấn', keys: ['tố vấn', 'to van', 'tovan', '[tv]', 'tv_'] },
   { name: 'Huyết Hà', keys: ['huyết hà', 'huyet ha', 'huyetha', '[hh]', 'hh_'] },
   { name: 'Thần Tương', keys: ['thần ', 'than tuong', 'thantuong', '[tt]', 'tt_'] },

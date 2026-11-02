@@ -1,5 +1,6 @@
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CLASSES = [
+  { label: 'Huyền Cơ',   value: 'huyenCo',   emoji: '<:huyenco:1566703524673228840>',   emojiComponent: { id: '1566703524673228840', name: 'huyenco' } },
   { label: 'Huyết Hà',   value: 'huyetHa',   emoji: '<:huyetha:1449791931751202987>',   emojiComponent: { id: '1449791931751202987', name: 'huyetha' } },
   { label: 'Cửu Linh',   value: 'cuuLinh',   emoji: '<:cuulinh:1449791874482180207>',   emojiComponent: { id: '1449791874482180207', name: 'cuulinh' } },
   { label: 'Tố Vấn',     value: 'toVan',     emoji: '<:tovan:1449986202437550202>',     emojiComponent: { id: '1449986202437550202', name: 'tovan' } },
