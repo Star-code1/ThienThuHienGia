@@ -69,6 +69,7 @@ function detailsModal(id) {
         new TextInputBuilder()
           .setCustomId('title')
           .setLabel('Tiêu đề')
+          .setStyle(TextInputStyle.Short)
           .setPlaceholder('Chọn Phái')
           .setMaxLength(MAX_TITLE_LENGTH)
           .setRequired(true)
