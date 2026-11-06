@@ -6,6 +6,12 @@ const { upsertMessageVector } = require('../../services/qdrantService');
 
 const EMBEDDING_MIN_LENGTH = 15;
 
+// Cắt chuỗi theo giới hạn của Discord embed, thêm dấu … nếu bị cắt
+const clip = (text, max) => {
+    const t = String(text ?? '');
+    return t.length <= max ? t : t.slice(0, max - 1) + '…';
+};
+
 const hiengiaCommand = {
     data: new SlashCommandBuilder()
         .setName('hiengia')
@@ -33,10 +39,9 @@ const hiengiaCommand = {
             const embed = new EmbedBuilder()
                 .setColor('#7289DA')
                 .setTitle(`☯️ Thiên Thư Hiền Giả Luận Đạo`)
-                .addFields(
-                    { name: '❓ Đạo Hữu Hỏi:', value: question },
-                    { name: '🧙‍♂️ Hiền Giả Đáp:', value: answer }
-                )
+                // Field embed tối đa 1024 ký tự, description tối đa 4096 -> để câu trả lời dài ở description
+                .setDescription(clip(answer, 4096))
+                .addFields({ name: '❓ Đạo Hữu Hỏi:', value: clip(question, 1024) })
                 .setFooter({ text: 'Thiên Thư Môn • Đạo pháp tự nhiên', iconURL: interaction.client.user.displayAvatarURL() })
                 .setTimestamp();
 
