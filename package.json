@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "test": "node --test test/",
     "deploy": "node deploy.js",
     "sync-history": "node scripts/syncHistory.js",
     "test:unvoted": "node scripts/test-dm-unvoted.js",

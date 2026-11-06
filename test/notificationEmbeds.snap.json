@@ -1,0 +1,84 @@
+{
+  "unvoted": {
+    "color": 15105570,
+    "author": {
+      "name": "⚔️ THIÊN THƯ HIỀN GIẢ - NHẮC NHỞ ĐIỂM DANH ⚔️"
+    },
+    "title": "📢 Bang Chiến",
+    "description": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nChào đạo hữu! Bạn chưa thực hiện điểm danh cho trận Bang Chiến sắp tới.\n\n> 🗓️ **Ngày:** `10/11/2026`\n> 🕗 **Giờ:** `20h30`\n> ⏳ **Thời gian còn lại:** khoảng **12 giờ**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n👉 **Vui lòng vào kênh** <#1515709357856264212> để vote **Tham gia** hoặc **Báo vắng** giúp Ban Quản Trị kịp thời sắp xếp đội hình!",
+    "footer": {
+      "text": "Thiên Thư Môn • Hệ thống thông báo tự động"
+    }
+  },
+  "soon": {
+    "color": 3066993,
+    "author": {
+      "name": "⏰ THIÊN THƯ HIỀN GIẢ - CHUẨN BỊ VÀO TRẬN ⏰"
+    },
+    "title": "🔥 Bang Chiến",
+    "description": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nChỉ còn **30 phút** nữa là đến giờ diễn ra Bang Chiến!\n\n> 🕗 **Giờ bắt đầu:** `20h30` (Hôm nay `10/11/2026`)\n> 📍 **Địa điểm Discord:** Kênh Voice Đoàn / Kênh <#1515709357856264212>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ **Đạo hữu vui lòng:**\n1. Mở game, cắn bình buff, kiểm tra trang bị & kỹ năng.\n2. Di chuyển vào đúng phòng Voice theo Đoàn đã phân công.\n3. Sẵn sàng nghe hiệu lệnh của Chỉ Huy.",
+    "footer": {
+      "text": "Thiên Thư Môn • Tập trung đúng giờ vì danh dự bang phái!"
+    }
+  },
+  "tentative": {
+    "color": 10181046,
+    "author": {
+      "name": "⚖️ THIÊN THƯ HIỀN GIẢ - XÁC NHẬN ĐIỂM DANH ⚖️"
+    },
+    "title": "⏳ Bang Chiến",
+    "description": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nBạn hiện đang để trạng thái **\"Chưa chắc chắn\"** cho sự kiện Bang Chiến sắp tới.\n\n> 🗓️ **Ngày:** `10/11/2026` lúc `20h30`\n> ⏳ **Thời gian còn lại:** khoảng **24 giờ**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n👉 **Vui lòng vào lại kênh** <#1515709357856264212> để **chốt dứt khoát phiếu vote** (Có mặt hoặc Báo vắng) để Ban Quản Trị khóa sơ đồ và chốt danh sách đội hình chính thức!",
+    "footer": {
+      "text": "Thiên Thư Môn • Hệ thống hỗ trợ quản lý bang chiến"
+    }
+  },
+  "unassigned": {
+    "color": 15158332,
+    "author": {
+      "name": "⚠️ THIÊN THƯ HIỀN GIẢ - CẬP NHẬT ĐỘI HÌNH ⚠️"
+    },
+    "title": "📋 Bang Chiến",
+    "description": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔄 **THÔNG BÁO: VỊ TRÍ CỦA BẠN CÓ SỰ CẬP NHẬT!**\n\nHiện tại đạo hữu đã được chuyển **ra khỏi sơ đồ đội hình thi đấu chính thức** (chuyển sang hàng chờ / dự bị).\n\n> 🗓️ **Thời gian trận:** `20h30 - 10/11/2026`\n> 📍 **Trạng thái hiện tại:** `Dự bị / Đang chờ sắp xếp lại`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n👉 Vui lòng sẵn sàng tiếp ứng hoặc theo dõi thông báo mới nhất từ Ban Quản Trị!",
+    "footer": {
+      "text": "Thiên Thư Môn • Vị trí của bạn có sự cập nhật"
+    }
+  },
+  "lineup": {
+    "color": 15965202,
+    "author": {
+      "name": "🔄 THIÊN THƯ HIỀN GIẢ - CẬP NHẬT VỊ TRÍ ĐỘI HÌNH 🔄"
+    },
+    "title": "📋 Bang Chiến",
+    "description": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔄 **THÔNG BÁO: VỊ TRÍ CỦA BẠN CÓ SỰ CẬP NHẬT!**\n> *Sơ đồ và phân công trận Bang Chiến đã được cập nhật mới nhất. Dưới đây là vị trí mới của bạn:*\n\nSơ đồ đội hình Bang Chiến đã được cập nhật. Dưới đây là vị trí và đồng đội của bạn:\n\n> 🚩 **Đoàn:** `Đoàn 1`\n> ⚔️ **Đội:** `Team A` (Vị trí: **Số 2**)\n> 🗓️ **Thời gian:** `20h30 - 10/11/2026`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "fields": [
+      {
+        "name": "👥 Danh Sách Đồng Đội Cùng Team (Team A)",
+        "value": "• **Vị trí 1:** <@u1> [Thiết Y] (Tank) — 💬 *\"x\"*\n👉 **Vị trí 2:** <@u2> [Huyền Cơ]  🌟 **[BẠN]** \n• Vị trí 3: *(Trống)*",
+        "inline": false
+      },
+      {
+        "name": "🔮 Kỹ Năng / Tuyệt Kỹ Yêu Cầu",
+        "value": "• **Kỹ năng 1**",
+        "inline": false
+      },
+      {
+        "name": "📝 Ghi Chú Cá Nhân",
+        "value": "`ghi chú`",
+        "inline": false
+      },
+      {
+        "name": "🚩 Ghi Chú Toàn Đội (Team A)",
+        "value": "`tn`",
+        "inline": false
+      },
+      {
+        "name": "📢 Ghi Chú Toàn Đoàn (Đoàn 1)",
+        "value": "`dn`",
+        "inline": false
+      }
+    ],
+    "footer": {
+      "text": "Thiên Thư Môn • Vị trí của bạn có sự cập nhật"
+    }
+  }
+}
