@@ -90,14 +90,18 @@ async function getTargetGuildMembers(client) {
   const members = new Map();
   for (const guild of client.guilds.cache.values()) {
     try {
-      await guild.members.fetch();
-      const roleMembers = guild.members.cache.filter((m) =>
-        m.roles.cache.has(NOTIFICATION_CONFIG.TARGET_ROLE_ID) && !m.user.bot
-      );
-      roleMembers.forEach((m) => members.set(m.id, m));
+      // Fetch toàn bộ member bị Discord rate-limit (opcode 8) nếu gọi liên tiếp trong thời gian ngắn.
+      // Chỉ fetch khi cache chưa đầy đủ; nếu fetch lỗi thì vẫn dùng cache hiện có.
+      if (guild.members.cache.size < guild.memberCount) {
+        await guild.members.fetch();
+      }
     } catch (err) {
-      console.error(`[DM Service] Lỗi khi fetch members guild ${guild.id}:`, err.message);
+      console.error(`[DM Service] Lỗi khi fetch members guild ${guild.id} (dùng cache):`, err.message);
     }
+    const roleMembers = guild.members.cache.filter((m) =>
+      m.roles.cache.has(NOTIFICATION_CONFIG.TARGET_ROLE_ID) && !m.user.bot
+    );
+    roleMembers.forEach((m) => members.set(m.id, m));
   }
   return members;
 }
