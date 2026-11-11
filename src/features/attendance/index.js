@@ -6,6 +6,7 @@ const nhacdiemdanh = require('./commands/nhacdiemdanh');
 const xemdiem = require('./commands/xemdiem');
 const ranking = require('./commands/ranking');
 const xemvitri = require('./commands/xemvitri');
+const thongkevang = require('./commands/thongkevang');
 const { SlashCommandBuilder } = require('discord.js');
 
 const vitri = {
@@ -41,7 +42,7 @@ const handleRankingButtons = require('./interactions/rankingButtons');
 
 module.exports = {
   // Slash commands
-  commands: [diemdanh, danhsach, xoa, ghichu, nhacdiemdanh, xemdiem, ranking, xemvitri, vitri],
+  commands: [diemdanh, danhsach, xoa, ghichu, nhacdiemdanh, xemdiem, ranking, xemvitri, vitri, thongkevang],
 
   // Interaction handlers keyed by customId prefix
   interactions: {
