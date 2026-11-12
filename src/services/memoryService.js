@@ -241,7 +241,7 @@ async function buildSageContext({ guildId, channelId, query, guild }) {
     // 1. Short-term Memory: ưu tiên tin nhắn gần nhất của KÊNH ĐANG HỎI,
     //    bổ sung một ít tin từ các kênh public khác (ghi rõ tên kênh)
     let recentChatText = '';
-    try {
+    const recentTask = (async () => { try {
         const otherChannelIds = allowedChannelIds.filter(id => id !== channelId);
         const [currentMsgs, otherMsgs] = await Promise.all([
             ChatMessage.find({ guildId, channelId })
@@ -265,22 +265,22 @@ async function buildSageContext({ guildId, channelId, query, guild }) {
         recentChatText = parts.join('\n\n');
     } catch (err) {
         console.warn('⚠️ Lỗi lấy Recent Chat:', err.message);
-    }
+    } })();
 
     // 2. Semantic Memory: Qdrant Vector Search Top 5 tin nhắn liên quan nhất (Lọc theo allowedChannelIds)
     let vectorMemoryText = '';
-    try {
+    const vectorTask = (async () => { try {
         const vectorResults = await searchSimilarMessages({ text: query, guildId, allowedChannelIds, topK: 5 });
         if (vectorResults.length > 0) {
             vectorMemoryText = vectorResults.map(v => `• [${v.username}]: ${v.content}`).join('\n');
         }
     } catch (err) {
         console.warn('⚠️ Lỗi lấy Vector Memory:', err.message);
-    }
+    } })();
 
     // 3. Summary Memory: 2 summary gần nhất của các kênh được phép
     let summariesText = '';
-    try {
+    const summaryTask = (async () => { try {
         const summaries = await ChatSummary.find({ guildId, channelId: { $in: allowedChannelIds } })
             .sort({ createdAt: -1 })
             .limit(2);
@@ -290,12 +290,12 @@ async function buildSageContext({ guildId, channelId, query, guild }) {
         }
     } catch (err) {
         console.warn('⚠️ Lỗi lấy Summary Memory:', err.message);
-    }
+    } })();
 
     // 4. Target Member Search: Truy vấn chuyên sâu ký ức liên quan đến thành viên
     //    (Nickname / ID / biệt danh thân mật cấu hình qua env MEMBER_ALIASES)
     let targetMemberText = '';
-    try {
+    const memberTask = (async () => { try {
         const targetGuild = guild || (client.guilds?.cache.get(guildId));
         const members = targetGuild ? targetGuild.members.cache.values() : [];
         const { userIds, keywords } = findMentionedMembers(query, members);
@@ -321,7 +321,10 @@ async function buildSageContext({ guildId, channelId, query, guild }) {
         }
     } catch (err) {
         console.warn('⚠️ Lỗi lấy Target Member Memory:', err.message);
-    }
+    } })();
+
+    // 4 nguồn ngữ cảnh độc lập -> chạy song song (embedding + Qdrant chậm nhất, ~1-2s)
+    await Promise.all([recentTask, vectorTask, summaryTask, memberTask]);
 
     return {
         recentChatText: recentChatText || '(Không có tin nhắn gần đây)',

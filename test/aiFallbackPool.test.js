@@ -46,13 +46,13 @@ test('model đầu tiên OK thì trả ngay', async () => {
 
 test('OpenRouter 429 thì bỏ qua toàn bộ model OpenRouter còn lại, chuyển sang Gemini', async () => {
     const { calls, restore } = setup((model) => {
-        if (model === 'gemini-3.8-flash') return jsonResponse(429, { error: 'quota' });
+        if (model === 'gemini-3.8-flash' || model === 'gemini-3-flash-preview') return jsonResponse(429, { error: 'quota' });
         if (model.includes(':free')) return jsonResponse(429, { error: { message: 'Rate limit exceeded: free-models-per-day' } });
-        return okGemini('từ flash preview');
+        return okGemini('từ flash lite');
     });
     try {
-        assert.strictEqual(await callMultiProviderAI({ userPrompt: 'hi' }), 'từ flash preview');
-        assert.deepStrictEqual(calls, ['gemini-3.8-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'gemini-3-flash-preview']);
+        assert.strictEqual(await callMultiProviderAI({ userPrompt: 'hi' }), 'từ flash lite');
+        assert.deepStrictEqual(calls, ['gemini-3.8-flash', 'gemini-3-flash-preview', 'baidu/ernie-5.5-flash-preview:free', 'gemini-3.1-flash-lite']);
         assert.ok(_cooldowns.has('openrouter'), 'OpenRouter phải bị cooldown cấp provider');
         assert.ok(_cooldowns.has('gemini::gemini-3.8-flash'), 'Gemini chỉ cooldown cấp model');
     } finally { restore(); }
@@ -61,20 +61,20 @@ test('OpenRouter 429 thì bỏ qua toàn bộ model OpenRouter còn lại, chuy�
 test('Lượt gọi sau bỏ qua target đang cooldown', async () => {
     const { calls, restore } = setup((model) => {
         if (model === 'gemini-3.8-flash') return jsonResponse(429, '{}', { 'retry-after': '120' });
-        return okOpenAI('openrouter ok');
+        return okGemini('preview ok');
     });
     try {
         await callMultiProviderAI({ userPrompt: 'a' });
         calls.length = 0;
-        assert.strictEqual(await callMultiProviderAI({ userPrompt: 'b' }), 'openrouter ok');
-        assert.deepStrictEqual(calls, ['nvidia/nemotron-3-ultra-550b-a55b:free']);
+        assert.strictEqual(await callMultiProviderAI({ userPrompt: 'b' }), 'preview ok');
+        assert.deepStrictEqual(calls, ['gemini-3-flash-preview']);
     } finally { restore(); }
 });
 
 test('400 chỉ bỏ qua model đó, không cooldown', async () => {
     const { calls, restore } = setup((model) => {
         if (model === 'gemini-3.8-flash') return jsonResponse(400, { error: 'bad param' });
-        return okOpenAI('ok');
+        return okGemini('ok');
     });
     try {
         assert.strictEqual(await callMultiProviderAI({ userPrompt: 'hi' }), 'ok');
