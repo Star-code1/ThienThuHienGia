@@ -10,6 +10,10 @@
 const RETRYABLE_STATUSES = [500, 502, 503, 504];
 const REQUEST_TIMEOUT_MS = 20000;
 const RETRY_BACKOFF_MS = 1000;
+// Tổng thời gian tối đa cho 1 lượt gọi qua toàn bộ pool (tránh người dùng chờ vài phút)
+const DEFAULT_CALL_DEADLINE_MS = 60000;
+// Còn ít hơn mức này thì không bắt đầu request mới
+const MIN_ATTEMPT_TIME_MS = 3000;
 
 // Model reasoning ("nghĩ ngầm" trước khi trả JSON) hay ăn hết token budget rồi trả về
 // rỗng nếu maxTokens quá thấp -> cần cấp thêm buffer riêng cho nhóm này.
@@ -111,16 +115,20 @@ function parseRetryAfterMs(res) {
  * POST JSON với retry ngắn: chỉ retry 1 lần cho lỗi 5xx / timeout / network.
  * 429 KHÔNG retry tại chỗ (request lỗi vẫn bị tính quota) -> để pool xử lý cooldown.
  */
-async function postJsonWithRetry({ url, headers, body, extractText }) {
+async function postJsonWithRetry({ url, headers, body, extractText, timeoutMs = REQUEST_TIMEOUT_MS }) {
     let lastErr = null;
+    const deadline = Date.now() + timeoutMs;
 
     for (let attempt = 0; attempt < 2; attempt++) {
+        const remaining = deadline - Date.now();
+        if (attempt > 0 && remaining < MIN_ATTEMPT_TIME_MS) break;
+        const attemptTimeout = Math.min(REQUEST_TIMEOUT_MS, remaining);
         try {
             const res = await fetchWithTimeout(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...headers },
                 body: JSON.stringify(body)
-            });
+            }, attemptTimeout);
 
             if (!res.ok) {
                 const textErr = await res.text().catch(() => '');
@@ -140,11 +148,12 @@ async function postJsonWithRetry({ url, headers, body, extractText }) {
         } catch (e) {
             lastErr = e;
             if (e.name === 'AbortError') {
-                lastErr = new Error(`Timeout sau ${REQUEST_TIMEOUT_MS}ms`);
+                lastErr = new Error(`Timeout sau ${attemptTimeout}ms`);
                 lastErr.isTimeout = true;
             }
             const transient = lastErr.isTimeout || RETRYABLE_STATUSES.includes(lastErr.status) || (!lastErr.status && !lastErr.isEmpty);
-            if (transient && attempt === 0) {
+            const timeLeftAfterBackoff = deadline - Date.now() - RETRY_BACKOFF_MS;
+            if (transient && attempt === 0 && timeLeftAfterBackoff >= MIN_ATTEMPT_TIME_MS) {
                 await new Promise(r => setTimeout(r, RETRY_BACKOFF_MS));
                 continue;
             }
@@ -161,10 +170,11 @@ function buildMessages(systemPrompt, userPrompt) {
     ];
 }
 
-function callOpenAICompatible({ url, key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature, extraHeaders = {} }) {
+function callOpenAICompatible({ url, key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature, timeoutMs, extraHeaders = {} }) {
     const effectiveMaxTokens = jsonMode && isReasoningModel(model) ? Math.max(maxTokens, 800) : maxTokens;
     return postJsonWithRetry({
         url,
+        timeoutMs,
         headers: { 'Authorization': `Bearer ${key}`, ...extraHeaders },
         body: {
             model,
@@ -177,8 +187,9 @@ function callOpenAICompatible({ url, key, model, systemPrompt, userPrompt, jsonM
     });
 }
 
-function callGemini({ key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature }) {
+function callGemini({ key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature, timeoutMs }) {
     return postJsonWithRetry({
+        timeoutMs,
         url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
         headers: { 'x-goog-api-key': key },
         body: {
@@ -198,8 +209,9 @@ function callGemini({ key, model, systemPrompt, userPrompt, jsonMode, maxTokens,
     });
 }
 
-function callCloudflare({ key, accountId, model, systemPrompt, userPrompt, maxTokens, temperature }) {
+function callCloudflare({ key, accountId, model, systemPrompt, userPrompt, maxTokens, temperature, timeoutMs }) {
     return postJsonWithRetry({
+        timeoutMs,
         url: `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
         headers: { 'Authorization': `Bearer ${key}` },
         body: { messages: buildMessages(systemPrompt, userPrompt), max_tokens: maxTokens, temperature },
@@ -371,15 +383,21 @@ function handleTargetError(target, provider, err) {
  * Gọi AI theo fallback pool: giữ nguyên system prompt + nội dung khi chuyển model,
  * quản lý cooldown theo provider/model, giới hạn số lần thử mỗi lượt.
  */
-async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false, maxTokens = 250, temperature = 0.3 }) {
-    const opts = { systemPrompt, userPrompt, jsonMode, maxTokens, temperature };
+async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false, maxTokens = 250, temperature = 0.3, deadlineMs = DEFAULT_CALL_DEADLINE_MS }) {
+    const baseOpts = { systemPrompt, userPrompt, jsonMode, maxTokens, temperature };
     const errorLog = [];
     const skippedProviders = new Set();
+    const deadline = Date.now() + deadlineMs;
     let attempts = 0;
 
     for (const target of FALLBACK_POOL) {
         if (attempts >= MAX_ATTEMPTS_PER_CALL) {
             errorLog.push(`Đã đạt giới hạn ${MAX_ATTEMPTS_PER_CALL} lần thử trong 1 lượt`);
+            break;
+        }
+        const remaining = deadline - Date.now();
+        if (remaining < MIN_ATTEMPT_TIME_MS) {
+            errorLog.push(`Hết thời gian ${deadlineMs}ms cho 1 lượt gọi`);
             break;
         }
 
@@ -390,7 +408,7 @@ async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = f
 
         attempts++;
         try {
-            const result = await provider.call(target.model, key, opts);
+            const result = await provider.call(target.model, key, { ...baseOpts, timeoutMs: remaining });
             if (result && result.trim()) return result.trim();
         } catch (err) {
             const line = `${provider.name} -> ${target.model}: ${err.message}`;

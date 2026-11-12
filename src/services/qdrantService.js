@@ -1,19 +1,49 @@
+const crypto = require('crypto');
+
 const QDRANT_URL = process.env.QDRANT_URL ? process.env.QDRANT_URL.replace(/\/$/, '') : null;
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY || null;
 const COLLECTION_NAME = 'discord_messages';
 const VECTOR_SIZE = 1536; // OpenAI text-embedding-3-small (qua OpenRouter) dimension
+const QDRANT_TIMEOUT_MS = 10000;
+// Kết nối Qdrant lỗi -> chờ bấy lâu rồi mới thử lại (không khóa vĩnh viễn tới khi restart)
+const QDRANT_RETRY_AFTER_MS = 60 * 1000;
+// Đồng bộ với TTL của ChatMessage (60 ngày) để ký ức vector không sống lâu hơn tin nhắn gốc
+const VECTOR_RETENTION_DAYS = 60;
 
-let isQdrantAvailable = null;
+// Mỗi model embedding là một "không gian vector" riêng: KHÔNG được so sánh vector
+// của model này với model khác. Vì vậy mỗi point lưu kèm embedModel và khi search
+// chỉ so với các point cùng model.
+const EMBED_MODEL_OPENAI = 'openai/text-embedding-3-small';
+const EMBED_MODEL_GEMINI = 'gemini-embedding-001@1536';
+
+let isQdrantAvailable = null; // null = chưa kiểm tra
+let nextQdrantRetryAt = 0;
+let qdrantErrorLogged = false;
 let embeddingErrorLogged = false;
 
+function qdrantHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    if (QDRANT_API_KEY) headers['api-key'] = QDRANT_API_KEY;
+    return headers;
+}
+
+function qdrantFetch(path, options = {}) {
+    return fetch(`${QDRANT_URL}${path}`, {
+        ...options,
+        headers: qdrantHeaders(),
+        signal: AbortSignal.timeout(QDRANT_TIMEOUT_MS)
+    });
+}
+
 /**
- * Sinh Embedding cho văn bản (Ưu tiên OpenRouter text-embedding-3-small, fallback Gemini)
+ * Sinh Embedding cho văn bản (Ưu tiên OpenRouter text-embedding-3-small, fallback Gemini).
+ * Trả về { vector, model } hoặc null. Vector luôn có đúng VECTOR_SIZE chiều.
  */
 async function generateEmbedding(text) {
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
 
-    // 1. Thử OpenRouter Embedding (openai/text-embedding-3-small)
+    // 1. OpenRouter Embedding (openai/text-embedding-3-small, 1536 chiều)
     if (openrouterKey) {
         try {
             const res = await fetch('https://openrouter.ai/api/v1/embeddings', {
@@ -24,47 +54,43 @@ async function generateEmbedding(text) {
                     'HTTP-Referer': 'https://discordbot.org',
                     'X-Title': 'ThienThuHienGia_DiscordBot'
                 },
-                body: JSON.stringify({
-                    model: 'openai/text-embedding-3-small',
-                    input: text
-                })
+                body: JSON.stringify({ model: EMBED_MODEL_OPENAI, input: text }),
+                signal: AbortSignal.timeout(QDRANT_TIMEOUT_MS)
             });
 
             if (res.ok) {
                 const data = await res.json();
                 const embedding = data.data?.[0]?.embedding;
-                if (Array.isArray(embedding) && embedding.length > 0) {
-                    return embedding;
+                if (Array.isArray(embedding) && embedding.length === VECTOR_SIZE) {
+                    return { vector: embedding, model: EMBED_MODEL_OPENAI };
                 }
             }
         } catch (e) {
-            // Silence error and try next fallback
+            // Bỏ qua, thử fallback
         }
     }
 
-    // 2. Thử Gemini Embedding
+    // 2. Gemini gemini-embedding-001 với outputDimensionality = 1536 cho khớp collection
     if (geminiKey) {
-        const embeddingModels = ['text-embedding-004', 'embedding-001'];
-        for (const modelName of embeddingModels) {
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:embedContent?key=${geminiKey}`;
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        content: { parts: [{ text }] }
-                    })
-                });
+        try {
+            const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+                body: JSON.stringify({
+                    content: { parts: [{ text }] },
+                    outputDimensionality: VECTOR_SIZE
+                }),
+                signal: AbortSignal.timeout(QDRANT_TIMEOUT_MS)
+            });
 
-                if (res.ok) {
-                    const data = await res.json();
-                    const values = data.embedding?.values;
-                    if (Array.isArray(values) && values.length > 0) {
-                        return values;
-                    }
+            if (res.ok) {
+                const data = await res.json();
+                const values = data.embedding?.values;
+                if (Array.isArray(values) && values.length === VECTOR_SIZE) {
+                    return { vector: values, model: EMBED_MODEL_GEMINI };
                 }
-            } catch (err) {}
-        }
+            }
+        } catch (err) {}
     }
 
     if (!embeddingErrorLogged) {
@@ -78,74 +104,102 @@ async function generateEmbedding(text) {
  * Khởi tạo Collection trong Qdrant nếu chưa tồn tại
  */
 async function ensureQdrantCollection() {
-    if (!QDRANT_URL) {
-        isQdrantAvailable = false;
-        return false;
-    }
-
     try {
-        const headers = { 'Content-Type': 'application/json' };
-        if (QDRANT_API_KEY) headers['api-key'] = QDRANT_API_KEY;
+        const checkRes = await qdrantFetch(`/collections/${COLLECTION_NAME}`);
+        if (checkRes.ok) return true;
 
-        // Check if collection exists
-        const checkRes = await fetch(`${QDRANT_URL}/collections/${COLLECTION_NAME}`, { headers });
-        if (checkRes.ok) {
-            isQdrantAvailable = true;
-            return true;
-        }
-
-        // Create collection if missing
-        const createRes = await fetch(`${QDRANT_URL}/collections/${COLLECTION_NAME}`, {
+        const createRes = await qdrantFetch(`/collections/${COLLECTION_NAME}`, {
             method: 'PUT',
-            headers,
-            body: JSON.stringify({
-                vectors: {
-                    size: VECTOR_SIZE,
-                    distance: 'Cosine'
-                }
-            })
+            body: JSON.stringify({ vectors: { size: VECTOR_SIZE, distance: 'Cosine' } })
         });
 
         if (createRes.ok) {
             console.log(`✅ Qdrant Collection "${COLLECTION_NAME}" (size: ${VECTOR_SIZE}) đã khởi tạo thành công.`);
-            isQdrantAvailable = true;
             return true;
-        } else {
-            const textErr = await createRes.text();
-            console.warn('⚠️ Không thể khởi tạo Qdrant Collection:', textErr);
         }
+        console.warn('⚠️ Không thể khởi tạo Qdrant Collection:', (await createRes.text()).slice(0, 300));
     } catch (e) {
-        console.warn('⚠️ Không thể kết nối Qdrant Server:', e.message);
+        if (!qdrantErrorLogged) {
+            console.warn(`⚠️ Không thể kết nối Qdrant Server (${e.cause?.code || e.message}). Sẽ tự thử lại sau ${QDRANT_RETRY_AFTER_MS / 1000}s.`);
+            qdrantErrorLogged = true;
+        }
     }
-
-    isQdrantAvailable = false;
     return false;
+}
+
+/**
+ * Qdrant có sẵn sàng không. Nếu lần trước lỗi thì chỉ thử lại sau QDRANT_RETRY_AFTER_MS,
+ * thay vì khóa vĩnh viễn tới khi restart bot.
+ */
+async function isQdrantReady() {
+    if (!QDRANT_URL) return false;
+    if (isQdrantAvailable === true) return true;
+    if (Date.now() < nextQdrantRetryAt) return false;
+
+    isQdrantAvailable = await ensureQdrantCollection();
+    if (isQdrantAvailable) {
+        if (qdrantErrorLogged) console.log('✅ Đã kết nối lại Qdrant.');
+        qdrantErrorLogged = false;
+    } else {
+        nextQdrantRetryAt = Date.now() + QDRANT_RETRY_AFTER_MS;
+    }
+    return isQdrantAvailable;
+}
+
+/** Lỗi mạng giữa chừng -> đánh dấu chưa sẵn sàng để lần sau kiểm tra lại */
+function markQdrantDown(err) {
+    isQdrantAvailable = false;
+    nextQdrantRetryAt = Date.now() + QDRANT_RETRY_AFTER_MS;
+    if (!qdrantErrorLogged) {
+        console.warn(`⚠️ Mất kết nối Qdrant (${err.cause?.code || err.message}). Sẽ tự thử lại sau ${QDRANT_RETRY_AFTER_MS / 1000}s.`);
+        qdrantErrorLogged = true;
+    }
+}
+
+/**
+ * Point ID ổn định & không va chạm: UUID dẫn xuất từ messageId (md5, định dạng UUID v3).
+ * (Bản cũ băm 32-bit nên trùng ID -> vector của tin này ghi đè tin khác.)
+ */
+function messageIdToPointId(messageId) {
+    const hex = crypto.createHash('md5').update(String(messageId)).digest('hex').split('');
+    hex[12] = '3'; // version 3
+    hex[16] = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16); // variant RFC 4122
+    const h = hex.join('');
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+/**
+ * Filter chỉ lấy point cùng model embedding. Point cũ (trước khi có trường embedModel)
+ * đều được tạo bằng OpenAI nên coi như thuộc model OpenAI.
+ */
+function embedModelFilter(model) {
+    if (model === EMBED_MODEL_OPENAI) {
+        return {
+            should: [
+                { key: 'embedModel', match: { value: model } },
+                { is_empty: { key: 'embedModel' } }
+            ]
+        };
+    }
+    return { key: 'embedModel', match: { value: model } };
 }
 
 /**
  * Lưu Vector vào Qdrant DB
  */
 async function upsertMessageVector({ messageId, guildId, channelId, authorId, username, content, createdAt }) {
-    if (isQdrantAvailable === false && !QDRANT_URL) return false;
-    if (isQdrantAvailable === null) {
-        await ensureQdrantCollection();
-    }
-    if (!isQdrantAvailable) return false;
+    if (!(await isQdrantReady())) return false;
 
-    const vector = await generateEmbedding(content);
-    if (!vector) return false;
+    const embedding = await generateEmbedding(content);
+    if (!embedding) return false;
 
     try {
-        const headers = { 'Content-Type': 'application/json' };
-        if (QDRANT_API_KEY) headers['api-key'] = QDRANT_API_KEY;
-
-        const pointId = stringToPositiveInt(messageId);
-
-        const body = {
-            points: [
-                {
-                    id: pointId,
-                    vector,
+        const res = await qdrantFetch(`/collections/${COLLECTION_NAME}/points`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                points: [{
+                    id: messageIdToPointId(messageId),
+                    vector: embedding.vector,
                     payload: {
                         messageId,
                         guildId,
@@ -153,21 +207,19 @@ async function upsertMessageVector({ messageId, guildId, channelId, authorId, us
                         authorId,
                         username,
                         content,
+                        embedModel: embedding.model,
                         createdAt: new Date(createdAt).toISOString()
                     }
-                }
-            ]
-        };
-
-        const res = await fetch(`${QDRANT_URL}/collections/${COLLECTION_NAME}/points`, {
-            method: 'PUT',
-            headers,
-            body: JSON.stringify(body)
+                }]
+            })
         });
 
+        if (!res.ok) {
+            console.warn('⚠️ Qdrant từ chối upsert:', res.status, (await res.text()).slice(0, 300));
+        }
         return res.ok;
     } catch (err) {
-        console.warn('⚠️ Lỗi upsert Vector Qdrant:', err.message);
+        markQdrantDown(err);
         return false;
     }
 }
@@ -176,20 +228,13 @@ async function upsertMessageVector({ messageId, guildId, channelId, authorId, us
  * Tìm kiếm câu chat tương đồng nhất trong Qdrant
  */
 async function searchSimilarMessages({ text, guildId, channelId, allowedChannelIds, topK = 5 }) {
-    if (isQdrantAvailable === false && !QDRANT_URL) return [];
-    if (isQdrantAvailable === null) {
-        await ensureQdrantCollection();
-    }
-    if (!isQdrantAvailable) return [];
+    if (!(await isQdrantReady())) return [];
 
-    const vector = await generateEmbedding(text);
-    if (!vector) return [];
+    const embedding = await generateEmbedding(text);
+    if (!embedding) return [];
 
     try {
-        const headers = { 'Content-Type': 'application/json' };
-        if (QDRANT_API_KEY) headers['api-key'] = QDRANT_API_KEY;
-
-        const mustConditions = [];
+        const mustConditions = [embedModelFilter(embedding.model)];
         if (guildId) mustConditions.push({ key: 'guildId', match: { value: guildId } });
 
         if (Array.isArray(allowedChannelIds) && allowedChannelIds.length > 0) {
@@ -198,48 +243,66 @@ async function searchSimilarMessages({ text, guildId, channelId, allowedChannelI
             mustConditions.push({ key: 'channelId', match: { value: channelId } });
         }
 
-        const filter = mustConditions.length > 0 ? { must: mustConditions } : undefined;
-
-        const body = {
-            vector,
-            limit: topK,
-            with_payload: true,
-            filter
-        };
-
-        const res = await fetch(`${QDRANT_URL}/collections/${COLLECTION_NAME}/points/search`, {
+        const res = await qdrantFetch(`/collections/${COLLECTION_NAME}/points/search`, {
             method: 'POST',
-            headers,
-            body: JSON.stringify(body)
+            body: JSON.stringify({
+                vector: embedding.vector,
+                limit: topK,
+                with_payload: true,
+                filter: { must: mustConditions }
+            })
         });
 
-        if (!res.ok) return [];
+        if (!res.ok) {
+            console.warn('⚠️ Qdrant search lỗi:', res.status, (await res.text()).slice(0, 300));
+            return [];
+        }
 
         const data = await res.json();
-        const results = data.result || [];
-        return results.map(r => ({
+        return (data.result || []).map(r => ({
             username: r.payload?.username || 'Thành viên',
             content: r.payload?.content || '',
             score: r.score,
             createdAt: r.payload?.createdAt
         }));
     } catch (err) {
-        console.warn('⚠️ Lỗi search Vector Qdrant:', err.message);
+        markQdrantDown(err);
         return [];
     }
 }
 
-function stringToPositiveInt(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = (hash << 5) - hash + str.charCodeAt(i);
-        hash |= 0;
+/**
+ * Xóa vector cũ hơn VECTOR_RETENTION_DAYS (khớp TTL 60 ngày của ChatMessage trong MongoDB).
+ */
+async function pruneOldVectors(days = VECTOR_RETENTION_DAYS) {
+    if (!(await isQdrantReady())) return false;
+
+    const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
+    try {
+        const res = await qdrantFetch(`/collections/${COLLECTION_NAME}/points/delete`, {
+            method: 'POST',
+            body: JSON.stringify({
+                filter: { must: [{ key: 'createdAt', range: { lt: cutoff } }] }
+            })
+        });
+        if (!res.ok) {
+            console.warn('⚠️ Không thể dọn vector cũ:', res.status, (await res.text()).slice(0, 300));
+            return false;
+        }
+        console.log(`🧹 [Qdrant] Đã dọn vector cũ hơn ${days} ngày (trước ${cutoff.slice(0, 10)}).`);
+        return true;
+    } catch (err) {
+        markQdrantDown(err);
+        return false;
     }
-    return Math.abs(hash) + 1;
 }
 
 module.exports = {
     generateEmbedding,
     upsertMessageVector,
-    searchSimilarMessages
+    searchSimilarMessages,
+    pruneOldVectors,
+    messageIdToPointId,
+    embedModelFilter,
+    VECTOR_RETENTION_DAYS
 };

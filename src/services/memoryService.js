@@ -3,12 +3,25 @@ const ChatSummary = require('../shared/models/ChatSummary');
 const { upsertMessageVector, searchSimilarMessages } = require('./qdrantService');
 const { callMultiProviderAI } = require('./aiService');
 const { resolveUserMentions } = require('../shared/utils/nameHelper');
+const { findMentionedMembers, escapeRegex } = require('../shared/utils/memberMatch');
 
 const EMBEDDING_MIN_LENGTH = 15;
 const SUMMARY_TRIGGER_COUNT = 500;
+// Giới hạn độ dài transcript gửi AI tóm tắt; chỉ tin nhắn thực sự nằm trong
+// giới hạn này mới được tính là "đã tóm tắt".
+const SUMMARY_CHAR_BUDGET = 12000;
+const SUMMARY_LINE_MAX_CHARS = 400;
+// Tóm tắt thất bại -> chờ bấy lâu mới thử lại, tránh mỗi tin nhắn mới lại gọi AI đốt quota
+const SUMMARY_FAILURE_COOLDOWN_MS = 30 * 60 * 1000;
+
+// Recent chat: ưu tiên kênh đang hỏi, chỉ lấy ít tin từ các kênh public khác
+const RECENT_CURRENT_CHANNEL_LIMIT = 15;
+const RECENT_OTHER_CHANNELS_LIMIT = 6;
 
 // Set để tránh trigger trùng lặp summary worker
 const activeSummaryWork = new Set();
+// key -> timestamp được phép thử lại sau khi tóm tắt thất bại
+const summaryRetryAt = new Map();
 
 /**
  * Thu thập và xử lý tin nhắn mới từ Discord (Message Collector & Rule Engine)
@@ -95,6 +108,7 @@ async function processIncomingMessage(message) {
 async function checkAndTriggerSummary(guildId, channelId) {
     const key = `${guildId}:${channelId}`;
     if (activeSummaryWork.has(key)) return;
+    if (Date.now() < (summaryRetryAt.get(key) || 0)) return;
 
     // Lấy thời điểm summary gần nhất
     const lastSummary = await ChatSummary.findOne({ guildId, channelId }).sort({ to: -1 });
@@ -110,7 +124,13 @@ async function checkAndTriggerSummary(guildId, channelId) {
     if (count >= SUMMARY_TRIGGER_COUNT) {
         activeSummaryWork.add(key);
         try {
-            await generateChatSummary(guildId, channelId, lastDate);
+            const ok = await generateChatSummary(guildId, channelId, lastDate);
+            if (ok) {
+                summaryRetryAt.delete(key);
+            } else {
+                summaryRetryAt.set(key, Date.now() + SUMMARY_FAILURE_COOLDOWN_MS);
+                console.warn(`⏸️ [Summary Queue] ${key} tạm dừng tóm tắt ${SUMMARY_FAILURE_COOLDOWN_MS / 60000} phút do lỗi.`);
+            }
         } finally {
             activeSummaryWork.delete(key);
         }
@@ -118,7 +138,29 @@ async function checkAndTriggerSummary(guildId, channelId) {
 }
 
 /**
- * AI sinh Summary cho 500 tin nhắn
+ * Cắt danh sách tin nhắn (đã sort cũ -> mới) sao cho transcript không vượt budget.
+ * Trả về các dòng transcript + số tin nhắn thực sự được đưa vào.
+ */
+function buildSummaryTranscript(messages, budget = SUMMARY_CHAR_BUDGET) {
+    const lines = [];
+    let used = 0;
+    for (const m of messages) {
+        let content = String(m.content || '');
+        if (content.length > SUMMARY_LINE_MAX_CHARS) content = content.slice(0, SUMMARY_LINE_MAX_CHARS - 1) + '…';
+        const line = `[${m.username}]: ${content}`;
+        // Luôn lấy ít nhất 1 tin để tiến độ không bị kẹt
+        if (lines.length > 0 && used + line.length + 1 > budget) break;
+        lines.push(line);
+        used += line.length + 1;
+    }
+    return { lines, includedCount: lines.length };
+}
+
+/**
+ * AI sinh Summary cho lô tin nhắn chưa tóm tắt.
+ * Chỉ ghi nhận mốc `to` tới tin nhắn cuối cùng AI thực sự đọc được; phần còn lại
+ * sẽ được tóm tắt ở lượt sau.
+ * @returns {Promise<boolean>} true nếu tạo summary thành công
  */
 async function generateChatSummary(guildId, channelId, lastDate) {
     console.log(`📝 [Summary Queue] Đang tạo summary cho Server ${guildId} / Channel ${channelId}...`);
@@ -131,30 +173,28 @@ async function generateChatSummary(guildId, channelId, lastDate) {
     .sort({ createdAt: 1 })
     .limit(SUMMARY_TRIGGER_COUNT);
 
-    if (!messages || messages.length === 0) return;
+    if (!messages || messages.length === 0) return true;
 
-    const fromDate = messages[0].createdAt;
-    const toDate = messages[messages.length - 1].createdAt;
-
-    // Build chat transcript text for LLM
-    const textLines = messages.map(m => `[${m.username}]: ${m.content}`);
-    const transcriptText = textLines.join('\n');
+    const { lines, includedCount } = buildSummaryTranscript(messages);
+    const included = messages.slice(0, includedCount);
+    const fromDate = included[0].createdAt;
+    const toDate = included[included.length - 1].createdAt;
 
     const prompt = `Bạn là trợ lý tóm tắt cuộc trò chuyện cho server Discord bang hội Nghịch Thủy Hàn.
-Hãy tóm tắt ngắn gọn (dưới 300 từ) các thông tin quan trọng nhất trong 500 tin nhắn chat sau đây.
+Hãy tóm tắt ngắn gọn (dưới 300 từ) các thông tin quan trọng nhất trong ${includedCount} tin nhắn chat sau đây.
 Tập trung vào:
 - Hoạt động bang chiến, bảo trì, thời gian gank/boss
 - Các thông báo quan trọng của admin/chủ bang
 - Các sự kiện, thỏa thuận hoặc trao đổi nổi bật giữa các thành viên
 
 Nội dung chat:
-${transcriptText.slice(0, 8000)}`;
+${lines.join('\n')}`;
 
     try {
         const summaryText = await callMultiProviderAI({
             systemPrompt: 'Trả về tóm tắt ngắn gọn dạng gạch đầu dòng, nêu rõ mốc thời gian và nội dung quan trọng.',
             userPrompt: prompt,
-            maxTokens: 500,
+            maxTokens: 700,
             temperature: 0.3
         });
 
@@ -164,12 +204,14 @@ ${transcriptText.slice(0, 8000)}`;
             from: fromDate,
             to: toDate,
             summary: summaryText,
-            messageCount: messages.length
+            messageCount: includedCount
         });
 
-        console.log(`✅ [Summary Queue] Tạo Summary thành công cho ${messages.length} tin nhắn.`);
+        console.log(`✅ [Summary Queue] Tạo Summary thành công cho ${includedCount}/${messages.length} tin nhắn.`);
+        return true;
     } catch (err) {
         console.error('❌ Lỗi tạo Chat Summary:', err.message);
+        return false;
     }
 }
 
@@ -196,17 +238,31 @@ async function buildSageContext({ guildId, channelId, query, guild }) {
         console.warn('⚠️ Lỗi tính toán allowedChannelIds:', err.message);
     }
 
-    // 1. Short-term Memory: 20 tin nhắn gần nhất trong các kênh được phép
+    // 1. Short-term Memory: ưu tiên tin nhắn gần nhất của KÊNH ĐANG HỎI,
+    //    bổ sung một ít tin từ các kênh public khác (ghi rõ tên kênh)
     let recentChatText = '';
     try {
-        const recentMsgs = await ChatMessage.find({ guildId, channelId: { $in: allowedChannelIds } })
-            .sort({ createdAt: -1 })
-            .limit(20);
-        
-        recentMsgs.reverse();
-        if (recentMsgs.length > 0) {
-            recentChatText = recentMsgs.map(m => `[${m.username}]: ${m.content}`).join('\n');
+        const otherChannelIds = allowedChannelIds.filter(id => id !== channelId);
+        const [currentMsgs, otherMsgs] = await Promise.all([
+            ChatMessage.find({ guildId, channelId })
+                .sort({ createdAt: -1 })
+                .limit(RECENT_CURRENT_CHANNEL_LIMIT),
+            otherChannelIds.length > 0
+                ? ChatMessage.find({ guildId, channelId: { $in: otherChannelIds } })
+                    .sort({ createdAt: -1 })
+                    .limit(RECENT_OTHER_CHANNELS_LIMIT)
+                : []
+        ]);
+
+        const parts = [];
+        if (currentMsgs.length > 0) {
+            parts.push('[Kênh hiện tại]\n' + currentMsgs.reverse().map(m => `[${m.username}]: ${m.content}`).join('\n'));
         }
+        if (otherMsgs.length > 0) {
+            const channelName = id => client.channels?.cache.get(id)?.name || 'kênh khác';
+            parts.push('[Các kênh khác]\n' + otherMsgs.reverse().map(m => `#${channelName(m.channelId)} [${m.username}]: ${m.content}`).join('\n'));
+        }
+        recentChatText = parts.join('\n\n');
     } catch (err) {
         console.warn('⚠️ Lỗi lấy Recent Chat:', err.message);
     }
@@ -236,51 +292,23 @@ async function buildSageContext({ guildId, channelId, query, guild }) {
         console.warn('⚠️ Lỗi lấy Summary Memory:', err.message);
     }
 
-    // 4. Target Member Search: Truy vấn chuyên sâu ký ức liên quan đến thành viên (Nickname / ID / Biệt danh thân mật)
+    // 4. Target Member Search: Truy vấn chuyên sâu ký ức liên quan đến thành viên
+    //    (Nickname / ID / biệt danh thân mật cấu hình qua env MEMBER_ALIASES)
     let targetMemberText = '';
     try {
-        const cleanQuery = query.toLowerCase();
-        let matchedUserIds = [];
-        let searchKeywords = [];
-
         const targetGuild = guild || (client.guilds?.cache.get(guildId));
-        if (targetGuild) {
-            targetGuild.members.cache.forEach(member => {
-                const nickname = (member.displayName || '').toLowerCase();
-                const username = (member.user?.username || '').toLowerCase();
-                const globalName = (member.user?.globalName || '').toLowerCase();
+        const members = targetGuild ? targetGuild.members.cache.values() : [];
+        const { userIds, keywords } = findMentionedMembers(query, members);
 
-                const isMatched = 
-                    (nickname && cleanQuery.includes(nickname)) ||
-                    (username && cleanQuery.includes(username)) ||
-                    (globalName && cleanQuery.includes(globalName)) ||
-                    cleanQuery.includes(member.id) ||
-                    (nickname.includes('snake') && (cleanQuery.includes('rắn') || cleanQuery.includes('chú rắn')));
-
-                if (isMatched) {
-                    matchedUserIds.push(member.id);
-                    if (member.displayName) searchKeywords.push(member.displayName);
-                }
-            });
-        }
-
-        // Bổ sung keyword thủ công nếu câu hỏi đề cập đến "rắn" / "chú rắn" / user ID 377331972621467648
-        if (cleanQuery.includes('rắn') || cleanQuery.includes('snake')) {
-            matchedUserIds.push('377331972621467648');
-            searchKeywords.push('Snake', 'rắn', 'chú rắn');
-        }
-
-        if (matchedUserIds.length > 0 || searchKeywords.length > 0) {
-            const uniqueUserIds = Array.from(new Set(matchedUserIds));
-            const uniqueKeywords = Array.from(new Set(searchKeywords));
-
+        if (userIds.length > 0 || keywords.length > 0) {
             const memberMsgs = await ChatMessage.find({
                 guildId,
                 channelId: { $in: allowedChannelIds },
                 $or: [
-                    { authorId: { $in: uniqueUserIds } },
-                    { mentions: { $in: uniqueUserIds } },
-                    ...uniqueKeywords.map(kw => ({ content: { $regex: kw, $options: 'i' } }))
+                    { authorId: { $in: userIds } },
+                    { mentions: { $in: userIds } },
+                    // escapeRegex: tên có ký tự đặc biệt như ( * [ không làm hỏng truy vấn
+                    ...keywords.map(kw => ({ content: { $regex: escapeRegex(kw), $options: 'i' } }))
                 ]
             })
             .sort({ createdAt: -1 })
@@ -307,5 +335,6 @@ module.exports = {
     processIncomingMessage,
     buildSageContext,
     generateChatSummary,
-    checkAndTriggerSummary
+    checkAndTriggerSummary,
+    buildSummaryTranscript
 };
