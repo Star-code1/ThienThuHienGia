@@ -1,15 +1,15 @@
 /**
- * Hệ thống gọi AI đa nhà cung cấp với cơ chế tự động chuyển vùng khi hết Token/Lỗi & Tối ưu tốc độ (Fast Speed):
- * 1. Gemini 2.5 Flash (GEMINI_API_KEY)
- * 2. Cerebras (CEREBRAS_API_KEY)
- * 3. Groq (GROQ_API_KEY)
- * 4. Cloudflare Workers AI (CLOUDFLARE_API_TOKEN)
- * 5. Chutes AI (CHUTES_API_KEY)
- * 6. DeepSeek V3 (DEEPSEEK_API_KEY)
- * 7. OpenRouter (OPENROUTER_API_KEY)
+ * Hệ thống gọi AI đa nhà cung cấp với fallback pool miễn phí
+ * (xem free-chat-llm-api-fallback-pool.md — Gemini + OpenRouter :free).
+ * - Thứ tự ưu tiên xen kẽ Gemini / OpenRouter để không dồn hết vào 1 quota.
+ * - 429: cooldown (Retry-After hoặc tới 0h UTC nếu hết quota ngày); OpenRouter dùng chung
+ *   quota tài khoản nên 429 sẽ bỏ qua toàn bộ model OpenRouter còn lại.
+ * - 401/403: tạm khóa provider, cần kiểm tra key. 5xx/timeout: retry 1 lần rồi chuyển.
+ * Key cần trong .env: GEMINI_API_KEY, OPENROUTER_API_KEY (tuỳ chọn: CLOUDFLARE_*, CEREBRAS_API_KEY).
  */
-const RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
-const REQUEST_TIMEOUT_MS = 15000;
+const RETRYABLE_STATUSES = [500, 502, 503, 504];
+const REQUEST_TIMEOUT_MS = 20000;
+const RETRY_BACKOFF_MS = 1000;
 
 // Model reasoning ("nghĩ ngầm" trước khi trả JSON) hay ăn hết token budget rồi trả về
 // rỗng nếu maxTokens quá thấp -> cần cấp thêm buffer riêng cho nhóm này.
@@ -98,302 +98,309 @@ async function fetchWithTimeout(url, options, timeoutMs = REQUEST_TIMEOUT_MS) {
     }
 }
 
-/**
- * Gọi API OpenAI-compatible với cơ chế Retry Exponential Backoff & Lọc Mã Lỗi
- */
-async function fetchOpenAICompatibleWithRetry({ url, key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature, extraHeaders = {} }) {
-    let lastErr = null;
-    const effectiveMaxTokens = jsonMode && isReasoningModel(model) ? Math.max(maxTokens, 800) : maxTokens;
-
-    for (let retry = 0; retry < 2; retry++) {
-        try {
-            const body = {
-                model,
-                messages: [
-                    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                    { role: 'user', content: userPrompt }
-                ],
-                temperature,
-                max_tokens: effectiveMaxTokens,
-                ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
-            };
-
-            const res = await fetchWithTimeout(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${key}`,
-                    'Content-Type': 'application/json',
-                    ...extraHeaders
-                },
-                body: JSON.stringify(body)
-            });
-
-            if (!res.ok) {
-                const textErr = await res.text();
-                const status = res.status;
-                const err = new Error(`Status ${status}: ${textErr}`);
-                err.status = status;
-
-                if (RETRYABLE_STATUSES.includes(status) && retry < 1) {
-                    await new Promise(r => setTimeout(r, 1000 * (retry + 1)));
-                    continue;
-                }
-                throw err;
-            }
-
-            const data = await res.json();
-            const text = data.choices?.[0]?.message?.content;
-            if (text && text.trim()) return text.trim();
-            throw new Error('Nội dung trả về rỗng');
-        } catch (e) {
-            lastErr = e;
-            if (e.name === 'AbortError') {
-                lastErr = new Error(`Timeout sau ${REQUEST_TIMEOUT_MS}ms`);
-                if (retry < 1) continue;
-                break;
-            }
-            if (e.status && !RETRYABLE_STATUSES.includes(e.status)) {
-                break;
-            }
-        }
-    }
-    throw lastErr;
+function parseRetryAfterMs(res) {
+    const header = res.headers?.get?.('retry-after');
+    if (!header) return null;
+    const seconds = Number(header);
+    if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+    const date = Date.parse(header);
+    return Number.isFinite(date) ? Math.max(0, date - Date.now()) : null;
 }
 
 /**
- * Gọi API Gemini với cơ chế Retry Exponential Backoff & Lọc Mã Lỗi
+ * POST JSON với retry ngắn: chỉ retry 1 lần cho lỗi 5xx / timeout / network.
+ * 429 KHÔNG retry tại chỗ (request lỗi vẫn bị tính quota) -> để pool xử lý cooldown.
  */
-async function fetchGeminiWithRetry({ key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature }) {
+async function postJsonWithRetry({ url, headers, body, extractText }) {
     let lastErr = null;
 
-    for (let retry = 0; retry < 2; retry++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
         try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-            const body = {
-                ...(systemPrompt ? {
-                    systemInstruction: {
-                        parts: [{ text: systemPrompt }]
-                    }
-                } : {}),
-                contents: [
-                    {
-                        role: 'user',
-                        parts: [{ text: userPrompt }]
-                    }
-                ],
-                generationConfig: {
-                    temperature,
-                    maxOutputTokens: maxTokens,
-                    ...(jsonMode ? { responseMimeType: 'application/json' } : {})
-                }
-            };
-
             const res = await fetchWithTimeout(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...headers },
                 body: JSON.stringify(body)
             });
 
             if (!res.ok) {
-                const textErr = await res.text();
-                const status = res.status;
-                const err = new Error(`Status ${status}: ${textErr}`);
-                err.status = status;
-
-                if (RETRYABLE_STATUSES.includes(status) && retry < 1) {
-                    await new Promise(r => setTimeout(r, 1000 * (retry + 1)));
-                    continue;
-                }
+                const textErr = await res.text().catch(() => '');
+                const err = new Error(`Status ${res.status}: ${textErr.slice(0, 500)}`);
+                err.status = res.status;
+                err.body = textErr;
+                err.retryAfterMs = parseRetryAfterMs(res);
                 throw err;
             }
 
             const data = await res.json();
-            const candidate = data.candidates?.[0];
-            // Gemini có thể trả về finishReason: 'MAX_TOKENS' với parts rỗng khi bị cắt giữa chừng
-            const text = candidate?.content?.parts?.[0]?.text;
-            if (text && text.trim()) return text.trim();
-            throw new Error(`Gemini trả về nội dung rỗng (finishReason: ${candidate?.finishReason || 'unknown'})`);
-        } catch (e) {
-            lastErr = e;
-            if (e.name === 'AbortError') {
-                lastErr = new Error(`Timeout sau ${REQUEST_TIMEOUT_MS}ms`);
-                if (retry < 1) continue;
-                break;
-            }
-            if (e.status && !RETRYABLE_STATUSES.includes(e.status)) {
-                break;
-            }
-        }
-    }
-    throw lastErr;
-}
-
-/**
- * Gọi API Cloudflare Workers AI với cơ chế Retry Exponential Backoff & Lọc Mã Lỗi
- */
-async function fetchCloudflareWithRetry({ key, accountId, model, systemPrompt, userPrompt, maxTokens, temperature }) {
-    let lastErr = null;
-
-    for (let retry = 0; retry < 2; retry++) {
-        try {
-            const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
-            const body = {
-                messages: [
-                    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                    { role: 'user', content: userPrompt }
-                ],
-                max_tokens: maxTokens,
-                temperature
-            };
-
-            const res = await fetchWithTimeout(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${key}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
-            });
-
-            if (!res.ok) {
-                const textErr = await res.text();
-                const status = res.status;
-                const err = new Error(`Status ${status}: ${textErr}`);
-                err.status = status;
-
-                if (RETRYABLE_STATUSES.includes(status) && retry < 1) {
-                    await new Promise(r => setTimeout(r, 1000 * (retry + 1)));
-                    continue;
-                }
-                throw err;
-            }
-
-            const data = await res.json();
-            let text = data.result?.response ?? data.result?.choices?.[0]?.message?.content;
-            if (typeof text === 'object' && text !== null) {
-                text = JSON.stringify(text);
-            }
+            const text = extractText(data);
             if (typeof text === 'string' && text.trim()) return text.trim();
-            throw new Error('Cloudflare Workers AI trả về nội dung rỗng');
+            const emptyErr = new Error('Nội dung trả về rỗng');
+            emptyErr.isEmpty = true;
+            throw emptyErr;
         } catch (e) {
             lastErr = e;
             if (e.name === 'AbortError') {
                 lastErr = new Error(`Timeout sau ${REQUEST_TIMEOUT_MS}ms`);
-                if (retry < 1) continue;
-                break;
+                lastErr.isTimeout = true;
             }
-            if (e.status && !RETRYABLE_STATUSES.includes(e.status)) {
-                break;
+            const transient = lastErr.isTimeout || RETRYABLE_STATUSES.includes(lastErr.status) || (!lastErr.status && !lastErr.isEmpty);
+            if (transient && attempt === 0) {
+                await new Promise(r => setTimeout(r, RETRY_BACKOFF_MS));
+                continue;
             }
+            break;
         }
     }
     throw lastErr;
 }
 
+function buildMessages(systemPrompt, userPrompt) {
+    return [
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+        { role: 'user', content: userPrompt }
+    ];
+}
+
+function callOpenAICompatible({ url, key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature, extraHeaders = {} }) {
+    const effectiveMaxTokens = jsonMode && isReasoningModel(model) ? Math.max(maxTokens, 800) : maxTokens;
+    return postJsonWithRetry({
+        url,
+        headers: { 'Authorization': `Bearer ${key}`, ...extraHeaders },
+        body: {
+            model,
+            messages: buildMessages(systemPrompt, userPrompt),
+            temperature,
+            max_tokens: effectiveMaxTokens,
+            ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
+        },
+        extractText: data => data.choices?.[0]?.message?.content
+    });
+}
+
+function callGemini({ key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature }) {
+    return postJsonWithRetry({
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        headers: { 'x-goog-api-key': key },
+        body: {
+            ...(systemPrompt ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            generationConfig: {
+                temperature,
+                maxOutputTokens: maxTokens,
+                ...(jsonMode ? { responseMimeType: 'application/json' } : {})
+            }
+        },
+        // Gemini có thể trả finishReason MAX_TOKENS với parts rỗng; bỏ qua part "thought" nếu có
+        extractText: data => (data.candidates?.[0]?.content?.parts || [])
+            .filter(p => !p.thought && typeof p.text === 'string')
+            .map(p => p.text)
+            .join('')
+    });
+}
+
+function callCloudflare({ key, accountId, model, systemPrompt, userPrompt, maxTokens, temperature }) {
+    return postJsonWithRetry({
+        url: `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
+        headers: { 'Authorization': `Bearer ${key}` },
+        body: { messages: buildMessages(systemPrompt, userPrompt), max_tokens: maxTokens, temperature },
+        extractText: data => {
+            const text = data.result?.response ?? data.result?.choices?.[0]?.message?.content;
+            return typeof text === 'object' && text !== null ? JSON.stringify(text) : text;
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Fallback pool (theo free-chat-llm-api-fallback-pool.md, kiểm tra 12/11/2026)
+// ---------------------------------------------------------------------------
+
 /**
- * Hệ thống gọi AI đa nhà cung cấp tối ưu 2026 với cơ chế Fallback Pipeline & Retry Exponential Backoff
+ * Provider định nghĩa cách gọi + phạm vi quota:
+ * - cooldownScope 'model'    : quota tính theo từng model (Gemini: theo project + model)
+ * - cooldownScope 'provider' : quota chung cả tài khoản (OpenRouter: 20 RPM / 50 RPD cho mọi model :free)
+ */
+const PROVIDERS = {
+    gemini: {
+        name: 'Gemini',
+        envKey: () => process.env.GEMINI_API_KEY,
+        cooldownScope: 'model',
+        call: (model, key, opts) => callGemini({ key, model, ...opts })
+    },
+    openrouter: {
+        name: 'OpenRouter',
+        envKey: () => process.env.OPENROUTER_API_KEY,
+        cooldownScope: 'provider',
+        call: (model, key, opts) => callOpenAICompatible({
+            url: 'https://openrouter.ai/api/v1/chat/completions',
+            key, model, ...opts,
+            extraHeaders: {
+                'HTTP-Referer': 'https://discordbot.org',
+                'X-Title': 'ThienThuHienGia_DiscordBot'
+            }
+        })
+    },
+    // Dự phòng cuối (free tier riêng, không nằm trong tài liệu pool)
+    cloudflare: {
+        name: 'Cloudflare Workers AI',
+        envKey: () => process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN,
+        cooldownScope: 'provider',
+        call: (model, key, opts) => {
+            const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
+            if (!accountId) throw new Error('Chưa cấu hình CLOUDFLARE_ACCOUNT_ID trong .env');
+            return callCloudflare({ key, accountId, model, ...opts });
+        }
+    },
+    cerebras: {
+        name: 'Cerebras',
+        envKey: () => process.env.CEREBRAS_API_KEY,
+        cooldownScope: 'provider',
+        call: (model, key, opts) => callOpenAICompatible({
+            url: 'https://api.cerebras.ai/v1/chat/completions',
+            key, model, ...opts
+        })
+    }
+};
+
+// Thứ tự: model chat tổng quát mạnh nhất -> yếu nhất (model chuyên coding xếp sau
+// vì kém hợp chat). Chỉ dùng model miễn phí: Groq / SambaNova / DeepSeek / Chutes bị loại.
+const FALLBACK_POOL = [
+    ['gemini', 'gemini-3.8-flash'],
+    ['openrouter', 'nvidia/nemotron-3-ultra-550b-a55b:free'],
+    ['gemini', 'gemini-3-flash-preview'],
+    ['openrouter', 'baidu/ernie-5.5-flash-preview:free'],
+    ['openrouter', 'thinkingmachines/inkling-2-small:free'],
+    ['openrouter', 'nvidia/nemotron-3.5-super-vl:free'],
+    ['openrouter', 'qwen/qwen3.8-27b:free'],
+    ['openrouter', 'dots-studio/dots-3-note-preview:free'],
+    ['gemini', 'gemini-3.1-flash-lite'],
+    ['openrouter', 'google/gemma-4-26b-a4b-it:free'],
+    ['cerebras', 'gpt-oss-120b'],
+    ['openrouter', 'poolside/laguna-s-2.1:free'],
+    ['openrouter', 'cohere/north-mini-code:free'],
+    ['openrouter', 'recursive/flint-v1.0:free'],
+    ['openrouter', 'nvidia/nemotron-3.5-lightning:free'],
+    ['cloudflare', '@cf/meta/llama-3.3-70b-instruct-fp8-fast'],
+    ['openrouter', 'nvidia/nemotron-3-nano-omni:free'],
+    ['openrouter', 'poolside/laguna-xs-2.1:free'],
+    ['cloudflare', '@cf/meta/llama-3.1-8b-instruct'],
+    ['openrouter', 'liquid/lfm-3-1.7b:free'],
+].map(([provider, model]) => ({ provider, model }));
+
+// Giới hạn số request thực sự gửi đi trong 1 lượt gọi (không retry vô hạn)
+const MAX_ATTEMPTS_PER_CALL = 8;
+
+const RATE_LIMIT_COOLDOWN_MS = 60 * 1000;
+const AUTH_ERROR_COOLDOWN_MS = 30 * 60 * 1000;
+const MODEL_NOT_FOUND_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+const MAX_TRANSIENT_COOLDOWN_MS = 10 * 60 * 1000;
+
+// key -> { until, reason }
+const cooldowns = new Map();
+
+function cooldownKey(providerId, model) {
+    return model ? `${providerId}::${model}` : providerId;
+}
+
+function getCooldown(providerId, model) {
+    const now = Date.now();
+    for (const key of [cooldownKey(providerId), cooldownKey(providerId, model)]) {
+        const entry = cooldowns.get(key);
+        if (!entry) continue;
+        if (entry.until > now) return entry;
+        cooldowns.delete(key);
+    }
+    return null;
+}
+
+function setCooldown(providerId, model, ms, reason) {
+    const until = Date.now() + ms;
+    const key = cooldownKey(providerId, model);
+    const prev = cooldowns.get(key);
+    if (!prev || prev.until < until) cooldowns.set(key, { until, reason });
+    const scope = model ? `${providerId} -> ${model}` : providerId;
+    console.warn(`⏸️ [AI cooldown] ${scope} tạm nghỉ đến ${new Date(until).toISOString()} (${reason})`);
+}
+
+function msUntilNextUtcMidnight() {
+    const now = new Date();
+    const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+    return next - now.getTime();
+}
+
+function isDailyQuotaError(err) {
+    const text = (err.body || err.message || '').toLowerCase();
+    return /per[-_ ]?day|daily|free-models-per-day|requests per day|rpd/.test(text);
+}
+
+/**
+ * Áp quy tắc mục 4 của tài liệu cho 1 lỗi.
+ * Trả về true nếu đã đặt cooldown cấp provider (=> bỏ qua các model còn lại cùng provider).
+ */
+function handleTargetError(target, provider, err) {
+    const status = err.status;
+    const modelScoped = provider.cooldownScope === 'model';
+    const cdModel = modelScoped ? target.model : null;
+
+    if (status === 429) {
+        const daily = isDailyQuotaError(err);
+        const ms = daily
+            ? msUntilNextUtcMidnight()
+            : Math.min(err.retryAfterMs ?? RATE_LIMIT_COOLDOWN_MS, 60 * 60 * 1000);
+        setCooldown(target.provider, cdModel, ms, daily ? 'hết quota ngày' : '429 rate limit');
+        return !modelScoped;
+    }
+    if (status === 401 || status === 403) {
+        setCooldown(target.provider, null, AUTH_ERROR_COOLDOWN_MS, `${status} - kiểm tra API key / quyền truy cập`);
+        return true;
+    }
+    if (status === 404) {
+        setCooldown(target.provider, target.model, MODEL_NOT_FOUND_COOLDOWN_MS, '404 - model ID không tồn tại / hết free');
+        return false;
+    }
+    if (RETRYABLE_STATUSES.includes(status) || err.isTimeout) {
+        // Đã retry 1 lần trong postJsonWithRetry; nghỉ ngắn model này rồi chuyển tiếp
+        setCooldown(target.provider, target.model, Math.min(RATE_LIMIT_COOLDOWN_MS, MAX_TRANSIENT_COOLDOWN_MS), err.isTimeout ? 'timeout' : `${status}`);
+        return false;
+    }
+    // 400 (tham số không tương thích, vd response_format) / nội dung rỗng:
+    // không cooldown, chỉ bỏ qua model này trong lượt gọi hiện tại.
+    return false;
+}
+
+/**
+ * Gọi AI theo fallback pool: giữ nguyên system prompt + nội dung khi chuyển model,
+ * quản lý cooldown theo provider/model, giới hạn số lần thử mỗi lượt.
  */
 async function callMultiProviderAI({ systemPrompt = '', userPrompt, jsonMode = false, maxTokens = 250, temperature = 0.3 }) {
-    const providers = [
-        {
-            name: 'Gemini',
-            key: process.env.GEMINI_API_KEY,
-            models: [
-                'gemini-3.5-flash-lite',
-                'gemini-3.8-flash'
-            ],
-            callModel: async (model, key) => fetchGeminiWithRetry({ key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature })
-        },
-        {
-            name: 'Groq',
-            key: process.env.GROQ_API_KEY,
-            models: [
-                'qwen/qwen3.8-27b',
-                'openai/gpt-oss-120b',
-                'openai/gpt-oss-20b'
-            ],
-            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
-                url: 'https://api.groq.com/openai/v1/chat/completions',
-                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
-            })
-        },
-        {
-            name: 'Cloudflare Workers AI',
-            key: process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN,
-            models: [
-                '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-                '@cf/meta/llama-3.1-8b-instruct',
-                '@cf/mistral/mistral-7b-instruct-v0.2'
-            ],
-            callModel: async (model, key) => {
-                const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
-                if (!accountId) throw new Error('Chưa cấu hình CLOUDFLARE_ACCOUNT_ID trong .env');
-                return fetchCloudflareWithRetry({ key, accountId, model, systemPrompt, userPrompt, maxTokens, temperature });
-            }
-        },
-        {
-            name: 'OpenRouter',
-            key: process.env.OPENROUTER_API_KEY,
-            models: [
-                'google/gemma-4-31b-it:free',
-                'google/gemma-4-26b-a4b-it:free',
-                'nvidia/nemotron-3-super-120b-a12b:free'
-            ],
-            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
-                url: 'https://openrouter.ai/api/v1/chat/completions',
-                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature,
-                extraHeaders: {
-                    'HTTP-Referer': 'https://discordbot.org',
-                    'X-Title': 'ThienThuHienGia_DiscordBot'
-                }
-            })
-        },
-        {
-            name: 'Cerebras',
-            key: process.env.CEREBRAS_API_KEY,
-            models: ['gpt-oss-120b', 'qwen-3.8-27b'],
-            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
-                url: 'https://api.cerebras.ai/v1/chat/completions',
-                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
-            })
-        },
-        {
-            name: 'DeepSeek V3',
-            key: process.env.DEEPSEEK_API_KEY,
-            models: ['deepseek-chat'],
-            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
-                url: 'https://api.deepseek.com/chat/completions',
-                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
-            })
-        },
-        {
-            name: 'Chutes AI',
-            key: process.env.CHUTES_API_KEY,
-            models: ['deepseek-ai/DeepSeek-V3', 'meta-llama/Llama-3.3-70B-Instruct'],
-            callModel: async (model, key) => fetchOpenAICompatibleWithRetry({
-                url: 'https://chutes-api.chutes.ai/v1/chat/completions',
-                key, model, systemPrompt, userPrompt, jsonMode, maxTokens, temperature
-            })
-        }
-    ];
-
+    const opts = { systemPrompt, userPrompt, jsonMode, maxTokens, temperature };
     const errorLog = [];
+    const skippedProviders = new Set();
+    let attempts = 0;
 
-    for (const provider of providers) {
-        if (!provider.key) continue;
+    for (const target of FALLBACK_POOL) {
+        if (attempts >= MAX_ATTEMPTS_PER_CALL) {
+            errorLog.push(`Đã đạt giới hạn ${MAX_ATTEMPTS_PER_CALL} lần thử trong 1 lượt`);
+            break;
+        }
 
-        for (const modelName of provider.models) {
-            try {
-                const result = await provider.callModel(modelName, provider.key);
-                if (result && result.trim()) return result.trim();
-            } catch (err) {
-                errorLog.push(`${provider.name} -> ${modelName}: ${err.message}`);
-                console.warn(`⚠️ [${provider.name} -> ${modelName}] gặp lỗi: ${err.message}. Đang chuyển tiếp...`);
-            }
+        const provider = PROVIDERS[target.provider];
+        const key = provider.envKey();
+        if (!key || skippedProviders.has(target.provider)) continue;
+        if (getCooldown(target.provider, target.model)) continue;
+
+        attempts++;
+        try {
+            const result = await provider.call(target.model, key, opts);
+            if (result && result.trim()) return result.trim();
+        } catch (err) {
+            const line = `${provider.name} -> ${target.model}: ${err.message}`;
+            errorLog.push(line);
+            console.warn(`⚠️ [AI ${provider.name} -> ${target.model}] status=${err.status ?? '-'} lúc ${new Date().toISOString()}: ${err.message}. Đang chuyển tiếp...`);
+            if (handleTargetError(target, provider, err)) skippedProviders.add(target.provider);
         }
     }
 
-    const aggregateErr = new Error('Tất cả AI Providers đều chưa cấu hình key hoặc không thể đáp ứng.');
+    const aggregateErr = new Error('Tất cả AI Providers đều chưa cấu hình key, đang cooldown hoặc không thể đáp ứng.');
     aggregateErr.details = errorLog;
     throw aggregateErr;
 }
@@ -425,4 +432,6 @@ module.exports = {
     callMultiProviderAIJson,
     extractJsonObject,
     isReasoningModel,
+    FALLBACK_POOL,
+    _cooldowns: cooldowns,
 };
