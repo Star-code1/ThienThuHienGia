@@ -9,6 +9,7 @@
  * Hết lượt (429): body JSON { message, staminaRemaining, staminaMax, nextRefillAt }.
  */
 const API_URL = process.env.TIEUHAN_API_URL || 'https://wikinghichthuyhan.com/api/chat';
+const SITE_BASE = (process.env.TIEUHAN_SITE_URL || 'https://wikinghichthuyhan.com').replace(/\/$/, '');
 const ADMIN_KEY = process.env.TIEUHAN_ADMIN_KEY || '';
 const USER_AGENT = 'ThienThuHienGia-DiscordBot/1.0';
 const TIMEOUT_MS = 90_000;
@@ -49,7 +50,7 @@ function parseSseLine(line) {
 /**
  * Gửi hội thoại cho Tiểu Hàn, gọi onDelta(textSoFar) mỗi khi có chữ mới.
  * @param {{role:'user'|'assistant'|'system', content:string}[]} messages
- * @returns {Promise<{ answer:string, stamina:{remaining,max,nextRefillAt} }>}
+ * @returns {Promise<{ answer:string, stamina:{remaining,max,nextRefillAt}, links:{title,url}[] }>}
  * @throws {StaminaExhaustedError} khi hết lượt
  */
 async function askTieuHan(messages, { onDelta, signal } = {}) {
@@ -88,6 +89,8 @@ async function askTieuHan(messages, { onDelta, signal } = {}) {
     let buffer = '';
     let text = '';
     let stopped = false;
+    const links = [];
+    const seenLinks = new Set();
 
     const handleLine = (line) => {
         const ev = parseSseLine(line);
@@ -95,6 +98,14 @@ async function askTieuHan(messages, { onDelta, signal } = {}) {
         if (ev.type === 'content_block_delta' && typeof ev.delta?.text === 'string') {
             text += ev.delta.text;
             if (onDelta) onDelta(text);
+        } else if (ev.type === 'related_links' && Array.isArray(ev.links)) {
+            // URL dạng tương đối "/wiki/..." -> ghép tên miền; bỏ trùng
+            for (const l of ev.links) {
+                if (!l?.url || seenLinks.has(l.url)) continue;
+                seenLinks.add(l.url);
+                const url = /^https?:\/\//.test(l.url) ? l.url : SITE_BASE + (l.url.startsWith('/') ? '' : '/') + l.url;
+                links.push({ title: l.title || l.url, url, category: l.category || '' });
+            }
         } else if (ev.type === 'message_stop') {
             stopped = true;
         } else if (ev.type === 'error') {
@@ -112,7 +123,7 @@ async function askTieuHan(messages, { onDelta, signal } = {}) {
     if (buffer) handleLine(buffer);
 
     if (!text.trim()) throw new Error('Tiểu Hàn không trả lời');
-    return { answer: text.trim(), stamina };
+    return { answer: text.trim(), stamina, links };
 }
 
 module.exports = { askTieuHan, parseSseLine, readStaminaHeaders, StaminaExhaustedError, hasAdminKey: () => !!ADMIN_KEY };

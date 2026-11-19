@@ -26,10 +26,11 @@ const { parseSseLine, askTieuHan, StaminaExhaustedError } = require('../src/serv
 const { runTurn, answerFromEmbedDescription, generate } = require('../src/features/ai-chat/chatFlow');
 
 /** fetch giả trả về luồng SSE, cố tình cắt ngang giữa các dòng */
-function mockSseFetch(pieces, captured = {}) {
+function mockSseFetch(pieces, captured = {}, links = null) {
     return async (url, opts) => {
         captured.body = JSON.parse(opts.body);
         const raw = pieces.map((t) => `data: ${JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text: t } })}\n`).join('')
+            + (links ? `data: ${JSON.stringify({ type: 'related_links', links })}\n` : '')
             + 'data: {"type":"message_stop"}\n';
         const enc = new TextEncoder();
         const parts = [raw.slice(0, 17), raw.slice(17, 60), raw.slice(60)];
@@ -154,6 +155,37 @@ test('generate: Tiểu Hàn hết lượt -> Hiền Giả đáp thay, kèm ghi c
         assert.strictEqual(res.fellBack, true);
         assert.deepStrictEqual(res.sources, [{ title: 'Build Tố Vấn', url: 'https://x/a' }]);
         assert.strictEqual(sageCalls.length, before + 1);
+    } finally {
+        global.fetch = orig;
+    }
+});
+
+test('askTieuHan: thu related_links, ghép tên miền cho URL tương đối, bỏ trùng', async () => {
+    const orig = global.fetch;
+    global.fetch = mockSseFetch(['Đáp án'], {}, [
+        { title: 'Build Long Ngâm', url: '/luu-phai/build-long-ngam', category: 'luu-phai' },
+        { title: 'Cốt truyện', url: '/wiki/tom-tat-long-ngam', category: 'cot-truyen' },
+        { title: 'Trùng', url: '/luu-phai/build-long-ngam' },
+        { title: 'Ngoài', url: 'https://khac.com/x' },
+    ]);
+    try {
+        const { links } = await askTieuHan([{ role: 'user', content: 'Long Ngâm?' }]);
+        assert.deepStrictEqual(links.map((l) => l.url), [
+            'https://wikinghichthuyhan.com/luu-phai/build-long-ngam',
+            'https://wikinghichthuyhan.com/wiki/tom-tat-long-ngam',
+            'https://khac.com/x',
+        ]);
+    } finally {
+        global.fetch = orig;
+    }
+});
+
+test('generate (Tiểu Hàn): related_links thành sources để hiện ở "Xem thêm"', async () => {
+    const orig = global.fetch;
+    global.fetch = mockSseFetch(['Xong'], {}, [{ title: 'Build Long Ngâm', url: '/luu-phai/build-long-ngam' }]);
+    try {
+        const res = await generate('tieuhan', { question: 'Long Ngâm build gì khác nhau?', history: [], key: { guildId: 'g', channelId: 'c', userId: 'u' }, displayName: 'Star' });
+        assert.deepStrictEqual(res.sources, [{ title: 'Build Long Ngâm', url: 'https://wikinghichthuyhan.com/luu-phai/build-long-ngam', category: '' }]);
     } finally {
         global.fetch = orig;
     }

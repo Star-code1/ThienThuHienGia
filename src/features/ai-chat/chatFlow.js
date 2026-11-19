@@ -90,11 +90,11 @@ const normQuestion = (q) => q.trim().toLowerCase().replace(/\s+/g, ' ');
 
 function getCachedAnswer(question) {
     const hit = answerCache.get(normQuestion(question));
-    if (hit && Date.now() - hit.at < ANSWER_CACHE_TTL_MS) return hit.answer;
+    if (hit && Date.now() - hit.at < ANSWER_CACHE_TTL_MS) return hit;
     return null;
 }
-function setCachedAnswer(question, answer) {
-    answerCache.set(normQuestion(question), { answer, at: Date.now() });
+function setCachedAnswer(question, answer, links) {
+    answerCache.set(normQuestion(question), { answer, links, at: Date.now() });
     if (answerCache.size > 500) answerCache.delete(answerCache.keys().next().value);
 }
 
@@ -130,15 +130,15 @@ async function generate(bot, { question, history, key, displayName, onDelta }) {
     if (history.length === 0) {
         const cached = getCachedAnswer(question);
         if (cached) {
-            if (onDelta) onDelta(cached);
-            return { answer: cached, sources: [] };
+            if (onDelta) onDelta(cached.answer);
+            return { answer: cached.answer, sources: cached.links || [] };
         }
     }
 
     try {
-        const { answer } = await askTieuHan([...history, { role: 'user', content: question }], { onDelta });
-        if (history.length === 0) setCachedAnswer(question, answer);
-        return { answer, sources: [] };
+        const { answer, links } = await askTieuHan([...history, { role: 'user', content: question }], { onDelta });
+        if (history.length === 0) setCachedAnswer(question, answer, links);
+        return { answer, sources: links };
     } catch (err) {
         if (!(err instanceof StaminaExhaustedError)) throw err;
         // Hết lượt -> nhờ Hiền Giả trả lời thay bằng kho kiến thức wiki
