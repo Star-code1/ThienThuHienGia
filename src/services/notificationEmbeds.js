@@ -1,35 +1,76 @@
 const { EmbedBuilder } = require('discord.js');
+const { voiceLinksText } = require('../shared/voiceChannels');
 
 const NOTIFICATION_CONFIG = {
   TARGET_CHANNEL_ID: process.env.TARGET_CHANNEL_ID || '1515709357856264212',
 };
 
-const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+// Bảng màu thống nhất cho mọi tin nhắn thông báo
+const COLORS = {
+  warn: 0xE67E22,    // cần hành động (chưa vote)
+  info: 0x3498DB,    // thông tin đội hình
+  update: 0xF1C40F,  // có thay đổi
+  danger: 0xE74C3C,  // bị rút / lỗi
+  go: 0x2ECC71,      // vào trận
+  confirm: 0x9B59B6, // chốt phiếu
+};
 
-/**
- * 1. Embed nhắc chưa điểm danh
- */
-function buildUnvotedReminderEmbed({ event, milestoneHours }) {
-  const dateStr = new Date(event.date).toLocaleDateString('vi-VN');
+const FOOTER = 'Thiên Thư Môn • Thông báo tự động';
+const VOTE_CHANNEL = () => `<#${NOTIFICATION_CONFIG.TARGET_CHANNEL_ID}>`;
+
+const fmtDate = (event) => (event?.date ? new Date(event.date).toLocaleDateString('vi-VN') : 'Sắp diễn ra');
+const fmtTime = (event) => event?.time || '20:00';
+const eventTitle = (event, fallback) => event?.title || fallback;
+
+/** 3 ô thông tin nằm ngang: Ngày • Giờ • (tùy chọn) Còn lại */
+function timeFields(event, remaining) {
+  const fields = [
+    { name: '🗓️ Ngày', value: fmtDate(event), inline: true },
+    { name: '🕗 Giờ', value: fmtTime(event), inline: true },
+  ];
+  if (remaining) fields.push({ name: '⏳ Còn lại', value: remaining, inline: true });
+  return fields;
+}
+
+function baseEmbed({ color, author, title }) {
   return new EmbedBuilder()
-    .setColor(0xE67E22)
-    .setAuthor({ name: '⚔️ THIÊN THƯ HIỀN GIẢ - NHẮC NHỞ ĐIỂM DANH ⚔️' })
-    .setTitle(`📢 ${event.title || 'SỰ KIỆN BANG CHIẾN'}`)
-    .setDescription(
-      `${DIVIDER}\n` +
-      `Chào đạo hữu! Bạn chưa thực hiện điểm danh cho trận Bang Chiến sắp tới.\n\n` +
-      `> 🗓️ **Ngày:** \`${dateStr}\`\n` +
-      `> 🕗 **Giờ:** \`${event.time}\`\n` +
-      `> ⏳ **Thời gian còn lại:** khoảng **${milestoneHours} giờ**\n` +
-      `${DIVIDER}\n\n` +
-      `👉 **Vui lòng vào kênh** <#${NOTIFICATION_CONFIG.TARGET_CHANNEL_ID}> để vote **Tham gia** hoặc **Báo vắng** giúp Ban Quản Trị kịp thời sắp xếp đội hình!`
-    )
-    .setFooter({ text: 'Thiên Thư Môn • Hệ thống thông báo tự động' })
+    .setColor(color)
+    .setAuthor({ name: author })
+    .setTitle(title)
+    .setFooter({ text: FOOTER })
     .setTimestamp();
 }
 
 /**
- * 2. Embed thông báo xếp đội hình & kỹ năng
+ * 1. Nhắc chưa điểm danh
+ */
+function buildUnvotedReminderEmbed({ event, milestoneHours }) {
+  return baseEmbed({
+    color: COLORS.warn,
+    author: 'Thiên Thư Môn • Nhắc điểm danh',
+    title: `📢 ${eventTitle(event, 'Bang Chiến')}`,
+  })
+    .setDescription(
+      'Đạo hữu **chưa điểm danh** cho trận sắp tới.\n' +
+      `👉 Vào ${VOTE_CHANNEL()} bấm **Tham gia** hoặc **Báo vắng** để BQT kịp xếp đội hình.`
+    )
+    .addFields(timeFields(event, `~${milestoneHours} giờ`));
+}
+
+/** Một dòng đồng đội gọn gàng */
+function formatTeammate(m, currentUserId) {
+  const slot = `\`${String(m.slotIndex + 1).padStart(2, ' ')}\``;
+  if (!m.userId && !m.displayName) return `${slot} *— trống —*`;
+
+  const who = m.userId ? `<@${m.userId}>` : `**${m.displayName}**`;
+  const meta = [m.className, m.roleName].filter(Boolean).join(' · ');
+  const note = m.note ? ` — *${m.note}*` : '';
+  const isMe = m.userId && m.userId === currentUserId;
+  return `${slot} ${isMe ? '👉 ' : ''}${who}${meta ? ` · ${meta}` : ''}${isMe ? ' **(Bạn)**' : ''}${note}`;
+}
+
+/**
+ * 2. Phân công đội hình & kỹ năng
  */
 function buildLineupAssignmentEmbed({
   event,
@@ -45,172 +86,99 @@ function buildLineupAssignmentEmbed({
   currentUserId,
   isUpdate = false,
 }) {
-  const dateStr = event ? new Date(event.date).toLocaleDateString('vi-VN') : 'Sắp diễn ra';
-  const eventTime = event ? event.time : '20:00';
-  const eventTitle = event ? event.title : 'BANG CHIẾN THIÊN THƯ MÔN';
-
-  const skillList = skills.length > 0
-    ? skills.map((s) => `• **${s.name || s.id}**`).join('\n')
-    : '• *Chưa có kỹ năng chỉ định riêng (sử dụng theo vai trò)*';
-
-  // Định dạng danh sách đồng đội cùng đội (Requirement 3)
-  let teammatesText = '*Chưa có thông tin đồng đội*';
-  if (teammates && teammates.length > 0) {
-    teammatesText = teammates.map((m) => {
-      const isMe = m.userId && m.userId === currentUserId;
-      const slotNum = `Vị trí ${m.slotIndex + 1}:`;
-
-      if (!m.userId && !m.displayName) {
-        return `• ${slotNum} *(Trống)*`;
-      }
-
-      const userTag = m.userId ? `<@${m.userId}>` : `**${m.displayName}**`;
-      const classTag = m.className ? `[${m.className}]` : '';
-      const roleTag = m.roleName ? `(${m.roleName})` : '';
-      const noteTag = m.note ? `— 💬 *"${m.note}"*` : '';
-
-      if (isMe) {
-        return `👉 **${slotNum}** ${userTag} ${classTag} ${roleTag} 🌟 **[BẠN]** ${noteTag}`;
-      }
-      return `• **${slotNum}** ${userTag} ${classTag} ${roleTag} ${noteTag}`;
-    }).join('\n');
-  }
-
-  const updateHeader = isUpdate
-    ? `🔄 **THÔNG BÁO: VỊ TRÍ CỦA BẠN CÓ SỰ CẬP NHẬT!**\n> *Sơ đồ và phân công trận Bang Chiến đã được cập nhật mới nhất. Dưới đây là vị trí mới của bạn:*\n\n`
-    : '';
-
-  const embed = new EmbedBuilder()
-    .setColor(isUpdate ? 0xF39C12 : 0x3498DB)
-    .setAuthor({
-      name: isUpdate
-        ? '🔄 THIÊN THƯ HIỀN GIẢ - CẬP NHẬT VỊ TRÍ ĐỘI HÌNH 🔄'
-        : '🛡️ THIÊN THƯ HIỀN GIẢ - PHÂN CÔNG ĐỘI HÌNH 🛡️',
-    })
-    .setTitle(`📋 ${eventTitle}`)
+  const team = teamName || 'Team';
+  const embed = baseEmbed({
+    color: isUpdate ? COLORS.update : COLORS.info,
+    author: isUpdate ? 'Thiên Thư Môn • Vị trí đã thay đổi' : 'Thiên Thư Môn • Phân công đội hình',
+    title: `📋 ${eventTitle(event, 'Bang Chiến Thiên Thư Môn')}`,
+  })
     .setDescription(
-      `${DIVIDER}\n` +
-      updateHeader +
-      `Sơ đồ đội hình Bang Chiến đã được cập nhật. Dưới đây là vị trí và đồng đội của bạn:\n\n` +
-      `> 🚩 **Đoàn:** \`${divisionName || 'Đoàn Chưa Đặt Tên'}\`\n` +
-      `> ⚔️ **Đội:** \`${teamName || 'Team'}\` (Vị trí: **Số ${slotIndex + 1}**)\n` +
-      `> 🗓️ **Thời gian:** \`${eventTime} - ${dateStr}\`\n` +
-      `${DIVIDER}`
+      (isUpdate ? '🔄 **Vị trí của bạn vừa được cập nhật.** Xem lại bên dưới nhé!\n\n' : '') +
+      `🕗 **${fmtTime(event)}** • ${fmtDate(event)}`
     )
     .addFields(
-      {
-        name: `👥 Danh Sách Đồng Đội Cùng Team (${teamName})`,
-        value: teammatesText.slice(0, 1024),
-        inline: false,
-      },
-      {
-        name: '🔮 Kỹ Năng / Tuyệt Kỹ Yêu Cầu',
-        value: skillList.slice(0, 1024),
-        inline: false,
-      },
-      {
-        name: '📝 Ghi Chú Cá Nhân',
-        value: note ? `\`${note}\`` : '*Không có ghi chú*',
-        inline: false,
-      }
+      { name: '🚩 Đoàn', value: divisionName || 'Chưa đặt tên', inline: true },
+      { name: '⚔️ Đội', value: team, inline: true },
+      { name: '📍 Vị trí', value: `Số ${slotIndex + 1}${roleName ? ` · ${roleName}` : ''}`, inline: true }
     );
 
-  if (teamNote) {
-    embed.addFields({
-      name: `🚩 Ghi Chú Toàn Đội (${teamName})`,
-      value: `\`${teamNote}\``.slice(0, 1024),
-      inline: false,
-    });
-  }
+  const teammatesText = teammates.length > 0
+    ? teammates.map((m) => formatTeammate(m, currentUserId)).join('\n')
+    : '*Chưa có thông tin đồng đội*';
+  embed.addFields({ name: `👥 Đồng đội · ${team}`, value: teammatesText.slice(0, 1024) });
 
-  if (divisionNote) {
-    embed.addFields({
-      name: `📢 Ghi Chú Toàn Đoàn (${divisionName})`,
-      value: `\`${divisionNote}\``.slice(0, 1024),
-      inline: false,
-    });
-  }
+  const skillList = skills.length > 0
+    ? skills.map((s) => `• ${s.name || s.id}`).join('\n')
+    : '*Dùng kỹ năng theo vai trò*';
+  embed.addFields({ name: '🔮 Kỹ năng yêu cầu', value: skillList.slice(0, 1024) });
 
-  embed.setFooter({
-    text: isUpdate
-      ? 'Thiên Thư Môn • Vị trí của bạn có sự cập nhật'
-      : 'Thiên Thư Môn • Chúc toàn thể anh em bang chiến thắng lợi!',
-  }).setTimestamp();
+  const notes = [
+    note && `👤 **Bạn:** ${note}`,
+    teamNote && `⚔️ **Đội:** ${teamNote}`,
+    divisionNote && `🚩 **Đoàn:** ${divisionNote}`,
+  ].filter(Boolean);
+  if (notes.length > 0) {
+    embed.addFields({ name: '📝 Ghi chú', value: notes.join('\n').slice(0, 1024) });
+  }
 
   return embed;
 }
 
 /**
- * Embed thông báo rút khỏi sơ đồ thi đấu chính (về dự bị)
+ * Rút khỏi đội hình chính (về dự bị)
  */
 function buildUnassignedNoticeEmbed({ event }) {
-  const dateStr = event ? new Date(event.date).toLocaleDateString('vi-VN') : 'Sắp diễn ra';
-  const eventTime = event ? event.time : '20:00';
-  const eventTitle = event ? event.title : 'BANG CHIẾN THIÊN THƯ MÔN';
-
-  return new EmbedBuilder()
-    .setColor(0xE74C3C)
-    .setAuthor({ name: '⚠️ THIÊN THƯ HIỀN GIẢ - CẬP NHẬT ĐỘI HÌNH ⚠️' })
-    .setTitle(`📋 ${eventTitle}`)
+  return baseEmbed({
+    color: COLORS.danger,
+    author: 'Thiên Thư Môn • Vị trí đã thay đổi',
+    title: `📋 ${eventTitle(event, 'Bang Chiến Thiên Thư Môn')}`,
+  })
     .setDescription(
-      `${DIVIDER}\n` +
-      `🔄 **THÔNG BÁO: VỊ TRÍ CỦA BẠN CÓ SỰ CẬP NHẬT!**\n\n` +
-      `Hiện tại đạo hữu đã được chuyển **ra khỏi sơ đồ đội hình thi đấu chính thức** (chuyển sang hàng chờ / dự bị).\n\n` +
-      `> 🗓️ **Thời gian trận:** \`${eventTime} - ${dateStr}\`\n` +
-      `> 📍 **Trạng thái hiện tại:** \`Dự bị / Đang chờ sắp xếp lại\`\n` +
-      `${DIVIDER}\n\n` +
-      `👉 Vui lòng sẵn sàng tiếp ứng hoặc theo dõi thông báo mới nhất từ Ban Quản Trị!`
+      'Đạo hữu đã được chuyển **ra khỏi đội hình chính** → **Dự bị**.\n' +
+      '👉 Hãy sẵn sàng tiếp ứng và theo dõi thông báo mới từ BQT.'
     )
-    .setFooter({ text: 'Thiên Thư Môn • Vị trí của bạn có sự cập nhật' })
-    .setTimestamp();
+    .addFields(timeFields(event));
 }
 
 /**
- * 3. Embed nhắc vào game trước 30 phút
+ * 3. Nhắc vào game trước giờ trận — kèm link voice từng cánh
  */
 function buildGameStartingSoonEmbed({ event, minutesLeft = 30 }) {
-  const dateStr = new Date(event.date).toLocaleDateString('vi-VN');
-  return new EmbedBuilder()
-    .setColor(0x2ECC71)
-    .setAuthor({ name: '⏰ THIÊN THƯ HIỀN GIẢ - CHUẨN BỊ VÀO TRẬN ⏰' })
-    .setTitle(`🔥 ${event.title || 'BANG CHIẾN SẮP BẮT ĐẦU'}`)
+  return baseEmbed({
+    color: COLORS.go,
+    author: 'Thiên Thư Môn • Chuẩn bị vào trận',
+    title: `🔥 ${eventTitle(event, 'Bang Chiến')} — còn ${minutesLeft} phút!`,
+  })
     .setDescription(
-      `${DIVIDER}\n` +
-      `Chỉ còn **${minutesLeft} phút** nữa là đến giờ diễn ra Bang Chiến!\n\n` +
-      `> 🕗 **Giờ bắt đầu:** \`${event.time}\` (Hôm nay \`${dateStr}\`)\n` +
-      `> 📍 **Địa điểm Discord:** Kênh Voice Đoàn / Kênh <#${NOTIFICATION_CONFIG.TARGET_CHANNEL_ID}>\n` +
-      `${DIVIDER}\n\n` +
-      `✅ **Đạo hữu vui lòng:**\n` +
-      `1. Mở game, cắn bình buff, kiểm tra trang bị & kỹ năng.\n` +
-      `2. Di chuyển vào đúng phòng Voice theo Đoàn đã phân công.\n` +
-      `3. Sẵn sàng nghe hiệu lệnh của Chỉ Huy.`
+      '**Checklist trước trận**\n' +
+      '✅ Mở game, buff đầy đủ, kiểm tra trang bị & kỹ năng\n' +
+      '✅ Vào đúng phòng **Voice** theo cánh được phân\n' +
+      '✅ Nghe hiệu lệnh Chỉ Huy'
     )
-    .setFooter({ text: 'Thiên Thư Môn • Tập trung đúng giờ vì danh dự bang phái!' })
-    .setTimestamp();
+    .addFields(
+      ...timeFields(event, `${minutesLeft} phút`),
+      { name: '🔊 Voice team — bấm nút bên dưới là vào', value: voiceLinksText() }
+    );
 }
 
 /**
- * 4. Embed nhắc chốt phiếu vote (Chưa chắc chắn -> Chắc chắn) trước 24h
+ * 4. Nhắc chốt phiếu "Chưa chắc chắn"
  */
 function buildTentativeConfirmEmbed({ event, hoursLeft = 24 }) {
-  const dateStr = new Date(event.date).toLocaleDateString('vi-VN');
-  return new EmbedBuilder()
-    .setColor(0x9B59B6)
-    .setAuthor({ name: '⚖️ THIÊN THƯ HIỀN GIẢ - XÁC NHẬN ĐIỂM DANH ⚖️' })
-    .setTitle(`⏳ ${event.title || 'XÁC NHẬN THAM GIA BANG CHIẾN'}`)
+  return baseEmbed({
+    color: COLORS.confirm,
+    author: 'Thiên Thư Môn • Xác nhận điểm danh',
+    title: `⏳ ${eventTitle(event, 'Bang Chiến')}`,
+  })
     .setDescription(
-      `${DIVIDER}\n` +
-      `Bạn hiện đang để trạng thái **"Chưa chắc chắn"** cho sự kiện Bang Chiến sắp tới.\n\n` +
-      `> 🗓️ **Ngày:** \`${dateStr}\` lúc \`${event.time}\`\n` +
-      `> ⏳ **Thời gian còn lại:** khoảng **${hoursLeft} giờ**\n` +
-      `${DIVIDER}\n\n` +
-      `👉 **Vui lòng vào lại kênh** <#${NOTIFICATION_CONFIG.TARGET_CHANNEL_ID}> để **chốt dứt khoát phiếu vote** (Có mặt hoặc Báo vắng) để Ban Quản Trị khóa sơ đồ và chốt danh sách đội hình chính thức!`
+      'Đạo hữu đang để **Chưa chắc chắn**.\n' +
+      `👉 Vào ${VOTE_CHANNEL()} chốt **Có mặt** hoặc **Báo vắng** để BQT khóa đội hình.`
     )
-    .setFooter({ text: 'Thiên Thư Môn • Hệ thống hỗ trợ quản lý bang chiến' })
-    .setTimestamp();
+    .addFields(timeFields(event, `~${hoursLeft} giờ`));
 }
 
 module.exports = {
+  COLORS,
   buildUnvotedReminderEmbed,
   buildLineupAssignmentEmbed,
   buildUnassignedNoticeEmbed,

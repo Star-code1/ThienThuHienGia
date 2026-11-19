@@ -35,3 +35,13 @@ test('embed builders khớp snapshot', () => {
   if (!fs.existsSync(SNAP)) fs.writeFileSync(SNAP, JSON.stringify(actual, null, 2));
   assert.deepStrictEqual(JSON.parse(JSON.stringify(actual)), JSON.parse(fs.readFileSync(SNAP, 'utf8')));
 });
+
+test('tin nhắc 30 phút có đủ link voice + nút bấm', () => {
+  const { VOICE_CHANNELS, buildVoiceButtonsRow } = require('../src/shared/voiceChannels');
+  const json = svc.buildGameStartingSoonEmbed({ event, minutesLeft: 30 }).toJSON();
+  const voiceField = json.fields.find((f) => f.name.includes('Voice'));
+  for (const v of VOICE_CHANNELS) assert.ok(voiceField.value.includes(v.url), v.label);
+  const row = buildVoiceButtonsRow().toJSON();
+  assert.deepStrictEqual(row.components.map((b) => b.url), VOICE_CHANNELS.map((v) => v.url));
+  assert.ok(row.components.every((b) => b.style === 5)); // ButtonStyle.Link
+});

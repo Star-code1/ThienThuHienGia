@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { buildVoiceButtonsRow } = require('../src/shared/voiceChannels');
 const client = require('../src/core/client');
 const { connectDB } = require('../src/core/database');
 const Event = require('../src/features/attendance/models/Event');
@@ -34,7 +35,7 @@ const TEST_USER_ID = process.argv[2] || '1499809147577958483';
   });
 
   console.log('📤 Đang gửi DM...');
-  const result = await sendDirectMessage(client, TEST_USER_ID, { embeds: [embed] });
+  const result = await sendDirectMessage(client, TEST_USER_ID, { embeds: [embed], components: [buildVoiceButtonsRow()] });
 
   if (result.success) {
     console.log(`✅ [TEST 3 THÀNH CÔNG] Đã gửi thông báo nhắc vào game 30p tới ${TEST_USER_ID}`);

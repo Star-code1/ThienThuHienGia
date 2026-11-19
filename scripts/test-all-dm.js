@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { buildVoiceButtonsRow } = require('../src/shared/voiceChannels');
 const client = require('../src/core/client');
 const { connectDB } = require('../src/core/database');
 const Event = require('../src/features/attendance/models/Event');
@@ -80,7 +81,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // 3. Test nhắc vào game trước 30p
   console.log('\n3️⃣ [Test 3/4] Gửi thông báo NHẮC VÀO GAME (30 PHÚT)...');
   const embed3 = buildGameStartingSoonEmbed({ event, minutesLeft: 30 });
-  const res3 = await sendDirectMessage(client, TEST_USER_ID, { embeds: [embed3] });
+  const res3 = await sendDirectMessage(client, TEST_USER_ID, { embeds: [embed3], components: [buildVoiceButtonsRow()] });
   console.log(res3.success ? '  ✅ Thành công!' : `  ❌ Lỗi: ${res3.reason}`);
   await sleep(1000);
 

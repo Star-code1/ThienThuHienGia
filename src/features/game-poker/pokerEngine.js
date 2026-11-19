@@ -1,122 +1,129 @@
-// Poker Card & Hand Evaluator
+// Poker: bộ bài & chấm điểm tay bài Texas Hold'em (chuẩn, có so lá phụ)
 
 const SUITS = ['♠️', '♥️', '♦️', '♣️'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
-function createDeck() {
-    const deck = [];
-    for (const suit of SUITS) {
-        for (let i = 0; i < RANKS.length; i++) {
-            deck.push({
-                rank: RANKS[i],
-                suit: suit,
-                value: i + 2, // 2 = 2, ..., A = 14
-                toString: () => `${RANKS[i]}${suit}`
-            });
-        }
-    }
-    return shuffle(deck);
+const CATEGORY_NAMES = [
+    'Mậu Thầu',          // 0 High card
+    'Một Đôi',           // 1
+    'Hai Đôi',           // 2
+    'Sám Cô',            // 3
+    'Sảnh',              // 4
+    'Thùng',             // 5
+    'Cù Lũ',             // 6
+    'Tứ Quý',            // 7
+    'Thùng Phá Sảnh',    // 8
+];
+
+function makeCard(value, suit) {
+    const rank = RANKS[value - 2];
+    return { rank, suit, value, toString: () => `${rank}${suit}` };
 }
 
-function shuffle(array) {
+function createDeck(rng = Math.random) {
+    const deck = [];
+    for (const suit of SUITS) {
+        for (let v = 2; v <= 14; v++) deck.push(makeCard(v, suit));
+    }
+    return shuffle(deck, rng);
+}
+
+function shuffle(array, rng = Math.random) {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(rng() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
 }
 
-/**
- * Đánh giá điểm mạnh bộ 7 lá (2 trên tay + 5 lá chung)
- */
-function evaluate7Cards(cards) {
-    // Basic scoring for 5-7 card hands
-    // Returns { rankName: string, score: number }
-    if (cards.length < 5) {
-        return { rankName: 'Lá Bài Cao (High Card)', score: getHighCardScore(cards) };
-    }
-
-    const valueCounts = {};
-    const suitCounts = {};
-
-    for (const card of cards) {
-        valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
-        suitCounts[card.suit] = (suitCounts[card.suit] || 0) + 1;
-    }
-
-    const valuesSorted = Object.keys(valueCounts).map(Number).sort((a, b) => b - a);
-    const flushSuit = Object.keys(suitCounts).find(s => suitCounts[s] >= 5);
-
-    // Check Flush & Straight Flush
-    let isFlush = !!flushSuit;
-    let flushCards = isFlush ? cards.filter(c => c.suit === flushSuit) : [];
-
-    // Pairs & Sets
-    const countsSorted = Object.entries(valueCounts)
-        .map(([val, count]) => ({ val: Number(val), count }))
-        .sort((a, b) => b.count - a.count || b.val - a.val);
-
-    // Four of a kind
-    if (countsSorted[0].count === 4) {
-        return { rankName: 'Tứ Quý (Four of a Kind)', score: 8000 + countsSorted[0].val };
-    }
-
-    // Full House (3 + 2)
-    if (countsSorted[0].count === 3 && countsSorted[1]?.count >= 2) {
-        return { rankName: 'Cù Lũ (Full House)', score: 7000 + countsSorted[0].val * 10 + countsSorted[1].val };
-    }
-
-    // Flush
-    if (isFlush) {
-        const topFlushVal = flushCards.sort((a, b) => b.value - a.value)[0].value;
-        return { rankName: 'Thùng (Flush)', score: 6000 + topFlushVal };
-    }
-
-    // Straight (Sảnh)
-    const straightVal = checkStraight(valuesSorted);
-    if (straightVal) {
-        return { rankName: 'Sảnh (Straight)', score: 5000 + straightVal };
-    }
-
-    // Three of a kind
-    if (countsSorted[0].count === 3) {
-        return { rankName: 'Sám Cô (Three of a Kind)', score: 4000 + countsSorted[0].val };
-    }
-
-    // Two Pair
-    if (countsSorted[0].count === 2 && countsSorted[1]?.count === 2) {
-        return { rankName: 'Hai Đôi (Two Pair)', score: 3000 + countsSorted[0].val * 10 + countsSorted[1].val };
-    }
-
-    // One Pair
-    if (countsSorted[0].count === 2) {
-        return { rankName: 'Một Đôi (One Pair)', score: 2000 + countsSorted[0].val };
-    }
-
-    // High Card
-    return { rankName: `Mậu Thần (${RANKS[cards.sort((a,b)=>b.value-a.value)[0].value - 2]})`, score: 1000 + cards[0].value };
-}
-
-function checkStraight(uniqueDescValues) {
-    if (uniqueDescValues.length < 5) return 0;
-    for (let i = 0; i <= uniqueDescValues.length - 5; i++) {
-        if (uniqueDescValues[i] - uniqueDescValues[i + 4] === 4) {
-            return uniqueDescValues[i];
-        }
-    }
-    // Check A-2-3-4-5
-    if (uniqueDescValues.includes(14) && uniqueDescValues.includes(5) && uniqueDescValues.includes(4) && uniqueDescValues.includes(3) && uniqueDescValues.includes(2)) {
-        return 5;
+/** Lá cao nhất của sảnh trong tập giá trị (đã unique), 0 nếu không có. Hỗ trợ A-2-3-4-5. */
+function straightHigh(values) {
+    const set = new Set(values);
+    if (set.has(14)) set.add(1);
+    for (let hi = 14; hi >= 5; hi--) {
+        let ok = true;
+        for (let k = 0; k < 5; k++) if (!set.has(hi - k)) { ok = false; break; }
+        if (ok) return hi;
     }
     return 0;
 }
 
-function getHighCardScore(cards) {
-    return Math.max(...cards.map(c => c.value));
+/** Mã hóa [category, ...tiebreakers] thành 1 số để so sánh trực tiếp. */
+function encode(category, kickers) {
+    let score = category;
+    for (let i = 0; i < 5; i++) score = score * 15 + (kickers[i] || 0);
+    return score;
+}
+
+/**
+ * Chấm tay bài tốt nhất từ 5–7 lá.
+ * @returns {{ category:number, rankName:string, score:number }}
+ */
+function evaluate7Cards(cards) {
+    const counts = new Map();
+    const bySuit = new Map();
+    for (const c of cards) {
+        counts.set(c.value, (counts.get(c.value) || 0) + 1);
+        if (!bySuit.has(c.suit)) bySuit.set(c.suit, []);
+        bySuit.get(c.suit).push(c.value);
+    }
+
+    const result = (category, kickers) => ({
+        category,
+        rankName: CATEGORY_NAMES[category],
+        score: encode(category, kickers),
+    });
+
+    // Thùng / Thùng phá sảnh
+    let flushValues = null;
+    for (const vals of bySuit.values()) {
+        if (vals.length >= 5) flushValues = [...vals].sort((a, b) => b - a);
+    }
+    if (flushValues) {
+        const sf = straightHigh(flushValues);
+        if (sf) return result(8, [sf]);
+    }
+
+    // Nhóm theo (số lượng desc, giá trị desc)
+    const groups = [...counts.entries()]
+        .map(([value, count]) => ({ value, count }))
+        .sort((a, b) => b.count - a.count || b.value - a.value);
+    const uniqueDesc = [...counts.keys()].sort((a, b) => b - a);
+    const kickersExcept = (exclude, n) => uniqueDesc.filter((v) => !exclude.includes(v)).slice(0, n);
+
+    if (groups[0].count === 4) {
+        return result(7, [groups[0].value, ...kickersExcept([groups[0].value], 1)]);
+    }
+    if (groups[0].count === 3) {
+        const pairPart = groups.slice(1).find((g) => g.count >= 2);
+        if (pairPart) return result(6, [groups[0].value, pairPart.value]);
+    }
+    if (flushValues) return result(5, flushValues.slice(0, 5));
+
+    const st = straightHigh(uniqueDesc);
+    if (st) return result(4, [st]);
+
+    if (groups[0].count === 3) {
+        return result(3, [groups[0].value, ...kickersExcept([groups[0].value], 2)]);
+    }
+    if (groups[0].count === 2 && groups[1]?.count === 2) {
+        const hi = groups[0].value;
+        const lo = groups[1].value;
+        return result(2, [hi, lo, ...kickersExcept([hi, lo], 1)]);
+    }
+    if (groups[0].count === 2) {
+        return result(1, [groups[0].value, ...kickersExcept([groups[0].value], 3)]);
+    }
+    return result(0, uniqueDesc.slice(0, 5));
 }
 
 module.exports = {
+    SUITS,
+    RANKS,
+    CATEGORY_NAMES,
+    makeCard,
     createDeck,
-    evaluate7Cards
+    shuffle,
+    evaluate7Cards,
 };

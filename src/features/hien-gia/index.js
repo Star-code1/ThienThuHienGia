@@ -4,7 +4,10 @@ const { getDisplayName, resolveUserMentions } = require('../../shared/utils/name
 const ChatMessage = require('../../shared/models/ChatMessage');
 const { upsertMessageVector } = require('../../services/qdrantService');
 
+const { buildVoiceButtonsRow } = require('../../shared/voiceChannels');
+
 const EMBEDDING_MIN_LENGTH = 15;
+const VOICE_QUESTION_RE = /voice|phòng (thoại|nói)|kênh (thoại|nói)|link (vào )?(trận|team)|\b(push|mid|def)\b/i;
 
 // Cắt chuỗi theo giới hạn của Discord embed, thêm dấu … nếu bị cắt
 const clip = (text, max) => {
@@ -36,16 +39,18 @@ const hiengiaCommand = {
                 displayName
             });
 
+            // Câu hỏi hiển thị gọn ở đầu (dạng trích dẫn), câu trả lời ngay bên dưới — đọc từ trên xuống một mạch
+            const quoted = clip(question, 300).split('\n').map((l) => `> ${l}`).join('\n');
             const embed = new EmbedBuilder()
                 .setColor('#7289DA')
-                .setTitle(`☯️ Thiên Thư Hiền Giả Luận Đạo`)
-                // Field embed tối đa 1024 ký tự, description tối đa 4096 -> để câu trả lời dài ở description
-                .setDescription(clip(answer, 4096))
-                .addFields({ name: '❓ Đạo Hữu Hỏi:', value: clip(question, 1024) })
-                .setFooter({ text: 'Thiên Thư Môn • Đạo pháp tự nhiên', iconURL: interaction.client.user.displayAvatarURL() })
+                .setAuthor({ name: `${displayName} hỏi`, iconURL: interaction.user.displayAvatarURL() })
+                .setDescription(clip(`${quoted}\n\n${answer}`, 4096))
+                .setFooter({ text: '☯️ Thiên Thư Hiền Giả', iconURL: interaction.client.user.displayAvatarURL() })
                 .setTimestamp();
 
-            await interaction.editReply({ embeds: [embed] });
+            // Hỏi về voice/trận → gắn sẵn nút vào phòng voice
+            const components = VOICE_QUESTION_RE.test(question) ? [buildVoiceButtonsRow()] : [];
+            await interaction.editReply({ embeds: [embed], components });
         } catch (err) {
             console.error('❌ Lỗi hiengia execute:', err);
             await interaction.editReply({

@@ -8,7 +8,9 @@ const {
   buildUnassignedNoticeEmbed,
   buildGameStartingSoonEmbed,
   buildTentativeConfirmEmbed,
+  COLORS,
 } = require('./notificationEmbeds');
+const { buildVoiceButtonsRow } = require('../shared/voiceChannels');
 
 const NOTIFICATION_CONFIG = {
   TARGET_ROLE_ID: process.env.TARGET_ROLE_ID || '1438967271149146302',
@@ -16,8 +18,6 @@ const NOTIFICATION_CONFIG = {
   REPORT_CHANNEL_ID: process.env.NOTIFICATION_REPORT_CHANNEL_ID || '1438974225154183219',
   DELAY_BETWEEN_DMS_MS: 150, // Delay tránh chạm rate-limit của Discord
 };
-
-const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -125,44 +125,39 @@ async function sendNotificationReport(client, { typeTitle, eventTitle, total, se
     }
 
     const isAllSuccess = failed === 0;
-    let descriptionText =
-      `${DIVIDER}\n` +
-      `> ⚔️ **Sự kiện:** \`${eventTitle || 'Bang Chiến Thiên Thư Môn'}\`\n` +
-      `> 🎯 **Tổng số thành viên:** **${total}**\n`;
-
-    if (detailsSummary) {
-      descriptionText +=
-        `> 🆕 **Gửi mới:** **${detailsSummary.sentNew || 0}**\n` +
-        `> 🔄 **Đã cập nhật (sửa tin cũ):** **${detailsSummary.updated || 0}**\n` +
-        `> ⏭️ **Không đổi (bỏ qua):** **${detailsSummary.skipped || 0}**\n` +
-        (detailsSummary.unassigned > 0 ? `> ⚠️ **Rút khỏi đội hình:** **${detailsSummary.unassigned}**\n` : '');
-    } else {
-      descriptionText += `> ✅ **Đã gửi thành công:** **${sent}**\n`;
-    }
-
-    descriptionText +=
-      `> ❌ **Gửi thất bại (Lỗi):** **${failed}**\n` +
-      `${DIVIDER}`;
+    const stats = detailsSummary
+      ? [
+        { name: '🆕 Gửi mới', value: `${detailsSummary.sentNew || 0}`, inline: true },
+        { name: '🔄 Cập nhật', value: `${detailsSummary.updated || 0}`, inline: true },
+        { name: '⏭️ Không đổi', value: `${detailsSummary.skipped || 0}`, inline: true },
+        ...(detailsSummary.unassigned > 0 ? [{ name: '⚠️ Rút khỏi đội hình', value: `${detailsSummary.unassigned}`, inline: true }] : []),
+      ]
+      : [{ name: '✅ Thành công', value: `${sent}`, inline: true }];
 
     const embed = new EmbedBuilder()
-      .setColor(isAllSuccess ? 0x2ECC71 : (sent > 0 ? 0xF39C12 : 0xE74C3C))
-      .setAuthor({ name: '📊 BÁO CÁO TIẾN ĐỘ THÔNG BÁO (NOTIFICATION FEEDBACK)' })
+      .setColor(isAllSuccess ? COLORS.go : (sent > 0 ? COLORS.warn : COLORS.danger))
+      .setAuthor({ name: 'Báo cáo gửi thông báo' })
       .setTitle(`🔔 ${typeTitle}`)
-      .setDescription(descriptionText)
-      .setFooter({ text: 'Thiên Thư Môn • Hệ thống phản hồi thông báo' })
+      .setDescription(`⚔️ ${eventTitle || 'Bang Chiến Thiên Thư Môn'}`)
+      .addFields(
+        { name: '🎯 Tổng', value: `${total}`, inline: true },
+        ...stats,
+        { name: '❌ Thất bại', value: `${failed}`, inline: true }
+      )
+      .setFooter({ text: 'Thiên Thư Môn • Báo cáo tự động' })
       .setTimestamp();
 
     if (failedList.length > 0) {
       const maxShow = 12;
       const displayFailures = failedList.slice(0, maxShow).map((f) => {
         const uMention = f.userId ? `<@${f.userId}>` : f.name || 'Thành viên';
-        return `• ${uMention} (${f.name || f.userId}): \`${f.reason || 'DM bị khóa / lỗi'}\``;
+        return `• ${uMention} — \`${f.reason || 'DM bị khóa / lỗi'}\``;
       }).join('\n');
 
       const extra = failedList.length > maxShow ? `\n*...và ${failedList.length - maxShow} thành viên khác*` : '';
 
       embed.addFields({
-        name: `⚠️ Chi Tiết Gửi Thất Bại (${failedList.length})`,
+        name: `⚠️ Gửi thất bại (${failedList.length})`,
         value: `${displayFailures}${extra}`.slice(0, 1024),
         inline: false,
       });
@@ -519,11 +514,14 @@ async function notifyGameStartingSoon(client, event, minutesLeft = 30) {
   let sent = 0;
   let failed = 0;
   const failedList = [];
-  const embed = buildGameStartingSoonEmbed({ event, minutesLeft });
+  const payload = {
+    embeds: [buildGameStartingSoonEmbed({ event, minutesLeft })],
+    components: [buildVoiceButtonsRow()],
+  };
 
   for (const userId of activeVotedMembers) {
     const memberObj = targetMembers.get(userId);
-    const result = await sendDirectMessage(client, userId, { embeds: [embed] });
+    const result = await sendDirectMessage(client, userId, payload);
     if (result.success) {
       sent++;
     } else {
@@ -646,33 +644,27 @@ async function logCommandUsage(client, interaction, error = null) {
     const optionsText = formatOptions(interaction.options?.data);
     const channelDisplay = interaction.guild
       ? `<#${interaction.channelId}>`
-      : '💬 DM (Tin nhắn riêng)';
+      : '💬 DM';
 
     const isSuccess = !error;
     const embed = new EmbedBuilder()
-      .setColor(isSuccess ? 0x3498DB : 0xED4245)
+      .setColor(isSuccess ? COLORS.info : COLORS.danger)
       .setAuthor({
-        name: `${interaction.user.tag} (${interaction.user.id})`,
+        name: interaction.user.tag,
         iconURL: interaction.user.displayAvatarURL(),
       })
-      .setTitle(`⌨️ Sử Dụng Command: /${interaction.commandName}`)
-      .setDescription(
-        `${DIVIDER}\n` +
-        `> 👤 **Người dùng:** <@${interaction.user.id}> (\`${interaction.user.tag}\`)\n` +
-        `> 📍 **Kênh:** ${channelDisplay}\n` +
-        `> ⚡ **Lệnh:** \`/${interaction.commandName}\`\n` +
-        `> 📊 **Trạng thái:** ${isSuccess ? '✅ Thành công' : '❌ Thất bại'}\n` +
-        `${DIVIDER}`
-      )
+      .setTitle(`${isSuccess ? '✅' : '❌'} /${interaction.commandName}`)
       .addFields(
-        { name: '📝 Tham Số (Options)', value: optionsText.slice(0, 1024), inline: false }
+        { name: '👤 Người dùng', value: `<@${interaction.user.id}>`, inline: true },
+        { name: '📍 Kênh', value: channelDisplay, inline: true },
+        { name: '📝 Tham số', value: optionsText.slice(0, 1024), inline: false }
       )
-      .setFooter({ text: 'Thiên Thư Môn • Nhật Ký Hoạt Động Command' })
+      .setFooter({ text: 'Thiên Thư Môn • Nhật ký lệnh' })
       .setTimestamp();
 
     if (error) {
       embed.addFields({
-        name: '⚠️ Chi Tiết Lỗi',
+        name: '⚠️ Lỗi',
         value: `\`\`\`${(error.message || error).toString().slice(0, 1000)}\`\`\``,
         inline: false,
       });
