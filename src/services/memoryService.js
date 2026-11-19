@@ -220,6 +220,21 @@ ${lines.join('\n')}`;
  * Kênh hỏi X sẽ có quyền đọc: Tất cả Kênh Public + Kênh X (nếu X là Private)
  * Tuyệt đối KHÔNG đọc từ các kênh Private Y khác (Y != X)
  */
+const KNOWLEDGE_TIMEOUT_MS = 3500;
+
+/** Ghép các đoạn kiến thức thành ngữ cảnh cho AI, ghi rõ bài nguồn. */
+function formatKnowledge(items) {
+    if (!items || items.length === 0) return '(Không có trong kho kiến thức game)';
+    return items.map((k, i) => `[${i + 1}] Bài "${k.title}":\n${k.text}`).join('\n\n');
+}
+
+/** Danh sách bài nguồn (không trùng), giữ thứ tự độ liên quan. */
+function uniqueSources(items) {
+    const seen = new Map();
+    for (const k of items || []) if (!seen.has(k.url)) seen.set(k.url, { title: k.title, url: k.url });
+    return [...seen.values()].slice(0, 3);
+}
+
 async function buildSageContext({ guildId, channelId, query, guild }) {
     const { PermissionFlagsBits } = require('discord.js');
     const client = require('../core/client');
@@ -323,14 +338,28 @@ async function buildSageContext({ guildId, channelId, query, guild }) {
         console.warn('⚠️ Lỗi lấy Target Member Memory:', err.message);
     } })();
 
-    // 4 nguồn ngữ cảnh độc lập -> chạy song song (embedding + Qdrant chậm nhất, ~1-2s)
-    await Promise.all([recentTask, vectorTask, summaryTask, memberTask]);
+    // 5. Kiến thức game (wiki đã nạp vào kho riêng). Giới hạn thời gian để không làm chậm câu trả lời.
+    let knowledge = [];
+    const knowledgeTask = (async () => { try {
+        const { searchKnowledge } = require('./knowledge/knowledgeStore');
+        knowledge = await Promise.race([
+            searchKnowledge(query, { topK: 5 }),
+            new Promise((resolve) => setTimeout(() => resolve([]), KNOWLEDGE_TIMEOUT_MS))
+        ]);
+    } catch (err) {
+        console.warn('⚠️ Lỗi tra kho kiến thức game:', err.message);
+    } })();
+
+    // 5 nguồn ngữ cảnh độc lập -> chạy song song (embedding + Qdrant chậm nhất, ~1-2s)
+    await Promise.all([recentTask, vectorTask, summaryTask, memberTask, knowledgeTask]);
 
     return {
         recentChatText: recentChatText || '(Không có tin nhắn gần đây)',
         vectorMemoryText: vectorMemoryText || '(Không tìm thấy ký ứng liên quan trực tiếp)',
         summariesText: summariesText || '(Chưa có tóm tắt lịch sử)',
-        targetMemberText: targetMemberText || '(Không tìm thấy tin nhắn riêng liên quan đến thành viên này)'
+        targetMemberText: targetMemberText || '(Không tìm thấy tin nhắn riêng liên quan đến thành viên này)',
+        knowledgeText: formatKnowledge(knowledge),
+        knowledgeSources: uniqueSources(knowledge)
     };
 }
 
@@ -339,5 +368,7 @@ module.exports = {
     buildSageContext,
     generateChatSummary,
     checkAndTriggerSummary,
-    buildSummaryTranscript
+    buildSummaryTranscript,
+    formatKnowledge,
+    uniqueSources
 };

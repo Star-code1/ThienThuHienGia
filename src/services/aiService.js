@@ -39,6 +39,9 @@ Lồng ghép tự nhiên thuật ngữ tu tiên (Linh khí, Tâm ma, Độ kiế
 # NHẬN DIỆN THÀNH VIÊN
 Thẻ dạng @BiệtDanh hoặc tên gửi [TênBiệtDanh] là tên hiển thị (DisplayName/Nickname) của thành viên Discord. Khi được hỏi "ai nhắc đến...", "nói gì về..." — kiểm tra kỹ các dòng chat liên quan trong lịch sử để trả lời chính xác, không suy diễn bừa.
 
+# KIẾN THỨC GAME
+Khi câu hỏi về game (môn phái, build, trang bị, nội công, phó bản, hoạt động, nhiệm vụ...), dựa vào mục "KIẾN THỨC GAME" trong ngữ cảnh: giữ đúng tên riêng và con số như trong đó, không tự bịa thêm chỉ số. Nếu mục đó không có thông tin cần thiết thì nói thật là Lão phu chưa nắm rõ, đừng đoán. Không nhắc tới "wiki", "ngữ cảnh" hay "tài liệu được cung cấp" — cứ nói tự nhiên như kiến thức của mình.
+
 # PHÒNG VOICE BANG CHIẾN
 Khi được hỏi về voice/phòng thoại/kênh nói/link vào trận, đưa đúng link của cánh tương ứng (hoặc cả 4 nếu không rõ cánh):
 ${voiceLinksText()}
@@ -75,7 +78,7 @@ async function generateSageResponse(userPrompt, extraSystem = '') {
         const result = await callMultiProviderAI({
             systemPrompt: SYSTEM_PROMPT + (extraSystem ? '\n' + extraSystem : ''),
             userPrompt,
-            maxTokens: 500
+            maxTokens: 700
         });
         return result;
     } catch (err) {
@@ -87,11 +90,20 @@ async function generateSageResponse(userPrompt, extraSystem = '') {
 /**
  * Trả lời có kết hợp Ngữ cảnh Memory OS (Recent Chat + Vector Memory + Summaries)
  */
-async function generateSageResponseWithContext({ question, guildId, channelId, displayName }) {
+/** Lịch sử phiên -> đoạn hội thoại dạng văn bản cho prompt. */
+function formatSessionHistory(history, displayName) {
+    if (!history || history.length === 0) return '(Đây là câu hỏi đầu tiên của phiên)';
+    return history.map((m) => `${m.role === 'user' ? `[${displayName || 'Đạo hữu'}]` : '[Hiền Giả]'}: ${m.content}`).join('\n');
+}
+
+async function generateSageResponseWithContext({ question, guildId, channelId, displayName, history = [] }) {
     const { buildSageContext } = require('./memoryService');
     const context = await buildSageContext({ guildId, channelId, query: question });
 
     const contextPrompt = `
+=== KIẾN THỨC GAME NGHỊCH THỦY HÀN (TRÍCH TỪ WIKI) ===
+${context.knowledgeText}
+
 === TÓM TẮT DIỄN BIẾN GẦN ĐÂY CỦA SERVER ===
 ${context.summariesText}
 
@@ -104,11 +116,15 @@ ${context.recentChatText}
 === KÝ ỨC LIÊN QUAN TRONG QUÁ KHỨ ===
 ${context.vectorMemoryText}
 
+=== CUỘC TRÒ CHUYỆN ĐANG DIỄN RA GIỮA BẠN VÀ NGƯỜI HỎI (trả lời nối tiếp mạch này) ===
+${formatSessionHistory(history, displayName)}
+
 === CÂU HỎI CỦA ĐẠO HỮU (${displayName || 'Đạo hữu'}) ===
 ${question}
 `;
 
-    return await generateSageResponse(contextPrompt, `Người hỏi: ${displayName || 'Đạo hữu'}`);
+    const answer = await generateSageResponse(contextPrompt, `Người hỏi: ${displayName || 'Đạo hữu'}`);
+    return { answer, sources: context.knowledgeSources || [] };
 }
 
 /**
@@ -380,6 +396,7 @@ module.exports = {
     extractJsonObject,
     generateSageResponse,
     generateSageResponseWithContext,
+    formatSessionHistory,
     validateWordVI,
     validateWordEN,
     getRandomEnglishStartWord,

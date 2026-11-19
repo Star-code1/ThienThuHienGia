@@ -1,19 +1,10 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { generateSageResponseWithContext } = require('../../services/aiService');
-const { getDisplayName, resolveUserMentions } = require('../../shared/utils/nameHelper');
+const { resolveUserMentions } = require('../../shared/utils/nameHelper');
 const ChatMessage = require('../../shared/models/ChatMessage');
 const { upsertMessageVector } = require('../../services/qdrantService');
-
-const { buildVoiceButtonsRow } = require('../../shared/voiceChannels');
+const { askFromInteraction } = require('../ai-chat');
 
 const EMBEDDING_MIN_LENGTH = 15;
-const VOICE_QUESTION_RE = /voice|phòng (thoại|nói)|kênh (thoại|nói)|link (vào )?(trận|team)|\b(push|mid|def)\b/i;
-
-// Cắt chuỗi theo giới hạn của Discord embed, thêm dấu … nếu bị cắt
-const clip = (text, max) => {
-    const t = String(text ?? '');
-    return t.length <= max ? t : t.slice(0, max - 1) + '…';
-};
 
 const hiengiaCommand = {
     data: new SlashCommandBuilder()
@@ -24,39 +15,9 @@ const hiengiaCommand = {
                 .setDescription('Vấn đề đạo hữu muốn thỉnh giáo Hiền Giả')
                 .setRequired(true)
         ),
+    // Giao diện, phiên trò chuyện, nút Hỏi tiếp/Phiên mới dùng chung với Tiểu Hàn (features/ai-chat)
     async execute(interaction) {
-        const rawQuestion = interaction.options.getString('cau_hoi');
-        const question = resolveUserMentions(interaction, rawQuestion);
-        const displayName = getDisplayName(interaction);
-
-        await interaction.deferReply();
-
-        try {
-            const answer = await generateSageResponseWithContext({
-                question,
-                guildId: interaction.guildId,
-                channelId: interaction.channelId,
-                displayName
-            });
-
-            // Câu hỏi hiển thị gọn ở đầu (dạng trích dẫn), câu trả lời ngay bên dưới — đọc từ trên xuống một mạch
-            const quoted = clip(question, 300).split('\n').map((l) => `> ${l}`).join('\n');
-            const embed = new EmbedBuilder()
-                .setColor('#7289DA')
-                .setAuthor({ name: `${displayName} hỏi`, iconURL: interaction.user.displayAvatarURL() })
-                .setDescription(clip(`${quoted}\n\n${answer}`, 4096))
-                .setFooter({ text: '☯️ Thiên Thư Hiền Giả', iconURL: interaction.client.user.displayAvatarURL() })
-                .setTimestamp();
-
-            // Hỏi về voice/trận → gắn sẵn nút vào phòng voice
-            const components = VOICE_QUESTION_RE.test(question) ? [buildVoiceButtonsRow()] : [];
-            await interaction.editReply({ embeds: [embed], components });
-        } catch (err) {
-            console.error('❌ Lỗi hiengia execute:', err);
-            await interaction.editReply({
-                content: '🧙‍♂️ Bản tôn đang nhập định bế quan diễn tính thiên cơ, tạm thời chưa thể đáp lời đạo hữu!'
-            }).catch(() => {});
-        }
+        await askFromInteraction('hiengia', interaction, interaction.options.getString('cau_hoi'));
     }
 };
 

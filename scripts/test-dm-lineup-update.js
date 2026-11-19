@@ -7,13 +7,14 @@ const {
   notifyLineupAssignment,
 } = require('../src/services/notificationService');
 
-const TEST_USER_ID = process.argv[2] || '1499809147577958483';
+const { DEFAULT_TEST_TARGET, loginAndWait, resolveTargetUserId } = require('./lib/testTarget');
 
 (async () => {
-  console.log(`🧪 Bắt đầu test luồng thông báo xếp đội hình & CẬP NHẬT (EDIT) tới user: ${TEST_USER_ID}...`);
-
   await connectDB();
-  await client.login(process.env.DISCORD_TOKEN);
+  await loginAndWait(client);
+  const TEST_USER_ID = await resolveTargetUserId(client, process.argv[2] || DEFAULT_TEST_TARGET);
+  console.log(`🧪 Test luồng thật gửi mới → sửa tin đội hình tới: ${process.argv[2] || DEFAULT_TEST_TARGET} (${TEST_USER_ID})`);
+  console.log('ℹ️ Người nhận phải có role mục tiêu; báo cáo sẽ gửi vào kênh report.');
 
   const mockEventId = 'test_event_' + Date.now();
 
