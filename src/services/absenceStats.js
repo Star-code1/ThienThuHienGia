@@ -200,8 +200,8 @@ function createAbsenceStats({ Event, Attendance, User, AbsenceNote, Note, channe
     });
 
     list.sort((a, b) =>
-      b.absentCount - a.absentCount ||
       b.unvotedCount - a.unvotedCount ||
+      b.absentCount - a.absentCount ||
       b.noShowCount - a.noShowCount ||
       a.displayName.localeCompare(b.displayName, 'vi')
     );

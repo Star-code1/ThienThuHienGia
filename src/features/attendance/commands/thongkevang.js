@@ -57,9 +57,15 @@ function isLeader(interaction) {
   );
 }
 
+const MEDALS = ['🥇', '🥈', '🥉'];
+const rankMark = (i) => MEDALS[i] || `\`${String(i + 1).padStart(2, '0')}\``;
+
 function buildMonthEmbed(data) {
-  const flagged = data.members.filter((m) => m.level);
-  const others = data.members.filter((m) => !m.level && m.absentCount > 0);
+  // Danh sách đã sắp xếp: không vote nhiều nhất → vắng nhiều nhất
+  const unvoted = data.members.filter((m) => m.unvotedCount > 0);
+  const absent = data.members
+    .filter((m) => m.absentCount > 0)
+    .sort((a, b) => b.absentCount - a.absentCount || b.unvotedCount - a.unvotedCount);
   const color = data.dangerCount ? 0xE74C3C : data.warningCount ? 0xF39C12 : 0x2ECC71;
 
   const embed = new EmbedBuilder()
@@ -67,32 +73,44 @@ function buildMonthEmbed(data) {
     .setAuthor({ name: '⚔️ THIÊN THƯ MÔN - THỐNG KÊ VẮNG THEO THÁNG ⚔️' })
     .setTitle(`📅 ${data.monthLabel}`)
     .setDescription(
-      `${DIVIDER}\n` +
-      `> ⚔️ **Số trận bang chiến:** \`${data.totalEvents}\`\n` +
-      `> 🚫 **Tổng lượt vote Vắng:** \`${data.totalAbsentVotes}\` (${data.membersWithAbsence} đệ tử)\n` +
-      `> ⏳ **Tổng lượt không vote:** \`${data.totalUnvoted}\`\n` +
-      `> ⚠️ **Nhắc nhở (${WARNING_THRESHOLD} buổi):** \`${data.warningCount}\` • 🚨 **Cảnh cáo (≥${DANGER_THRESHOLD} buổi):** \`${data.dangerCount}\`\n` +
+      `${DIVIDER}
+` +
+      `⚔️ **Số trận bang chiến:** \`${data.totalEvents}\`
+` +
+      `⏳ **Lượt không vote:** \`${data.totalUnvoted}\` (${unvoted.length} đệ tử)
+` +
+      `🚫 **Lượt vote Vắng:** \`${data.totalAbsentVotes}\` (${data.membersWithAbsence} đệ tử)
+` +
+      `⚠️ **Nhắc nhở (${WARNING_THRESHOLD} buổi):** \`${data.warningCount}\`  •  🚨 **Cảnh cáo (≥${DANGER_THRESHOLD} buổi):** \`${data.dangerCount}\`
+` +
       `${DIVIDER}`
     )
-    .setFooter({ text: 'Tính theo giờ Việt Nam • Chỉ tính kênh điểm danh bang chiến' })
+    .setFooter({ text: 'Giờ Việt Nam • Bấm vào tên để xem hồ sơ • /thongkevang thang thanhvien:@tên để xem chi tiết' })
     .setTimestamp();
 
-  if (flagged.length) {
-    const lines = flagged.map((m) => {
-      const days = m.absentEvents.map((e) => fmtDay(e.date)).join(', ');
-      let line = `${LEVEL_ICON[m.level]} <@${m.userId}> — **${m.absentCount} buổi** vắng (${days})`;
-      if (m.unvotedCount) line += ` • ⏳ ${m.unvotedCount} không vote`;
-      line += `\n╰ 📝 ${m.leaderNote ? `_${m.leaderNote.content}_ — ${m.leaderNote.updatedBy || 'Quản trị'}` : m.autoNote}`;
-      return line;
+  if (unvoted.length) {
+    const lines = unvoted.map((m, i) => {
+      const extra = m.absentCount ? `  •  🚫 ${m.absentCount} vắng` : '';
+      return `${rankMark(i)} <@${m.userId}> — ⏳ **${m.unvotedCount}** lần không vote${extra}`;
     });
-    embed.addFields({ name: `🚨 Đệ tử vắng từ ${WARNING_THRESHOLD} buổi trở lên (${flagged.length})`, value: fitLines(lines) });
+    embed.addFields({ name: `⏳ KHÔNG VOTE NHIỀU NHẤT (${unvoted.length})`, value: fitLines(lines) });
   } else {
-    embed.addFields({ name: '🎉 Không có đệ tử nào vắng từ 3 buổi trở lên', value: 'Bang chúng chuyên cần, tiếp tục phát huy!' });
+    embed.addFields({ name: '⏳ KHÔNG VOTE NHIỀU NHẤT', value: '🎉 Mọi đệ tử đều đã vote đầy đủ!' });
   }
 
-  if (others.length) {
-    const lines = others.map((m) => `• ${m.displayName} — ${m.absentCount} buổi${m.unvotedCount ? ` • ⏳ ${m.unvotedCount} không vote` : ''}`);
-    embed.addFields({ name: `🟡 Vắng 1–2 buổi (${others.length})`, value: fitLines(lines) });
+  if (absent.length) {
+    const lines = absent.map((m, i) => {
+      const days = m.absentEvents.map((e) => fmtDay(e.date)).join(', ');
+      const icon = LEVEL_ICON[m.level] || '🟡';
+      let line = `${rankMark(i)} ${icon} <@${m.userId}> — 🚫 **${m.absentCount}** buổi (${days})`;
+      const note = m.leaderNote ? `_${m.leaderNote.content}_ — ${m.leaderNote.updatedBy || 'Quản trị'}` : m.autoNote;
+      if (note) line += `
+╰ 📝 ${note}`;
+      return line;
+    });
+    embed.addFields({ name: `🚫 VẮNG NHIỀU NHẤT (${absent.length})`, value: fitLines(lines) });
+  } else {
+    embed.addFields({ name: '🚫 VẮNG NHIỀU NHẤT', value: '🎉 Không có đệ tử nào báo vắng!' });
   }
 
   return embed;
