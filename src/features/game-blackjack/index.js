@@ -57,29 +57,75 @@ const RESULT_BADGE = {
     bust: '💥 Quắc — Thua',
 };
 
+function pointsLabel(cards) {
+    const { total, soft } = handValue(cards);
+    return soft && total < 21 ? `${total - 10}/${total}` : `${total}`;
+}
+
+const hiddenHand = (cards) => cards.map(() => '🂠').join('  ');
+
 function playerField(table, p, idx, { reveal }) {
-    const { total, soft } = handValue(p.cards);
     const isTurn = table.phase === 'playing' && idx === table.turn;
     const name = `${isTurn ? '▶️' : `${idx + 1}.`} ${p.name}${p.id === table.hostId ? ' 👑' : ''}`;
 
-    const pointsLabel = soft && total < 21 ? `${total - 10}/${total}` : `${total}`;
-    let line;
+    // Kết thúc ván: lật bài, so kết quả
     if (reveal && p.result) {
         const sign = p.delta > 0 ? '+' : '';
-        line = `${RESULT_BADGE[p.result.result]}\n💎 **${sign}${p.delta.toLocaleString()}**`;
-    } else {
-        const status = p.status === 'playing' && !isTurn ? 'waiting' : p.status;
-        line = STATUS_BADGE[status];
+        return {
+            name,
+            value:
+                `\`\`\`${formatHand(p.cards)}\`\`\`` +
+                `Điểm: **${pointsLabel(p.cards)}**${p.doubled ? ' · 💰 Gấp đôi' : ''}\n` +
+                `${RESULT_BADGE[p.result.result]}\n💎 **${sign}${p.delta.toLocaleString()}**`,
+            inline: true,
+        };
     }
 
+    // Đang chơi: bài úp, không lộ điểm hay trạng thái Quắc/Xì Dách
+    const status = p.status === 'playing' ? (isTurn ? '🎯 Đang suy tính' : '⌛ Chờ lượt') : '✅ Đã xong lượt';
     return {
         name,
         value:
-            `\`\`\`${formatHand(p.cards)}\`\`\`` +
-            `Điểm: **${pointsLabel}**${p.doubled ? ' · 💰 Gấp đôi' : ''}\n` +
-            line,
+            `\`\`\`${hiddenHand(p.cards)}\`\`\`` +
+            `🎴 ${p.cards.length} lá${p.doubled ? ' · 💰 Gấp đôi' : ''}\n` +
+            status,
         inline: true,
     };
+}
+
+/** Bảng bài riêng (ephemeral) — chỉ người chơi đó thấy */
+function renderPrivate(table, player) {
+    const isTurn = table.phase === 'playing' && currentPlayer(table) === player && player.status === 'playing';
+    const { total } = handValue(player.cards);
+
+    let status;
+    if (isBlackjack(player.cards)) status = '🌟 **XÌ DÁCH!** Chờ lật bài so kết quả.';
+    else if (total > 21) status = '💥 **Quắc** (quá 21). Chờ ván kết thúc.';
+    else if (isTurn) status = `🎯 **Tới lượt đạo hữu!** Tự động Dằn <t:${unix(table.turnEndsAt)}:R>`;
+    else if (player.status === 'playing') status = '⌛ Chưa tới lượt, hãy chờ đạo hữu phía trước.';
+    else status = '✋ Đã dằn. Chờ lật bài so kết quả.';
+
+    const embed = new EmbedBuilder()
+        .setColor(isTurn ? COLORS.playing : COLORS.lobby)
+        .setTitle('🎴 BÀI TẨY CỦA ĐẠO HỮU (chỉ mình đạo hữu thấy)')
+        .setDescription(
+            `\`\`\`${formatHand(player.cards)}\`\`\`` +
+            `Điểm: **${pointsLabel(player.cards)}**${player.doubled ? ' · 💰 Đã gấp đôi' : ''}\n` +
+            `🧙‍♂️ Nhà cái lộ: \`${formatHand([table.dealer[0]])}\`\n\n` +
+            status
+        )
+        .setFooter({ text: 'Bài của người khác chỉ được lật khi kết thúc ván' });
+
+    if (!isTurn) return { embeds: [embed], components: [] };
+
+    const canDouble = player.cards.length === 2 && !player.doubled;
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`bj_hit:${table.id}`).setLabel('Rút bài').setEmoji('🃏').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`bj_stand:${table.id}`).setLabel('Dằn').setEmoji('✋').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`bj_double:${table.id}`).setLabel('Gấp đôi').setEmoji('💰').setStyle(ButtonStyle.Success)
+            .setDisabled(!canDouble),
+    );
+    return { embeds: [embed], components: [row] };
 }
 
 function renderLobby(table) {
@@ -121,7 +167,8 @@ function renderPlaying(table) {
         .setDescription(
             `💎 Cược: \`${table.bet.toLocaleString()}\` Linh Thạch/người\n` +
             (cur
-                ? `⏳ **Lượt của <@${cur.id}>** — tự động Dằn <t:${unix(table.turnEndsAt)}:R>`
+                ? `⏳ **Lượt của <@${cur.id}>** — tự động Dằn <t:${unix(table.turnEndsAt)}:R>\n` +
+                  `🎴 Bấm **Xem bài** để xem bài tẩy và ra quyết định (chỉ mình đạo hữu thấy).`
                 : '🧙‍♂️ Nhà cái đang lật bài...')
         )
         .addFields(
@@ -132,14 +179,10 @@ function renderPlaying(table) {
             },
             ...table.players.map((p, i) => playerField(table, p, i, { reveal: false }))
         )
-        .setFooter({ text: 'Rút: thêm 1 lá • Dằn: giữ bài • Gấp đôi: x2 cược, rút đúng 1 lá rồi dằn' });
+        .setFooter({ text: 'Bài của mọi người được úp kín • Chỉ lật khi kết thúc ván' });
 
-    const canDouble = cur && cur.cards.length === 2 && !cur.doubled;
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('bj_hit').setLabel('Rút bài').setEmoji('🃏').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('bj_stand').setLabel('Dằn').setEmoji('✋').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('bj_double').setLabel('Gấp đôi').setEmoji('💰').setStyle(ButtonStyle.Success)
-            .setDisabled(!canDouble),
+        new ButtonBuilder().setCustomId('bj_view').setLabel('Xem bài').setEmoji('🎴').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('bj_rules').setLabel('Luật').setEmoji('📖').setStyle(ButtonStyle.Secondary),
     );
 
@@ -193,7 +236,8 @@ function rulesEmbed() {
             `👥 **Chơi chung:**\n` +
             `• Một người mở bàn bằng \`/xidach\`, tối đa **${MAX_PLAYERS}** đạo hữu cùng ngồi.\n` +
             `• Mỗi người đấu **riêng** với nhà cái Hiền Giả, lần lượt theo thứ tự ghế.\n` +
-            `• Mỗi lượt có **${TURN_SECONDS} giây**, hết giờ tự động Dằn.\n\n` +
+            `• Mỗi lượt có **${TURN_SECONDS} giây**, hết giờ tự động Dằn.\n` +
+            `• 🎴 **Bài úp kín:** bấm **Xem bài** để xem bài tẩy và ra quyết định (chỉ mình thấy). Bài mọi người chỉ lật khi kết thúc ván.\n\n` +
             `🎮 **Hành động:**\n` +
             `• 🃏 **Rút** thêm 1 lá • ✋ **Dằn** giữ bài\n` +
             `• 💰 **Gấp đôi**: chỉ với 2 lá đầu, nhân đôi cược và rút đúng 1 lá\n\n` +
@@ -241,6 +285,7 @@ async function openTable(interaction, bet) {
     }
 
     const table = {
+        id: `${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`,
         channelId,
         hostId: interaction.user.id,
         bet,
@@ -378,13 +423,72 @@ const handleBlackjackButtons = async (interaction) => {
         return openTable(interaction, parseInt(arg, 10) || 200);
     }
 
+    const userId = interaction.user.id;
+    const displayName = getDisplayName(interaction);
     const table = tables.get(interaction.channelId);
+
+    // ── Bảng bài riêng (ephemeral): Rút / Dằn / Gấp đôi ──
+    if (['bj_hit', 'bj_stand', 'bj_double'].includes(action)) {
+        if (!table || table.id !== arg || table.phase !== 'playing') {
+            return interaction.update({ content: '⌛ Ván Xì Dách này đã kết thúc.', embeds: [], components: [] });
+        }
+        const player = table.players.find(p => p.id === userId);
+        if (!player) return interaction.reply({ content: '⚠️ Đạo hữu không ngồi tại bàn này.', flags: 64 });
+        if (currentPlayer(table) !== player) {
+            // Hết giờ hoặc chưa tới lượt → làm mới bảng bài
+            return interaction.update(renderPrivate(table, player));
+        }
+
+        if (action === 'bj_double') {
+            if (player.cards.length !== 2 || player.doubled) {
+                return interaction.update(renderPrivate(table, player));
+            }
+            const profile = await UserProfile.getOrCreate(userId, displayName);
+            if (profile.linhThach < table.bet * 2) {
+                return interaction.reply({
+                    content: `⚠️ Cần \`${(table.bet * 2).toLocaleString()}\` 💎 để Gấp đôi, đạo hữu chỉ có \`${profile.linhThach.toLocaleString()}\` 💎.`,
+                    flags: 64,
+                });
+            }
+            // Trạng thái có thể đã đổi trong lúc chờ DB (vd: hết giờ)
+            if (table.phase !== 'playing' || currentPlayer(table) !== player || player.doubled) {
+                return interaction.update(renderPrivate(table, player));
+            }
+            player.doubled = true;
+            player.cards.push(table.shoe.pop());
+            player.status = handValue(player.cards).total > 21 ? 'bust' : 'stand';
+            await interaction.update(renderPrivate(table, player));
+            return advanceTurn(table);
+        }
+
+        if (action === 'bj_hit') {
+            player.cards.push(table.shoe.pop());
+            const { total } = handValue(player.cards);
+            if (total >= 21) player.status = total > 21 ? 'bust' : 'stand';
+            const turnOver = player.status !== 'playing';
+            await interaction.update(renderPrivate(table, player));
+            return turnOver ? advanceTurn(table) : editTable(table, renderPlaying(table));
+        }
+
+        // bj_stand
+        player.status = 'stand';
+        await interaction.update(renderPrivate(table, player));
+        return advanceTurn(table);
+    }
+
     if (!table || table.message?.id !== interaction.message.id) {
         return interaction.reply({ content: 'Bàn Xì Dách này đã kết thúc hoặc không tồn tại.', flags: 64 });
     }
 
-    const userId = interaction.user.id;
-    const displayName = getDisplayName(interaction);
+    // ── Xem bài tẩy của mình ──
+    if (action === 'bj_view') {
+        if (table.phase !== 'playing') return interaction.reply({ content: 'Ván chưa bắt đầu hoặc đã kết thúc.', flags: 64 });
+        const player = table.players.find(p => p.id === userId);
+        if (!player) {
+            return interaction.reply({ content: '⚠️ Đạo hữu không ngồi tại bàn này. Bài của người chơi chỉ được lật khi kết thúc ván!', flags: 64 });
+        }
+        return interaction.reply({ ...renderPrivate(table, player), flags: 64 });
+    }
 
     // ── Phòng chờ ──
     if (action === 'bj_join') {
@@ -434,62 +538,6 @@ const handleBlackjackButtons = async (interaction) => {
         await interaction.deferUpdate();
         return startGame(table);
     }
-
-    // ── Trong ván ──
-    if (!['bj_hit', 'bj_stand', 'bj_double'].includes(action)) return;
-    if (table.phase !== 'playing') return interaction.reply({ content: 'Ván chưa bắt đầu hoặc đã kết thúc.', flags: 64 });
-
-    const player = currentPlayer(table);
-    if (!player || player.id !== userId) {
-        const seated = table.players.some(p => p.id === userId);
-        return interaction.reply({
-            content: seated ? '⌛ Chưa tới lượt của đạo hữu!' : '⚠️ Đạo hữu không ngồi tại bàn này.',
-            flags: 64,
-        });
-    }
-
-    if (action === 'bj_double') {
-        if (player.cards.length !== 2 || player.doubled) {
-            return interaction.reply({ content: '⚠️ Chỉ được Gấp đôi với 2 lá đầu tiên.', flags: 64 });
-        }
-        const profile = await UserProfile.getOrCreate(userId, displayName);
-        if (profile.linhThach < table.bet * 2) {
-            return interaction.reply({
-                content: `⚠️ Cần \`${(table.bet * 2).toLocaleString()}\` 💎 để Gấp đôi, đạo hữu chỉ có \`${profile.linhThach.toLocaleString()}\` 💎.`,
-                flags: 64,
-            });
-        }
-        // Trạng thái có thể đã đổi trong lúc chờ DB (vd: hết giờ)
-        if (currentPlayer(table) !== player || player.doubled || table.phase !== 'playing') {
-            return interaction.reply({ content: '⌛ Lượt của đạo hữu đã kết thúc.', flags: 64 });
-        }
-        player.doubled = true;
-        player.cards.push(table.shoe.pop());
-        player.status = handValue(player.cards).total > 21 ? 'bust' : 'stand';
-        await interaction.deferUpdate();
-        return advanceTurn(table);
-    }
-
-    if (action === 'bj_hit') {
-        player.cards.push(table.shoe.pop());
-        const { total } = handValue(player.cards);
-        await interaction.deferUpdate();
-        if (total > 21) {
-            player.status = 'bust';
-            return advanceTurn(table);
-        }
-        if (total === 21) {
-            player.status = 'stand';
-            return advanceTurn(table);
-        }
-        return editTable(table, renderPlaying(table));
-    }
-
-    if (action === 'bj_stand') {
-        player.status = 'stand';
-        await interaction.deferUpdate();
-        return advanceTurn(table);
-    }
 };
 
 module.exports = {
@@ -502,6 +550,7 @@ module.exports = {
         'bj_hit': handleBlackjackButtons,
         'bj_stand': handleBlackjackButtons,
         'bj_double': handleBlackjackButtons,
+        'bj_view': handleBlackjackButtons,
         'bj_again': handleBlackjackButtons,
     }
 };
