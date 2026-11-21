@@ -84,6 +84,8 @@ const UserProfileSchema = new mongoose.Schema({
         baucuaWinLinhThach: { type: Number, default: 0 },
         pokerGames: { type: Number, default: 0 },
         pokerWins: { type: Number, default: 0 },
+        blackjackGames: { type: Number, default: 0 },
+        blackjackWins: { type: Number, default: 0 },
     }
 }, { timestamps: true });
 
