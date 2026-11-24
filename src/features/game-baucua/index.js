@@ -8,6 +8,7 @@ const {
     TextInputBuilder,
     TextInputStyle
 } = require('discord.js');
+const { generateBaucuaCommentary } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
 
