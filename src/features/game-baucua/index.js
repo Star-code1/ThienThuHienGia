@@ -301,4 +301,14 @@ module.exports = {
         'bc_submit': handleBaucuaModalSubmit,
     },
     onShutdown: () => cancelAllSessions('Bot đang khởi động lại để bảo trì.'),
+    // Liệt kê sòng đang mở trong kênh (cho /banchoi)
+    listRooms: (channelId) => [...activeBaucuaGames.values()]
+        .filter(s => s.channel?.id === channelId)
+        .map(s => ({
+            game: '🎲 Bầu Cua',
+            title: `Sòng của ${s.hostName}`,
+            detail: `👥 ${Object.keys(s.bets).length} người đã cược · lắc <t:${Math.floor((s.startTime + BET_SECONDS * 1000) / 1000)}:R>`,
+            joinable: true,
+            url: s.message?.url,
+        })),
 };

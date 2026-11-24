@@ -427,6 +427,20 @@ module.exports = {
     interactions: {
         pk: handlePokerButtons,
     },
+    // Liệt kê bàn đang mở trong kênh (cho /banchoi)
+    listRooms: (channelId) => [...tables.values()]
+        .filter((t) => t.message?.channelId === channelId)
+        .map((t) => {
+            const host = t.players.find((p) => p.id === t.hostId);
+            const joinable = t.mode === 'chung' && t.players.length < T.MAX_SEATS;
+            return {
+                game: '♠️ Poker',
+                title: `Bàn ${t.mode === 'solo' ? 'solo với máy' : 'chung'} của ${host?.name || 'đạo hữu'}`,
+                detail: `💎 ${fmt(t.bet)}/ante · 👥 ${t.players.length}/${T.MAX_SEATS} · ${isPlaying(t) ? `đang chơi ván #${t.handNo}` : 'đang chờ'}`,
+                joinable,
+                url: t.message?.url,
+            };
+        }),
     // Bot tắt/khởi động lại: đóng mọi bàn (tiền chỉ ghi khi kết thúc ván nên ván dở không ai mất tiền)
     onShutdown: () => Promise.all([...tables.values()].map((table) =>
         editTableMessage(table, closeTable(table, 'Bot khởi động lại để bảo trì — ván dở được huỷ, không ai mất Linh Thạch'))

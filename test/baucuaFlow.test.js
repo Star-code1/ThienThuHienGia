@@ -40,7 +40,7 @@ const engine = require('../src/features/game-baucua/baucuaEngine');
 
 function fakeChannel() {
     const sent = [];
-    return { sent, send: async (payload) => { sent.push(payload); } };
+    return { id: 'kenh-' + Math.random(), sent, send: async (payload) => { sent.push(payload); } };
 }
 
 async function openSession(channel) {
@@ -124,6 +124,13 @@ test('luồng Bầu Cua', async (t) => {
         await bet(sid, 'u3', 'ga', 400);
         await bet(sid, 'u4', 'ca', 250);
         assert.strictEqual(balances.get('u3'), 600);
+
+        // /banchoi thấy sòng này trong đúng kênh
+        const rooms = baucua.listRooms(ch.id);
+        assert.strictEqual(rooms.length, 1);
+        assert.match(rooms[0].title, /Chủ Sòng/);
+        assert.match(rooms[0].detail, /2 người đã cược/);
+        assert.deepStrictEqual(baucua.listRooms('kenh-khac'), []);
 
         await baucua.onShutdown();
         assert.strictEqual(balances.get('u3'), 1000);

@@ -51,6 +51,11 @@ function loadFeatures(client) {
             client.shutdownHooks.push({ name: dir, fn: feature.onShutdown });
         }
 
+        // Liệt kê bàn chơi đang mở (cho /banchoi)
+        if (typeof feature.listRooms === 'function') {
+            client.roomListers.push({ name: dir, fn: feature.listRooms });
+        }
+
         console.log(`✅ Feature loaded: ${dir}`);
     }
 }

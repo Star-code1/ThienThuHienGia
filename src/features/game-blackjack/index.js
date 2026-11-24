@@ -546,7 +546,26 @@ async function cancelAllTables(reason) {
     }));
 }
 
+/** Liệt kê bàn đang mở trong kênh (cho /banchoi) */
+function listRooms(channelId) {
+    return [...tables.values()]
+        .filter(t => t.channelId === channelId)
+        .map(t => {
+            const host = t.players.find(p => p.id === t.hostId);
+            const lobby = t.phase === 'lobby';
+            return {
+                game: '🃏 Xì Dách',
+                title: `Bàn của ${host?.name || 'đạo hữu'}`,
+                detail: `💎 ${t.bet.toLocaleString()}/người · 👥 ${t.players.length}/${MAX_PLAYERS} · ` +
+                    (lobby ? `chia bài <t:${unix(t.lobbyEndsAt)}:R>` : 'đang chơi'),
+                joinable: lobby && t.players.length < MAX_PLAYERS,
+                url: t.message?.url,
+            };
+        });
+}
+
 module.exports = {
+    listRooms,
     onShutdown: () => cancelAllTables('Bot đang khởi động lại để bảo trì.'),
     commands: [blackjackCommand],
     interactions: {

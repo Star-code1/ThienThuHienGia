@@ -23,6 +23,7 @@ const client = new Client({
 client.commands = new Collection();
 client.interactions = new Collection();
 client.shutdownHooks = []; // { name, fn } — chạy khi bot tắt (SIGTERM/SIGINT)
+client.roomListers = [];   // { name, fn(channelId) } — liệt kê bàn chơi đang mở (cho /banchoi)
 
 // Global Error Handlers
 client.on('error', (err) => console.error('========== DISCORD CLIENT ERROR ==========\n', err));
