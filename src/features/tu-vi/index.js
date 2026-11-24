@@ -29,7 +29,9 @@ const tuviCommand = {
                     value: `• **Nối Từ:** ${profile.stats.noituWins} trận thắng\n` +
                            `• **Vua Tiếng Việt:** ${profile.stats.vuatiengvietWins} câu đố\n` +
                            `• **Bầu Cua:** ${profile.stats.baucuaGames} lượt chơi (${profile.stats.baucuaWinLinhThach >= 0 ? '+' : ''}${profile.stats.baucuaWinLinhThach} 💎)\n` +
-                           `• **Poker:** ${profile.stats.pokerWins}/${profile.stats.pokerGames} trận thắng`, 
+                           `• **Poker:** ${profile.stats.pokerWins}/${profile.stats.pokerGames} trận thắng
+` +
+                           `• **Xì Dách:** ${profile.stats.blackjackWins || 0}/${profile.stats.blackjackGames || 0} ván thắng`, 
                     inline: false 
                 }
             )
@@ -130,7 +132,94 @@ const topTuviCommand = {
     }
 };
 
+// Các bảng xếp hạng Linh Thạch / đánh bài
+const LEADERBOARDS = {
+    giau: {
+        title: '💎 PHÚ HỘ THIÊN THƯ MÔN',
+        sort: { linhThach: -1 },
+        filter: {},
+        line: (p) => `\`${p.linhThach.toLocaleString()}\` 💎`,
+    },
+    xidach: {
+        title: '🃏 CAO THỦ XÌ DÁCH',
+        sort: { 'stats.blackjackWins': -1, 'stats.blackjackGames': 1 },
+        filter: { 'stats.blackjackGames': { $gt: 0 } },
+        line: (p) => winRateLine(p.stats.blackjackWins, p.stats.blackjackGames),
+    },
+    poker: {
+        title: '♠️ THẦN BÀI POKER',
+        sort: { 'stats.pokerWins': -1, 'stats.pokerGames': 1 },
+        filter: { 'stats.pokerGames': { $gt: 0 } },
+        line: (p) => winRateLine(p.stats.pokerWins, p.stats.pokerGames),
+    },
+    baucua: {
+        title: '🎲 ĐỔ VƯƠNG BẦU CUA',
+        sort: { 'stats.baucuaWinLinhThach': -1 },
+        filter: { 'stats.baucuaGames': { $gt: 0 } },
+        line: (p) => {
+            const net = p.stats.baucuaWinLinhThach || 0;
+            return `\`${net >= 0 ? '+' : ''}${net.toLocaleString()}\` 💎 lãi ròng · ${p.stats.baucuaGames || 0} lượt`;
+        },
+    },
+};
+
+function winRateLine(wins = 0, games = 0) {
+    const rate = games > 0 ? Math.round((wins / games) * 100) : 0;
+    return `**${wins}** thắng / ${games} ván (${rate}%)`;
+}
+
+const topLinhThachCommand = {
+    data: new SlashCommandBuilder()
+        .setName('top-linhthach')
+        .setDescription('💎 Bảng xếp hạng Linh Thạch và cao thủ các sòng bài')
+        .addStringOption(option =>
+            option.setName('bang')
+                .setDescription('Chọn bảng xếp hạng (Mặc định: Phú hộ)')
+                .setRequired(false)
+                .addChoices(
+                    { name: '💎 Phú hộ (nhiều Linh Thạch nhất)', value: 'giau' },
+                    { name: '🃏 Xì Dách (thắng nhiều nhất)', value: 'xidach' },
+                    { name: '♠️ Poker (thắng nhiều nhất)', value: 'poker' },
+                    { name: '🎲 Bầu Cua (lãi ròng cao nhất)', value: 'baucua' },
+                )
+        ),
+    async execute(interaction) {
+        const key = interaction.options.getString('bang') || 'giau';
+        const board = LEADERBOARDS[key];
+        const top = await UserProfile.find(board.filter).sort(board.sort).limit(10).lean();
+
+        if (!top.length) {
+            return interaction.reply('Hiện chưa có đạo hữu nào ghi danh trên bảng xếp hạng này!');
+        }
+
+        const desc = top.map((p, idx) => {
+            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
+            p.stats = p.stats || {};
+            p.linhThach = p.linhThach || 0;
+            return `${medal} **${p.username}** — ${board.line(p)}`;
+        }).join('\n');
+
+        // Vị trí của người gọi lệnh (nếu không nằm trong top 10)
+        let mine = '';
+        const me = await UserProfile.findOne({ userId: interaction.user.id }).lean();
+        if (me && !top.some(p => p.userId === me.userId)) {
+            me.stats = me.stats || {};
+            me.linhThach = me.linhThach || 0;
+            mine = `\n\n👤 **Đạo hữu:** ${board.line(me)}`;
+        }
+
+        const embed = new EmbedBuilder()
+            .setColor('#F1C40F')
+            .setTitle(`🏆 ${board.title}`)
+            .setDescription(desc + mine)
+            .setFooter({ text: 'Thiên Thư Môn Phong Thần Bảng • /top-linhthach bang:<tên bảng>' })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed] });
+    }
+};
+
 module.exports = {
-    commands: [tuviCommand, diemdanhTuviCommand, topTuviCommand],
+    commands: [tuviCommand, diemdanhTuviCommand, topTuviCommand, topLinhThachCommand],
     interactions: {}
 };
