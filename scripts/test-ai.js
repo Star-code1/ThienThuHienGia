@@ -1,11 +1,11 @@
-// test-ai.js
+// Thử nhanh các hàm AI với API thật: npm run test:ai
 require('dotenv').config();
 const {
     generateSageResponse,
     validateWordVI,
     validateWordEN,
     generateVuaTiengVietQuestion,
-} = require('./src/services/aiService'); // sửa đúng đường dẫn thật của bạn
+} = require('../src/services/aiService');
 
 (async () => {
     console.log('--- Test generateSageResponse ---');

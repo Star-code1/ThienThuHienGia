@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "test": "node --test \"test/**/*.test.js\"",
+    "test:ai": "node scripts/test-ai.js",
     "deploy": "node deploy.js",
     "sync-history": "node scripts/syncHistory.js",
     "test:dm": "node scripts/test-dm.js all",
