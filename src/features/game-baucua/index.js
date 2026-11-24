@@ -20,23 +20,23 @@ const LINH_THU = [
     { id: 'nai', name: 'Nai (Lộc Thần)', emoji: '🦌' },
 ];
 
-// Active sessions for Bầu Cua: channelId -> gameSession
+// Các sòng Bầu Cua đang mở: sessionId -> gameSession (một kênh có thể mở nhiều sòng cùng lúc)
 const activeBaucuaGames = new Map();
 
 /**
  * Đặt đếm ngược 30 giây cho phiên Bầu Cua
  */
-function startBaucuaTimer(channelId, channel) {
-    const session = activeBaucuaGames.get(channelId);
+function startBaucuaTimer(sessionId, channel) {
+    const session = activeBaucuaGames.get(sessionId);
     if (!session) return;
 
     if (session.timer) clearTimeout(session.timer);
 
     session.timer = setTimeout(async () => {
-        const currentSession = activeBaucuaGames.get(channelId);
+        const currentSession = activeBaucuaGames.get(sessionId);
         if (!currentSession) return;
 
-        activeBaucuaGames.delete(channelId);
+        activeBaucuaGames.delete(sessionId);
 
         // Lắc 3 xúc xắc
         const diceResults = [
@@ -105,7 +105,11 @@ function startBaucuaTimer(channelId, channel) {
             .setFooter({ text: 'Thiên Thư Hiền Giả Ban Quẻ • Dùng /baucua để mở sòng mới' })
             .setTimestamp();
 
-        await channel.send({ embeds: [resultEmbed] }).catch(() => {});
+        const payload = { embeds: [resultEmbed] };
+        if (currentSession.messageId) {
+            payload.reply = { messageReference: currentSession.messageId, failIfNotExists: false };
+        }
+        await channel.send(payload).catch(() => {});
     }, 30000); // 30s đếm ngược
 }
 
@@ -114,28 +118,23 @@ const baucuaCommand = {
         .setName('baucua')
         .setDescription('🎲 Khai mở sòng Bầu Cua 30s đếm ngược (Tùy chọn cược nhiều Linh Thú)'),
     async execute(interaction) {
-        const channelId = interaction.channelId;
-
-        if (activeBaucuaGames.has(channelId)) {
-            return interaction.reply({
-                content: '⚠️ Trong kênh này đang có sòng Bầu Cua đang đếm ngược 30s! Hãy chọn Linh Thú bên dưới để đặt cược.',
-                flags: 64
-            });
-        }
+        const sessionId = `${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
 
         const session = {
+            id: sessionId,
+            messageId: null,
             startTime: Date.now(),
             bets: {}, // userId -> { username, beastBets: { bau: 100, cua: 200... } }
             timer: null
         };
 
-        activeBaucuaGames.set(channelId, session);
+        activeBaucuaGames.set(sessionId, session);
 
         // Row 1: First 3 beasts
         const row1 = new ActionRowBuilder().addComponents(
             LINH_THU.slice(0, 3).map(beast => 
                 new ButtonBuilder()
-                    .setCustomId(`bc_modal:${beast.id}`)
+                    .setCustomId(`bc_modal:${sessionId}:${beast.id}`)
                     .setLabel(`${beast.emoji} ${beast.name.split(' ')[0]}`)
                     .setStyle(ButtonStyle.Primary)
             )
@@ -145,7 +144,7 @@ const baucuaCommand = {
         const row2 = new ActionRowBuilder().addComponents(
             ...LINH_THU.slice(3, 6).map(beast => 
                 new ButtonBuilder()
-                    .setCustomId(`bc_modal:${beast.id}`)
+                    .setCustomId(`bc_modal:${sessionId}:${beast.id}`)
                     .setLabel(`${beast.emoji} ${beast.name.split(' ')[0]}`)
                     .setStyle(ButtonStyle.Primary)
             ),
@@ -167,16 +166,17 @@ const baucuaCommand = {
             .setTimestamp();
 
         await interaction.reply({ embeds: [embed], components: [row1, row2] });
+        const message = await interaction.fetchReply().catch(() => null);
+        session.messageId = message?.id || null;
 
         // Khởi động đếm ngược 30s
-        startBaucuaTimer(channelId, interaction.channel);
+        startBaucuaTimer(sessionId, interaction.channel);
     }
 };
 
 // Interaction handler cho Bầu Cua
 const handleBaucuaInteractions = async (interaction) => {
     const customId = interaction.customId;
-    const channelId = interaction.channelId;
 
     if (customId === 'bc_rules') {
         const rulesEmbed = new EmbedBuilder()
@@ -198,18 +198,19 @@ const handleBaucuaInteractions = async (interaction) => {
         return interaction.reply({ embeds: [rulesEmbed], flags: 64 });
     }
 
-    const session = activeBaucuaGames.get(channelId);
+    const [, sessionId, beastId] = customId.split(':');
+    const session = activeBaucuaGames.get(sessionId);
 
     if (!session) {
         return interaction.reply({ content: '⚠️ Ván Bầu Cua này đã hết giờ cược hoặc chưa khởi tạo. Dùng `/baucua` để mở sòng mới!', flags: 64 });
     }
 
     if (customId.startsWith('bc_modal:')) {
-        const beastId = customId.split(':')[1];
         const beast = LINH_THU.find(b => b.id === beastId);
+        if (!beast) return;
 
         const modal = new ModalBuilder()
-            .setCustomId(`bc_submit:${beastId}`)
+            .setCustomId(`bc_submit:${sessionId}:${beastId}`)
             .setTitle(`Đặt cược vào ${beast.emoji} ${beast.name.split(' ')[0]}`);
 
         const input = new TextInputBuilder()
@@ -231,16 +232,16 @@ const handleBaucuaInteractions = async (interaction) => {
 // Modal Submit handler
 const handleBaucuaModalSubmit = async (interaction) => {
     const customId = interaction.customId;
-    const channelId = interaction.channelId;
-    const session = activeBaucuaGames.get(channelId);
+    const [, sessionId, beastId] = customId.split(':');
+    const session = activeBaucuaGames.get(sessionId);
 
     if (!session) {
         return interaction.reply({ content: '⚠️ Ván Bầu Cua đã hết 30s đếm ngược!', flags: 64 });
     }
 
     if (customId.startsWith('bc_submit:')) {
-        const beastId = customId.split(':')[1];
         const beast = LINH_THU.find(b => b.id === beastId);
+        if (!beast) return;
 
         const amountStr = interaction.fields.getTextInputValue('bet_amount').trim();
         const betAmount = parseInt(amountStr, 10);
@@ -262,9 +263,19 @@ const handleBaucuaModalSubmit = async (interaction) => {
         const currentTotalBet = Object.values(userBetsObj).reduce((a, b) => a + b, 0);
         const newTotalBet = currentTotalBet + betAmount;
 
-        if (profile.linhThach < newTotalBet) {
+        // Tiền đã cược ở các sòng khác đang mở (chưa trừ vào Linh Thạch cho tới khi lắc)
+        let otherSessionsBet = 0;
+        for (const s of activeBaucuaGames.values()) {
+            if (s === session) continue;
+            const b = s.bets[interaction.user.id];
+            if (b) otherSessionsBet += Object.values(b.beastBets).reduce((a, x) => a + x, 0);
+        }
+        const requiredTotal = newTotalBet + otherSessionsBet;
+
+        if (profile.linhThach < requiredTotal) {
             return interaction.reply({
-                content: `⚠️ Đạo hữu không đủ Linh Thạch! Hiện có: \`${profile.linhThach.toLocaleString()}\` 💎, tổng cược yêu cầu: \`${newTotalBet.toLocaleString()}\` 💎.`,
+                content: `⚠️ Đạo hữu không đủ Linh Thạch! Hiện có: \`${profile.linhThach.toLocaleString()}\` 💎, tổng cược yêu cầu: \`${requiredTotal.toLocaleString()}\` 💎` +
+                    (otherSessionsBet > 0 ? ` (gồm \`${otherSessionsBet.toLocaleString()}\` 💎 đang cược ở sòng khác).` : '.'),
                 flags: 64
             });
         }

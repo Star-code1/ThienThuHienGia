@@ -23,7 +23,7 @@ const COLORS = {
     cancel: '#95A5A6',
 };
 
-// Bàn Xì Dách đang mở: channelId -> table
+// Bàn Xì Dách đang mở: tableId -> table (một kênh có thể mở nhiều bàn cùng lúc)
 const tables = new Map();
 
 const unix = (ms) => Math.floor(ms / 1000);
@@ -147,10 +147,10 @@ function renderLobby(table) {
         .setFooter({ text: 'Mỗi người đấu riêng với nhà cái • Bấm Tham gia để ngồi vào bàn' });
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('bj_join').setLabel('Tham gia').setEmoji('🪑').setStyle(ButtonStyle.Success)
+        new ButtonBuilder().setCustomId(`bj_join:${table.id}`).setLabel('Tham gia').setEmoji('🪑').setStyle(ButtonStyle.Success)
             .setDisabled(table.players.length >= MAX_PLAYERS),
-        new ButtonBuilder().setCustomId('bj_leave').setLabel('Rời bàn').setEmoji('🚪').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('bj_start').setLabel('Bắt đầu').setEmoji('▶️').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`bj_leave:${table.id}`).setLabel('Rời bàn').setEmoji('🚪').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`bj_start:${table.id}`).setLabel('Bắt đầu').setEmoji('▶️').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('bj_rules').setLabel('Luật').setEmoji('📖').setStyle(ButtonStyle.Secondary),
     );
 
@@ -182,7 +182,7 @@ function renderPlaying(table) {
         .setFooter({ text: 'Bài của mọi người được úp kín • Chỉ lật khi kết thúc ván' });
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('bj_view').setLabel('Xem bài').setEmoji('🎴').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`bj_view:${table.id}`).setLabel('Xem bài').setEmoji('🎴').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('bj_rules').setLabel('Luật').setEmoji('📖').setStyle(ButtonStyle.Secondary),
     );
 
@@ -263,13 +263,6 @@ async function editTable(table, payload) {
 
 async function openTable(interaction, bet) {
     const channelId = interaction.channelId;
-    const existing = tables.get(channelId);
-    if (existing) {
-        return interaction.reply({
-            content: '⚠️ Kênh này đang có một bàn Xì Dách! Hãy tham gia bàn đó hoặc đợi ván kết thúc.',
-            flags: 64,
-        });
-    }
 
     if (findPlayerTable(interaction.user.id)) {
         return interaction.reply({ content: '⚠️ Đạo hữu đang ngồi ở một bàn Xì Dách khác rồi!', flags: 64 });
@@ -300,13 +293,13 @@ async function openTable(interaction, bet) {
         turnTimer: null,
         turnEndsAt: 0,
     };
-    tables.set(channelId, table);
+    tables.set(table.id, table);
 
     await interaction.reply(renderLobby(table));
     table.message = await interaction.fetchReply();
 
     table.lobbyTimer = setTimeout(() => {
-        if (tables.get(channelId) === table && table.phase === 'lobby') {
+        if (tables.get(table.id) === table && table.phase === 'lobby') {
             startGame(table).catch(err => console.error('❌ [Blackjack] startGame:', err));
         }
     }, LOBBY_SECONDS * 1000);
@@ -347,7 +340,7 @@ async function advanceTurn(table) {
     table.turnEndsAt = Date.now() + TURN_SECONDS * 1000;
     const turnIndex = next;
     table.turnTimer = setTimeout(() => {
-        if (tables.get(table.channelId) !== table || table.phase !== 'playing' || table.turn !== turnIndex) return;
+        if (tables.get(table.id) !== table || table.phase !== 'playing' || table.turn !== turnIndex) return;
         table.players[turnIndex].status = 'stand';
         advanceTurn(table).catch(err => console.error('❌ [Blackjack] auto-stand:', err));
     }, TURN_SECONDS * 1000);
@@ -360,7 +353,7 @@ async function finishGame(table) {
     table.phase = 'done';
     clearTimeout(table.turnTimer);
     clearTimeout(table.lobbyTimer);
-    tables.delete(table.channelId);
+    tables.delete(table.id);
 
     // Nhà cái chỉ cần rút nếu còn người chưa Quắc
     if (table.players.some(p => p.status !== 'bust')) {
@@ -425,11 +418,11 @@ const handleBlackjackButtons = async (interaction) => {
 
     const userId = interaction.user.id;
     const displayName = getDisplayName(interaction);
-    const table = tables.get(interaction.channelId);
+    const table = tables.get(arg);
 
     // ── Bảng bài riêng (ephemeral): Rút / Dằn / Gấp đôi ──
     if (['bj_hit', 'bj_stand', 'bj_double'].includes(action)) {
-        if (!table || table.id !== arg || table.phase !== 'playing') {
+        if (!table || table.phase !== 'playing') {
             return interaction.update({ content: '⌛ Ván Xì Dách này đã kết thúc.', embeds: [], components: [] });
         }
         const player = table.players.find(p => p.id === userId);
@@ -476,7 +469,7 @@ const handleBlackjackButtons = async (interaction) => {
         return advanceTurn(table);
     }
 
-    if (!table || table.message?.id !== interaction.message.id) {
+    if (!table) {
         return interaction.reply({ content: 'Bàn Xì Dách này đã kết thúc hoặc không tồn tại.', flags: 64 });
     }
 
@@ -521,7 +514,7 @@ const handleBlackjackButtons = async (interaction) => {
         table.players.splice(idx, 1);
         if (table.players.length === 0) {
             clearTimeout(table.lobbyTimer);
-            tables.delete(table.channelId);
+            tables.delete(table.id);
             const embed = new EmbedBuilder()
                 .setColor(COLORS.cancel)
                 .setTitle('🃏 XÌ DÁCH TIÊN PHỦ • BÀN ĐÃ GIẢI TÁN')
