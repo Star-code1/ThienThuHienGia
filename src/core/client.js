@@ -22,6 +22,7 @@ const client = new Client({
 // Collections để loader đăng ký commands & interactions
 client.commands = new Collection();
 client.interactions = new Collection();
+client.shutdownHooks = []; // { name, fn } — chạy khi bot tắt (SIGTERM/SIGINT)
 
 // Global Error Handlers
 client.on('error', (err) => console.error('========== DISCORD CLIENT ERROR ==========\n', err));

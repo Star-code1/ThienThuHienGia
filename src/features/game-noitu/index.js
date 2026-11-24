@@ -28,8 +28,7 @@ function resetTurnTimer(channelId, channel) {
         if (currentGame.lastUserId) {
             try {
                 const profile = await UserProfile.getOrCreate(currentGame.lastUserId);
-                profile.linhThach += 20;
-                await profile.save();
+                await profile.incLinhThach(20);
             } catch (e) {}
         }
 
@@ -285,8 +284,7 @@ const onMessageCreate = {
 
             const authorName = getDisplayName(message);
             const profile = await UserProfile.getOrCreate(message.author.id, authorName);
-            profile.linhThach += 15;
-            profile.stats.noituWins += 1;
+            await profile.incLinhThach(15, { inc: { 'stats.noituWins': 1 } });
             profile.addTuVi(10);
             await profile.save();
 
@@ -333,8 +331,7 @@ const onMessageCreate = {
 
             const authorName = getDisplayName(message);
             const profile = await UserProfile.getOrCreate(message.author.id, authorName);
-            profile.linhThach += 15;
-            profile.stats.noituWins += 1;
+            await profile.incLinhThach(15, { inc: { 'stats.noituWins': 1 } });
             profile.addTuVi(10);
             await profile.save();
 

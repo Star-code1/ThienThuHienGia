@@ -5,6 +5,14 @@ module.exports = {
     name: Events.InteractionCreate,
     once: false,
     async execute(interaction, client) {
+        // Bot đang tắt để khởi động lại: không nhận thao tác mới (tránh mở ván / đặt cược rồi bị huỷ)
+        if (client.shuttingDown) {
+            if (interaction.isRepliable()) {
+                await interaction.reply({ content: '🛠️ Hiền Giả đang khởi động lại, đạo hữu thử lại sau ít phút nhé!', flags: 64 }).catch(() => {});
+            }
+            return;
+        }
+
         try {
             // 1. Slash Commands & Context Menu Commands
             if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {

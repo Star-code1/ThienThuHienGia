@@ -203,8 +203,7 @@ const onMessageCreate = {
 
             const authorName = getDisplayName(message);
             const profile = await UserProfile.getOrCreate(message.author.id, authorName);
-            profile.linhThach += 50;
-            profile.stats.vuatiengvietWins += 1;
+            await profile.incLinhThach(50, { inc: { 'stats.vuatiengvietWins': 1 } });
             const newRealm = profile.addTuVi(25);
             await profile.save();
 

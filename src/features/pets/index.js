@@ -174,14 +174,13 @@ const muaTrungCommand = {
         const pricePerEgg = 5000;
         const totalPrice = pricePerEgg * amount;
 
-        if (profile.linhThach < totalPrice) {
+        if (await profile.incLinhThach(-totalPrice, { requireFunds: true }) === null) {
             return interaction.reply({
                 content: `⚠️ Đạo hữu không đủ Linh Thạch! Mua \`${amount}\` trứng cần **\`${totalPrice.toLocaleString()}\` 💎 Linh Thạch** (Hiện có: \`${profile.linhThach.toLocaleString()}\` 💎).`,
                 flags: 64
             });
         }
 
-        profile.linhThach -= totalPrice;
         profile.eggData.eggsBoughtToday += amount;
         profile.eggData.eggCount = (profile.eggData.eggCount || 0) + amount;
         profile.markModified('eggData');
@@ -424,14 +423,13 @@ const nuoiPetCommand = {
         }
 
         const cost = 200;
-        if (profile.linhThach < cost) {
+        if (await profile.incLinhThach(-cost, { requireFunds: true }) === null) {
             return interaction.reply({
                 content: `⚠️ Đạo hữu không đủ Linh Thạch! Cho Linh Thú ăn cần \`${cost}\` 💎 Linh Thạch.`,
                 flags: 64
             });
         }
 
-        profile.linhThach -= cost;
         const p = profile.pet;
         p.exp += 75;
 
@@ -486,6 +484,8 @@ const nhiemvuPetCommand = {
 
         const today = getTodayString();
         const p = profile.pet;
+        const origQuestDate = p.lastQuestResetDate;
+        const origQuestCount = p.questsCompletedToday;
 
         if (p.lastQuestResetDate !== today) {
             p.questsCompletedToday = 0;
@@ -508,9 +508,23 @@ const nhiemvuPetCommand = {
         const questIndex = p.questsCompletedToday;
         const currentQuest = quests[questIndex];
 
+        // Chiếm lượt nhiệm vụ nguyên tử: gửi lệnh 2 lần cùng lúc chỉ được tính 1 lượt
+        const claimed = await UserProfile.updateOne(
+            {
+                userId: profile.userId,
+                // Hồ sơ cũ có thể chưa lưu trường này trong DB (giá trị mặc định chỉ có trong bộ nhớ)
+                'pet.lastQuestResetDate': origQuestDate ? origQuestDate : { $in: ['', null] },
+                'pet.questsCompletedToday': origQuestCount ? origQuestCount : { $in: [0, null] },
+            },
+            { $set: { 'pet.lastQuestResetDate': today, 'pet.questsCompletedToday': questIndex + 1 } }
+        );
+        if (claimed.modifiedCount === 0) {
+            return interaction.reply({ content: '⚠️ Nhiệm vụ đang được xử lý, đạo hữu thử lại sau giây lát.', flags: 64 });
+        }
+
         p.questsCompletedToday += 1;
         p.exp += currentQuest.exp;
-        profile.linhThach += currentQuest.rewardlt;
+        await profile.incLinhThach(currentQuest.rewardlt);
 
         let levelUpMsg = '';
         const expNeeded = p.level * 150;

@@ -145,12 +145,10 @@ const handleMarryButtons = async (interaction) => {
         const proposerProfile = await UserProfile.getOrCreate(proposal.proposerId, proposal.proposerName);
         const targetProfile = await UserProfile.getOrCreate(proposal.targetId, proposal.targetName);
 
-        if (proposerProfile.linhThach < proposal.ring.price) {
+        // Trừ linh thạch người cầu hôn (chỉ khi đủ tiền) & Cập nhật duyên nợ
+        if (await proposerProfile.incLinhThach(-proposal.ring.price, { requireFunds: true }) === null) {
             return interaction.reply({ content: '⚠️ Đạo hữu cầu hôn hiện không đủ Linh Thạch để thanh toán nhẫn đính ước!', flags: 64 });
         }
-
-        // Trừ linh thạch người cầu hôn & Cập nhật duyên nợ
-        proposerProfile.linhThach -= proposal.ring.price;
 
         const now = new Date();
         proposerProfile.daoLu = {

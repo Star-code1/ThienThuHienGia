@@ -199,13 +199,13 @@ async function settleHand(table) {
         if (row.isBot) continue;
         try {
             const profile = await UserProfile.getOrCreate(row.id, row.name);
-            profile.linhThach = Math.max(0, profile.linhThach + row.net);
-            profile.stats.pokerGames += 1;
+            const inc = { 'stats.pokerGames': 1 };
+            if (row.net > 0) inc['stats.pokerWins'] = 1;
+            await profile.incLinhThach(row.net, { clampZero: true, inc });
             if (row.net > 0) {
-                profile.stats.pokerWins += 1;
                 profile.addTuVi(30);
+                await profile.save();
             }
-            await profile.save();
         } catch (e) {
             console.error(`[Poker] Lỗi lưu kết quả cho ${row.id}:`, e.message);
         }
@@ -427,6 +427,10 @@ module.exports = {
     interactions: {
         pk: handlePokerButtons,
     },
+    // Bot tắt/khởi động lại: đóng mọi bàn (tiền chỉ ghi khi kết thúc ván nên ván dở không ai mất tiền)
+    onShutdown: () => Promise.all([...tables.values()].map((table) =>
+        editTableMessage(table, closeTable(table, 'Bot khởi động lại để bảo trì — ván dở được huỷ, không ai mất Linh Thạch'))
+    )),
     // xuất cho test
     _internal: { render, tables },
 };

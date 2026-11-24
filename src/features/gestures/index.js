@@ -94,7 +94,11 @@ const gesturesCommand = {
                 return interaction.reply({ content: `⚠️ Đạo hữu không đủ Linh Thạch! Cần \`${cost}\` 💎.`, flags: 64 });
             }
 
-            senderProfile.linhThach -= cost;
+            if (await senderProfile.incLinhThach(-cost, { requireFunds: true }) === null) {
+                senderProfile.gestureUsage.count -= 1;
+                await senderProfile.save();
+                return interaction.reply({ content: `⚠️ Đạo hữu không đủ Linh Thạch! Cần \`${cost}\` 💎.`, flags: 64 });
+            }
             targetProfile.addTuVi(10);
             await senderProfile.save();
             await targetProfile.save();
@@ -118,8 +122,11 @@ const gesturesCommand = {
                 return interaction.reply({ content: `⚠️ Đạo hữu không đủ Linh Thạch! Cần \`${amount}\` 💎 để truyền công.`, flags: 64 });
             }
 
-            senderProfile.linhThach -= amount;
-            targetProfile.linhThach += amount;
+            if (!await UserProfile.transferLinhThach(senderProfile, targetProfile, amount)) {
+                senderProfile.gestureUsage.count -= 1;
+                await senderProfile.save();
+                return interaction.reply({ content: `⚠️ Đạo hữu không đủ Linh Thạch! Cần \`${amount}\` 💎 để truyền công.`, flags: 64 });
+            }
             targetProfile.addTuVi(20);
             await senderProfile.save();
             await targetProfile.save();
@@ -152,12 +159,11 @@ const gesturesCommand = {
             let winnerName = senderWin ? senderName : targetName;
             let loserName = senderWin ? targetName : senderName;
 
-            if (senderWin) {
-                senderProfile.linhThach += bet;
-                targetProfile.linhThach -= bet;
-            } else {
-                senderProfile.linhThach -= bet;
-                targetProfile.linhThach += bet;
+            const [winnerProfile, loserProfile] = senderWin ? [senderProfile, targetProfile] : [targetProfile, senderProfile];
+            if (!await UserProfile.transferLinhThach(loserProfile, winnerProfile, bet)) {
+                senderProfile.gestureUsage.count -= 1;
+                await senderProfile.save();
+                return interaction.reply({ content: `⚠️ **${loserName}** không còn đủ Linh Thạch để tỷ võ, trận đấu bị huỷ!`, flags: 64 });
             }
 
             await senderProfile.save();
@@ -196,10 +202,12 @@ const gesturesCommand = {
                 return interaction.reply({ content: `⚠️ Bạn không đủ Linh Thạch! Cần \`${cost}\` 💎.`, flags: 64 });
             }
 
-            senderProfile.linhThach -= cost;
-            targetProfile.linhThach += cost;
+            if (!await UserProfile.transferLinhThach(senderProfile, targetProfile, cost)) {
+                senderProfile.gestureUsage.count -= 1;
+                await senderProfile.save();
+                return interaction.reply({ content: `⚠️ Bạn không đủ Linh Thạch! Cần \`${cost}\` 💎.`, flags: 64 });
+            }
             await senderProfile.save();
-            await targetProfile.save();
 
             const embed = new EmbedBuilder()
                 .setColor('#FF69B4')

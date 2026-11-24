@@ -66,10 +66,23 @@ const diemdanhTuviCommand = {
         const bonusLinhThach = 500;
         const bonusTuVi = 100;
 
-        profile.linhThach += bonusLinhThach;
+        // Chiếm lượt điểm danh nguyên tử: gửi lệnh 2 lần cùng lúc chỉ được nhận 1 lần
+        const claimed = await UserProfile.updateOne(
+            { userId: profile.userId, lastDiemDanh: profile.lastDiemDanh },
+            { $set: { lastDiemDanh: now } }
+        );
+        if (claimed.modifiedCount === 0) {
+            return interaction.reply({
+                content: `⚠️ Đạo hữu **${displayName}** hôm nay đã báo danh tu luyện rồi. Hãy quay lại vào ngày mai!`,
+                flags: 64
+            });
+        }
+        profile.set('lastDiemDanh', now);
+        profile.unmarkModified('lastDiemDanh');
+
+        await profile.incLinhThach(bonusLinhThach);
         const oldRealm = profile.canhGioi;
         const newRealm = profile.addTuVi(bonusTuVi);
-        profile.lastDiemDanh = now;
         await profile.save();
 
         let msg = `🧘‍♂️ **${displayName}** tiếp thu linh khí thiên địa!\n` +

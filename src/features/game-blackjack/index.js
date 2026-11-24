@@ -367,17 +367,14 @@ async function finishGame(table) {
 
         try {
             const profile = await UserProfile.getOrCreate(p.id, p.name);
-            if (p.delta < 0) {
-                const loss = Math.min(-p.delta, Math.max(profile.linhThach, 0));
-                p.delta = -loss;
-            }
-            profile.linhThach += p.delta;
-            profile.stats.blackjackGames = (profile.stats.blackjackGames || 0) + 1;
+            const inc = { 'stats.blackjackGames': 1 };
+            if (p.delta > 0) inc['stats.blackjackWins'] = 1;
+            // Thua thì trừ tối đa tới 0, không để số dư âm
+            p.delta = await profile.incLinhThach(p.delta, { clampZero: true, inc });
             if (p.delta > 0) {
-                profile.stats.blackjackWins = (profile.stats.blackjackWins || 0) + 1;
                 profile.addTuVi(WIN_TUVI);
+                await profile.save();
             }
-            await profile.save();
         } catch (err) {
             console.error(`❌ [Blackjack] Lỗi cập nhật Linh Thạch cho ${p.id}:`, err);
         }
@@ -533,7 +530,24 @@ const handleBlackjackButtons = async (interaction) => {
     }
 };
 
+/** Bot tắt/khởi động lại: huỷ mọi bàn. Linh Thạch chỉ ghi khi kết thúc ván nên ván dở không ai mất tiền. */
+async function cancelAllTables(reason) {
+    const all = [...tables.values()];
+    tables.clear();
+    await Promise.all(all.map((table) => {
+        table.phase = 'done';
+        clearTimeout(table.lobbyTimer);
+        clearTimeout(table.turnTimer);
+        const embed = new EmbedBuilder()
+            .setColor(COLORS.cancel)
+            .setTitle('🃏 XÌ DÁCH TIÊN PHỦ • BÀN ĐÃ BỊ HUỶ')
+            .setDescription(`⚠️ ${reason}\nVán dở được huỷ, không ai mất Linh Thạch. Dùng \`/xidach\` để mở bàn mới.`);
+        return editTable(table, { content: '', embeds: [embed], components: [] });
+    }));
+}
+
 module.exports = {
+    onShutdown: () => cancelAllTables('Bot đang khởi động lại để bảo trì.'),
     commands: [blackjackCommand],
     interactions: {
         'bj_join': handleBlackjackButtons,

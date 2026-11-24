@@ -128,6 +128,75 @@ UserProfileSchema.statics.getOrCreate = async function (userId, username = 'Đ�
     return profile;
 };
 
+/**
+ * Cộng/trừ Linh Thạch NGUYÊN TỬ ngay trên MongoDB (không ghi đè khi nhiều nơi cập nhật cùng lúc).
+ * Giá trị trên document hiện tại được đồng bộ lại và KHÔNG bị đánh dấu sửa đổi,
+ * nên gọi profile.save() sau đó cho các trường khác sẽ không ghi đè Linh Thạch.
+ *
+ * @param {number} delta  Số Linh Thạch cộng (dương) hoặc trừ (âm)
+ * @param {object} [opts]
+ * @param {boolean} [opts.requireFunds] Trừ chỉ khi đủ tiền; không đủ → trả về null, không đổi gì
+ * @param {boolean} [opts.clampZero]    Trừ tối đa tới 0 (không để số dư âm)
+ * @param {object}  [opts.inc]          Các trường số khác cộng cùng lúc, vd { 'stats.baucuaGames': 1 }
+ * @returns {Promise<number|null>} Số Linh Thạch thực sự đã thay đổi, hoặc null nếu không đủ tiền
+ */
+UserProfileSchema.methods.incLinhThach = async function (delta, { requireFunds = false, clampZero = false, inc = {} } = {}) {
+    const result = await this.constructor.incLinhThachById(this.userId, delta, { requireFunds, clampZero, inc });
+    if (!result) return null;
+    this.set('linhThach', result.linhThach);
+    this.unmarkModified('linhThach');
+    for (const key of Object.keys(inc)) {
+        this.set(key, result.fields[key]);
+        this.unmarkModified(key);
+    }
+    return result.applied;
+};
+
+/** Bản static của incLinhThach, dùng khi không có sẵn document. Trả về { applied, linhThach, fields } hoặc null. */
+UserProfileSchema.statics.incLinhThachById = async function (userId, delta, { requireFunds = false, clampZero = false, inc = {} } = {}) {
+    delta = Math.trunc(Number(delta) || 0);
+    const added = { $add: [{ $ifNull: ['$linhThach', 0] }, delta] };
+    const set = { linhThach: clampZero ? { $max: [0, added] } : added };
+    for (const [key, value] of Object.entries(inc)) {
+        set[key] = { $add: [{ $ifNull: [`$${key}`, 0] }, value] };
+    }
+
+    const filter = { userId };
+    if (requireFunds && delta < 0) filter.linhThach = { $gte: -delta };
+
+    const before = await this.findOneAndUpdate(filter, [{ $set: set }], {
+        returnDocument: 'before',
+        updatePipeline: true,
+        lean: true,
+    });
+    if (!before) return null;
+
+    const oldBalance = before.linhThach || 0;
+    const newBalance = clampZero ? Math.max(0, oldBalance + delta) : oldBalance + delta;
+    const fields = {};
+    for (const [key, value] of Object.entries(inc)) {
+        const old = key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), before) || 0;
+        fields[key] = old + value;
+    }
+    return { applied: newBalance - oldBalance, linhThach: newBalance, fields };
+};
+
+/**
+ * Chuyển Linh Thạch giữa 2 người: trừ người gửi (chỉ khi đủ tiền) rồi cộng người nhận.
+ * @returns {Promise<boolean>} false nếu người gửi không đủ tiền
+ */
+UserProfileSchema.statics.transferLinhThach = async function (fromProfile, toProfile, amount) {
+    const spent = await fromProfile.incLinhThach(-amount, { requireFunds: true });
+    if (spent === null) return false;
+    try {
+        await toProfile.incLinhThach(amount);
+    } catch (err) {
+        await fromProfile.incLinhThach(amount).catch(() => {}); // hoàn lại người gửi
+        throw err;
+    }
+    return true;
+};
+
 UserProfileSchema.methods.addTuVi = function (amount) {
     this.tuVi += amount;
     

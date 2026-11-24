@@ -46,8 +46,29 @@ function loadFeatures(client) {
             }
         }
 
+        // Hook dọn dẹp khi bot tắt (huỷ ván, hoàn tiền cược...)
+        if (typeof feature.onShutdown === 'function') {
+            client.shutdownHooks.push({ name: dir, fn: feature.onShutdown });
+        }
+
         console.log(`✅ Feature loaded: ${dir}`);
     }
+}
+
+/**
+ * Chạy mọi hook dọn dẹp của features (song song, có giới hạn thời gian)
+ */
+async function runShutdownHooks(client, timeoutMs = 15000) {
+    const hooks = client.shutdownHooks || [];
+    const all = Promise.allSettled(hooks.map(async ({ name, fn }) => {
+        try {
+            await fn(client);
+            console.log(`  🧹 Shutdown hook xong: ${name}`);
+        } catch (err) {
+            console.error(`  ❌ Shutdown hook lỗi (${name}):`, err);
+        }
+    }));
+    await Promise.race([all, new Promise((resolve) => setTimeout(resolve, timeoutMs).unref())]);
 }
 
 /**
@@ -74,4 +95,4 @@ function getAllCommandsJSON(client) {
     return Array.from(client.commands.values()).map(cmd => cmd.data.toJSON());
 }
 
-module.exports = { loadFeatures, registerCoreEvents, getAllCommandsJSON };
+module.exports = { loadFeatures, registerCoreEvents, getAllCommandsJSON, runShutdownHooks };

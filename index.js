@@ -4,7 +4,8 @@ require('dotenv').config();
 const client = require('./src/core/client');
 const { connectDB } = require('./src/core/database');
 const { startServer } = require('./src/core/server');
-const { loadFeatures, registerCoreEvents } = require('./src/core/loader');
+const mongoose = require('mongoose');
+const { loadFeatures, registerCoreEvents, runShutdownHooks } = require('./src/core/loader');
 const { startEventScheduler } = require('./src/services/eventScheduler');
 const { startLineupWatcher } = require('./src/services/lineupWatcher');
 const { startMemberSync } = require('./src/services/memberSyncService');
@@ -17,6 +18,26 @@ process.on('unhandledRejection', (reason, promise) => {
 process.on('uncaughtException', (err) => {
   console.error('========== UNCAUGHT EXCEPTION ==========\n', err);
 });
+
+// ── Tắt bot an toàn (Render gửi SIGTERM trước khi khởi động lại) ──────────────
+let shuttingDown = false;
+async function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  client.shuttingDown = true; // interactionCreate sẽ từ chối thao tác mới
+  console.log(`
+🛑 Nhận ${signal}, đang huỷ các ván đang chơi và hoàn tiền cược...`);
+  try {
+    await runShutdownHooks(client);
+  } finally {
+    await client.destroy().catch(() => {});
+    await mongoose.disconnect().catch(() => {});
+    console.log('👋 Đã tắt bot.');
+    process.exit(0);
+  }
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 (async () => {
