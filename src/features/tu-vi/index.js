@@ -180,6 +180,13 @@ const LEADERBOARDS = {
         rankField: 'vuatiengvietBestStreak',
         line: (p) => streakLine(p.stats.vuatiengvietBestStreak) + ' · ' + (p.stats.vuatiengvietWins || 0) + ' câu đúng',
     },
+    thongminh: {
+        title: '🧠 AI THÔNG MINH HƠN THIÊN THƯ MÔN',
+        sort: { 'stats.quizCorrect': -1, 'stats.quizAnswered': 1 },
+        filter: { 'stats.quizCorrect': { $gt: 0 } },
+        rankField: 'quizCorrect',
+        line: (p) => winRateLine(p.stats.quizCorrect, p.stats.quizAnswered).replace('thắng', 'câu đúng').replace('ván', 'câu đã trả lời'),
+    },
     baucua: {
         title: '🎲 ĐỔ VƯƠNG BẦU CUA',
         sort: { 'stats.baucuaWinLinhThach': -1 },
@@ -215,6 +222,7 @@ const topLinhThachCommand = {
                     { name: '🔥 Nối Từ (chuỗi dài nhất)', value: 'noitu_chuoi' },
                     { name: '👑 Vua Tiếng Việt (đoán đúng nhiều nhất)', value: 'vua' },
                     { name: '🔥 Vua Tiếng Việt (chuỗi thắng dài nhất)', value: 'vua_chuoi' },
+                    { name: '🧠 Ai Thông Minh Hơn Thiên Thư Môn (đúng nhiều nhất)', value: 'thongminh' },
                 )
         ),
     async execute(interaction) {

@@ -1,0 +1,5656 @@
+{
+  "metadata": {
+    "title": "Ngân hàng câu hỏi trắc nghiệm Nghịch Thủy Hàn",
+    "game": "Nghịch Thủy Hàn",
+    "publisher_version": "VNG Việt Nam",
+    "language": "vi",
+    "question_count": 200,
+    "answer_format": "single_choice",
+    "options_per_question": 4,
+    "chinese_language_questions": false,
+    "created_date": "2026-11-25",
+    "notes": [
+      "Không có câu hỏi yêu cầu dịch, đọc hoặc nhận biết tiếng Trung.",
+      "Các câu hỏi về cơ chế chung tập trung vào nguyên tắc chơi; chi tiết có thể thay đổi theo bản cập nhật.",
+      "Các câu hỏi có mốc cấp độ, tên phó bản hoặc hệ thống cụ thể được đối chiếu với thông báo cập nhật chính thức được liệt kê trong references."
+    ],
+    "difficulty_distribution": {
+      "easy": 60,
+      "medium": 70,
+      "hard": 50,
+      "expert": 20
+    },
+    "category_distribution": {
+      "mon_phai_va_loi_choi": 25,
+      "pvp_pk_va_bang_chien": 25,
+      "pve_boss_va_pho_ban": 25,
+      "giang_ho_va_kham_pha": 25,
+      "trang_vien_va_doi_song": 25,
+      "trang_bi_va_phat_trien_nhan_vat": 25,
+      "kinh_te_giao_dich_va_su_kien": 25,
+      "van_hoa_cong_dong_va_do_vui": 25
+    },
+    "references": [
+      {
+        "title": "Trang chủ Nghịch Thủy Hàn VNG",
+        "url": "https://nghichthuyhan.vnggames.com/"
+      },
+      {
+        "title": "Thông báo cập nhật phiên bản 2.1.1",
+        "url": "https://nghichthuyhan.vnggames.com/news/inform/thong-bao-cap-nhat-phien-ban-2-1-1-nghich-thuy-han.html"
+      },
+      {
+        "title": "Giới thiệu Nghịch Thủy Hàn trên Google Play",
+        "url": "https://play.google.com/store/apps/details?id=vng.game.nth"
+      }
+    ],
+    "question_type_distribution": {
+      "knowledge": 95,
+      "scenario": 50,
+      "mixed": 50,
+      "fun": 5
+    }
+  },
+  "questions": [
+    {
+      "id": "NTH001",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Trong Nghịch Thủy Hàn, môn phái nào gắn với vai trò hỗ trợ và trị liệu?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Thần Tương"
+        },
+        {
+          "id": "B",
+          "text": "Huyết Hà"
+        },
+        {
+          "id": "C",
+          "text": "Toái Mộng"
+        },
+        {
+          "id": "D",
+          "text": "Tố Vấn"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Tố Vấn là môn phái có định hướng hỗ trợ và trị liệu trong đội hình.",
+      "points": 10
+    },
+    {
+      "id": "NTH002",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Môn phái nào thường được nhận diện với phong cách chiến đấu dùng thương?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Cửu Linh"
+        },
+        {
+          "id": "B",
+          "text": "Tố Vấn"
+        },
+        {
+          "id": "C",
+          "text": "Huyết Hà"
+        },
+        {
+          "id": "D",
+          "text": "Thần Tương"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Huyết Hà nổi bật với hình tượng chiến đấu sử dụng thương.",
+      "points": 10
+    },
+    {
+      "id": "NTH003",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Môn phái nào gắn với hình tượng chiến đấu bằng âm luật và pháp thuật?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Thần Tương"
+        },
+        {
+          "id": "B",
+          "text": "Toái Mộng"
+        },
+        {
+          "id": "C",
+          "text": "Huyết Hà"
+        },
+        {
+          "id": "D",
+          "text": "Thiết Y"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Thần Tương có phong cách chiến đấu thiên về pháp thuật và âm luật.",
+      "points": 10
+    },
+    {
+      "id": "NTH004",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Môn phái nào nổi bật với phong cách sát thủ, ra đòn nhanh và áp sát?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Cửu Linh"
+        },
+        {
+          "id": "B",
+          "text": "Thiết Y"
+        },
+        {
+          "id": "C",
+          "text": "Tố Vấn"
+        },
+        {
+          "id": "D",
+          "text": "Toái Mộng"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Toái Mộng thường được nhận diện bởi lối đánh nhanh, áp sát và dồn sát thương.",
+      "points": 10
+    },
+    {
+      "id": "NTH005",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Môn phái nào thường đảm nhiệm vai trò chống chịu trong đội hình?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Cửu Linh"
+        },
+        {
+          "id": "B",
+          "text": "Thần Tương"
+        },
+        {
+          "id": "C",
+          "text": "Toái Mộng"
+        },
+        {
+          "id": "D",
+          "text": "Thiết Y"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Thiết Y có hướng xây dựng thiên về phòng thủ và chống chịu.",
+      "points": 10
+    },
+    {
+      "id": "NTH006",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Môn phái nào gắn với việc điều khiển linh thú trong chiến đấu?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Thiết Y"
+        },
+        {
+          "id": "B",
+          "text": "Huyết Hà"
+        },
+        {
+          "id": "C",
+          "text": "Tố Vấn"
+        },
+        {
+          "id": "D",
+          "text": "Cửu Linh"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Cửu Linh có phong cách chiến đấu gắn với linh thú.",
+      "points": 10
+    },
+    {
+      "id": "NTH007",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Khi chọn môn phái lần đầu, điều gì nên được ưu tiên?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chọn ngẫu nhiên để tiết kiệm thời gian"
+        },
+        {
+          "id": "B",
+          "text": "Phong cách chiến đấu mình yêu thích"
+        },
+        {
+          "id": "C",
+          "text": "Chọn theo ngoại trang đắt nhất"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ chọn môn phái đang được đồn là mạnh nhất"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Lối chơi phù hợp giúp bạn gắn bó và học kỹ năng hiệu quả hơn.",
+      "points": 10
+    },
+    {
+      "id": "NTH008",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Một đội đi phó bản thiếu khả năng hồi phục nên cân nhắc điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Bổ sung người chơi có khả năng hỗ trợ, trị liệu"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ qua cơ chế Boss"
+        },
+        {
+          "id": "C",
+          "text": "Tách đội thành các nhóm đơn"
+        },
+        {
+          "id": "D",
+          "text": "Bổ sung toàn bộ người gây sát thương"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Đội hình cần cân bằng giữa sát thương, chống chịu và hỗ trợ.",
+      "points": 20
+    },
+    {
+      "id": "NTH009",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi muốn đổi cách chơi mà không đổi nhân vật, bạn nên tìm hiểu hệ thống nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Xóa bạn bè"
+        },
+        {
+          "id": "B",
+          "text": "Đổi tên nhân vật"
+        },
+        {
+          "id": "C",
+          "text": "Thiết lập kỹ năng và tổ hợp võ học"
+        },
+        {
+          "id": "D",
+          "text": "Đổi máy chủ"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Hệ thống kỹ năng và võ học cho phép điều chỉnh hướng chiến đấu.",
+      "points": 20
+    },
+    {
+      "id": "NTH010",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Một nhân vật gây sát thương tốt nhưng thường bị hạ gục nhanh nên xem lại điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Khả năng sinh tồn, né tránh và cách chọn vị trí"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ tăng hiệu ứng ngoại trang"
+        },
+        {
+          "id": "C",
+          "text": "Đứng yên khi Boss tung chiêu"
+        },
+        {
+          "id": "D",
+          "text": "Tắt toàn bộ kỹ năng phòng thủ"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Sát thương cao không đủ nếu nhân vật không sống sót trong giao tranh.",
+      "points": 20
+    },
+    {
+      "id": "NTH011",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi thử một môn phái mới, cách học hiệu quả nhất là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Sao chép kỹ năng mà không hiểu tác dụng"
+        },
+        {
+          "id": "B",
+          "text": "Vào ngay trận xếp hạng mà không thử"
+        },
+        {
+          "id": "C",
+          "text": "Đọc mô tả kỹ năng và luyện trong tình huống ít áp lực"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ nhìn hiệu ứng hình ảnh"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Hiểu chức năng và thời điểm dùng kỹ năng quan trọng hơn việc bấm theo thói quen.",
+      "points": 10
+    },
+    {
+      "id": "NTH012",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Vì sao không nên đánh giá môn phái chỉ qua một video sát thương?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Video có thể khác trang bị, nội công, mục tiêu và điều kiện thử nghiệm"
+        },
+        {
+          "id": "B",
+          "text": "Mọi môn phái có sát thương giống nhau"
+        },
+        {
+          "id": "C",
+          "text": "Video luôn bị giảm chất lượng"
+        },
+        {
+          "id": "D",
+          "text": "Sát thương không ảnh hưởng chiến đấu"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Kết quả thực tế phụ thuộc nhiều yếu tố ngoài tên môn phái.",
+      "points": 20
+    },
+    {
+      "id": "NTH013",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Trong tổ đội, người chơi hỗ trợ nên ưu tiên điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Dùng kỹ năng hồi phục khi không cần thiết"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ tập trung gây sát thương"
+        },
+        {
+          "id": "C",
+          "text": "Đứng xa đến mức không hỗ trợ được"
+        },
+        {
+          "id": "D",
+          "text": "Theo dõi tình trạng đồng đội và dùng kỹ năng đúng lúc"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Hỗ trợ hiệu quả là hỗ trợ đúng người, đúng thời điểm.",
+      "points": 20
+    },
+    {
+      "id": "NTH014",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Kỹ năng khống chế thường có tác dụng gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tăng dung lượng túi đồ"
+        },
+        {
+          "id": "B",
+          "text": "Mở khóa bản đồ mới"
+        },
+        {
+          "id": "C",
+          "text": "Hạn chế hành động hoặc khả năng phản công của mục tiêu"
+        },
+        {
+          "id": "D",
+          "text": "Tự động tăng cấp nhân vật"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Khống chế tạo khoảng trống để đội hình phối hợp tấn công hoặc rút lui.",
+      "points": 10
+    },
+    {
+      "id": "NTH015",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi đối thủ đang chuẩn bị tung chiêu lớn, lựa chọn nào thường an toàn hơn?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Mở giao diện trang bị"
+        },
+        {
+          "id": "B",
+          "text": "Tiếp tục đứng yên"
+        },
+        {
+          "id": "C",
+          "text": "Quan sát dấu hiệu và né hoặc dùng kỹ năng phòng thủ phù hợp"
+        },
+        {
+          "id": "D",
+          "text": "Dùng vật phẩm trang trí"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Quan sát hoạt ảnh và dấu hiệu cảnh báo giúp giảm sát thương phải nhận.",
+      "points": 10
+    },
+    {
+      "id": "NTH016",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Một kỹ năng có thời gian hồi chiêu dài nên được dùng thế nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Dùng ngay khi vừa vào trận trong mọi trường hợp"
+        },
+        {
+          "id": "B",
+          "text": "Dùng liên tục dù kỹ năng chưa hồi"
+        },
+        {
+          "id": "C",
+          "text": "Không bao giờ sử dụng"
+        },
+        {
+          "id": "D",
+          "text": "Dành cho thời điểm tạo lợi thế hoặc xử lý tình huống quan trọng"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Kỹ năng quan trọng cần được dùng có chủ đích.",
+      "points": 20
+    },
+    {
+      "id": "NTH017",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi phối hợp kỹ năng, điều gì tạo nên một chuỗi combo hiệu quả?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Luôn đứng ngoài tầm đánh"
+        },
+        {
+          "id": "B",
+          "text": "Kết hợp hiệu ứng, thời điểm và khoảng cách hợp lý"
+        },
+        {
+          "id": "C",
+          "text": "Bấm tất cả phím ngẫu nhiên"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ dùng kỹ năng có hiệu ứng đẹp"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Combo hiệu quả cần tận dụng tương tác giữa các kỹ năng.",
+      "points": 20
+    },
+    {
+      "id": "NTH018",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Trong giao tranh đông người, vì sao cần quan sát vị trí đồng đội?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để tăng tốc độ tải bản đồ"
+        },
+        {
+          "id": "B",
+          "text": "Để xem ngoại trang của họ"
+        },
+        {
+          "id": "C",
+          "text": "Để tự động nhận phần thưởng"
+        },
+        {
+          "id": "D",
+          "text": "Để phối hợp mục tiêu và tránh bị cô lập"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Giữ đội hình và chọn mục tiêu chung giúp tăng hiệu quả giao tranh.",
+      "points": 20
+    },
+    {
+      "id": "NTH019",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Một người chơi thích đánh tầm xa nên thử điều gì trước khi chọn lối chơi?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Kiểm tra tầm đánh, khả năng cơ động và cách tự bảo vệ"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ qua hướng dẫn kỹ năng"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ chọn vũ khí có màu đẹp"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ xem chỉ số phòng thủ"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Tầm đánh cần đi cùng khả năng giữ khoảng cách và thoát nguy hiểm.",
+      "points": 20
+    },
+    {
+      "id": "NTH020",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Điều gì nên làm khi kỹ năng mới được mở khóa?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tháo toàn bộ trang bị"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ qua vì kỹ năng mới luôn yếu"
+        },
+        {
+          "id": "C",
+          "text": "Đọc mô tả, thử hiệu quả và cập nhật cách phối hợp"
+        },
+        {
+          "id": "D",
+          "text": "Xóa cấu hình điều khiển"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Kỹ năng mới có thể thay đổi cách vận hành bộ kỹ năng.",
+      "points": 10
+    },
+    {
+      "id": "NTH021",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Vì sao cùng một môn phái có thể có nhiều lối xây dựng?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Mỗi nhân vật có nhiều tài khoản"
+        },
+        {
+          "id": "B",
+          "text": "Máy chủ tự chọn lối chơi"
+        },
+        {
+          "id": "C",
+          "text": "Người chơi có thể chọn kỹ năng, thuộc tính và trang bị khác nhau"
+        },
+        {
+          "id": "D",
+          "text": "Môn phái tự đổi tên mỗi ngày"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Cách kết hợp hệ thống phát triển tạo ra các hướng xây dựng khác nhau.",
+      "points": 20
+    },
+    {
+      "id": "NTH022",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Khi bị áp sát liên tục trong PvP, điều gì nên được xem xét?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đổi hình nền nhân vật"
+        },
+        {
+          "id": "B",
+          "text": "Tắt bản đồ"
+        },
+        {
+          "id": "C",
+          "text": "Kỹ năng thoát thân, khống chế và quản lý khoảng cách"
+        },
+        {
+          "id": "D",
+          "text": "Tăng âm lượng trò chơi"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Khả năng thoát áp sát là yếu tố quan trọng với lối đánh tầm xa.",
+      "points": 30
+    },
+    {
+      "id": "NTH023",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Khi đội hình có nhiều người gây sát thương nhưng thiếu chống chịu, rủi ro là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Không thể nhận nhiệm vụ"
+        },
+        {
+          "id": "B",
+          "text": "Không thể đổi ngoại trang"
+        },
+        {
+          "id": "C",
+          "text": "Không thể mở túi đồ"
+        },
+        {
+          "id": "D",
+          "text": "Đội dễ vỡ đội hình khi Boss hoặc đối thủ tập trung tấn công"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Thiếu chống chịu khiến đội khó duy trì giao tranh dài.",
+      "points": 20
+    },
+    {
+      "id": "NTH024",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "expert",
+      "questionType": "knowledge",
+      "question": "Một người chơi muốn thành thạo môn phái nên duy trì thói quen nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Luyện kỹ năng, xem lại tình huống và điều chỉnh cách đánh"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ dựa vào chỉ số lực chiến"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ đổi trang phục mỗi ngày"
+        },
+        {
+          "id": "D",
+          "text": "Không bao giờ thử nội dung mới"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Luyện tập và tự đánh giá giúp tiến bộ bền vững.",
+      "points": 10
+    },
+    {
+      "id": "NTH025",
+      "category": "mon_phai_va_loi_choi",
+      "difficulty": "expert",
+      "questionType": "knowledge",
+      "question": "Điều gì quan trọng nhất khi so sánh hai môn phái cho một nội dung cụ thể?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Màu sắc biểu tượng"
+        },
+        {
+          "id": "B",
+          "text": "Số lượng bạn bè đang chơi"
+        },
+        {
+          "id": "C",
+          "text": "Tên gọi nghe mạnh hơn"
+        },
+        {
+          "id": "D",
+          "text": "Vai trò và hiệu quả trong đúng nội dung cần tham gia"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Một môn phái có thể phù hợp với nội dung này nhưng không tối ưu ở nội dung khác.",
+      "points": 30
+    },
+    {
+      "id": "NTH026",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "PvP là hình thức đối đầu giữa những ai?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Người chơi với người chơi"
+        },
+        {
+          "id": "B",
+          "text": "NPC với Boss"
+        },
+        {
+          "id": "C",
+          "text": "Người chơi với môi trường"
+        },
+        {
+          "id": "D",
+          "text": "Người chơi với cửa hàng"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "PvP là hoạt động người chơi đối đầu với người chơi khác.",
+      "points": 10
+    },
+    {
+      "id": "NTH027",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Trong PvP, né tránh đúng thời điểm giúp ích điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tăng dung lượng kho"
+        },
+        {
+          "id": "B",
+          "text": "Giảm nguy cơ nhận sát thương và tạo cơ hội phản công"
+        },
+        {
+          "id": "C",
+          "text": "Tự động hoàn thành nhiệm vụ"
+        },
+        {
+          "id": "D",
+          "text": "Tăng cấp bang hội ngay lập tức"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Né đúng lúc giúp tránh kỹ năng nguy hiểm và mở ra cơ hội phản công.",
+      "points": 10
+    },
+    {
+      "id": "NTH028",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Khi đối thủ dùng kỹ năng khống chế, bạn nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tiếp tục lao vào bất kể tình huống"
+        },
+        {
+          "id": "B",
+          "text": "Đứng sát mép bản đồ"
+        },
+        {
+          "id": "C",
+          "text": "Mở cửa hàng"
+        },
+        {
+          "id": "D",
+          "text": "Tìm thời điểm dùng kỹ năng giải khống chế hoặc phòng thủ nếu có"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Kỹ năng giải khống chế và phòng thủ cần dùng đúng tình huống.",
+      "points": 20
+    },
+    {
+      "id": "NTH029",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Trong đấu trường, vì sao cần quan sát kỹ năng đối thủ đã sử dụng?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để đổi phe"
+        },
+        {
+          "id": "B",
+          "text": "Để dự đoán thời điểm họ thiếu công cụ phòng thủ hoặc phản công"
+        },
+        {
+          "id": "C",
+          "text": "Để tăng tốc độ mạng"
+        },
+        {
+          "id": "D",
+          "text": "Để biết mật khẩu tài khoản"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Theo dõi kỹ năng đã dùng giúp đọc nhịp giao tranh.",
+      "points": 30
+    },
+    {
+      "id": "NTH030",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Khi bị nhiều đối thủ tập trung tấn công, lựa chọn nào hợp lý?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Rút về vị trí đồng đội và tránh bị cô lập"
+        },
+        {
+          "id": "B",
+          "text": "Đứng yên giữa đội hình địch"
+        },
+        {
+          "id": "C",
+          "text": "Đuổi theo một mục tiêu thật xa"
+        },
+        {
+          "id": "D",
+          "text": "Tắt trò chơi ngay"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Giữ vị trí gần đồng đội giúp tăng cơ hội được hỗ trợ.",
+      "points": 20
+    },
+    {
+      "id": "NTH031",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Bang chiến thường đòi hỏi yếu tố nào nhất?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ quan tâm ngoại trang"
+        },
+        {
+          "id": "B",
+          "text": "Mỗi người tự đánh một hướng"
+        },
+        {
+          "id": "C",
+          "text": "Không cần liên lạc"
+        },
+        {
+          "id": "D",
+          "text": "Phối hợp đội hình, mục tiêu và thời điểm"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Bang chiến là hoạt động tập thể cần chiến thuật và phối hợp.",
+      "points": 10
+    },
+    {
+      "id": "NTH032",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Trước một trận Bang chiến, bang hội nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để tất cả thành viên tự chọn mục tiêu"
+        },
+        {
+          "id": "B",
+          "text": "Tắt liên lạc"
+        },
+        {
+          "id": "C",
+          "text": "Thống nhất chiến thuật, phân công nhiệm vụ và kiểm tra chuẩn bị"
+        },
+        {
+          "id": "D",
+          "text": "Đợi vào trận mới bàn"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Chuẩn bị trước giúp giảm hỗn loạn khi giao tranh bắt đầu.",
+      "points": 10
+    },
+    {
+      "id": "NTH033",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Trong giao tranh chiếm mục tiêu, điều gì thường quan trọng hơn việc đuổi theo một đối thủ lẻ?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tách khỏi đội"
+        },
+        {
+          "id": "B",
+          "text": "Đổi ngoại trang"
+        },
+        {
+          "id": "C",
+          "text": "Đứng xem hiệu ứng"
+        },
+        {
+          "id": "D",
+          "text": "Kiểm soát khu vực hoặc mục tiêu chiến thuật"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Mục tiêu chiến thuật mới quyết định tiến trình trận đấu.",
+      "points": 20
+    },
+    {
+      "id": "NTH034",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Khi được giao nhiệm vụ bảo vệ người hỗ trợ, bạn nên ưu tiên gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Rời khỏi khu vực ngay"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ tấn công mục tiêu xa nhất"
+        },
+        {
+          "id": "C",
+          "text": "Bỏ qua bản đồ"
+        },
+        {
+          "id": "D",
+          "text": "Ngăn đối thủ áp sát và giữ vị trí có thể can thiệp"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Bảo vệ tuyến sau giúp đội duy trì khả năng hồi phục và hỗ trợ.",
+      "points": 20
+    },
+    {
+      "id": "NTH035",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Một thành viên liên tục đi lẻ trong Bang chiến có thể gây ra điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tự động chiếm mục tiêu"
+        },
+        {
+          "id": "B",
+          "text": "Đội hình bị chia cắt và dễ bị bắt lẻ"
+        },
+        {
+          "id": "C",
+          "text": "Tăng điểm thưởng cho toàn đội"
+        },
+        {
+          "id": "D",
+          "text": "Làm Boss yếu đi"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Đi lẻ khiến khả năng hỗ trợ lẫn nhau giảm mạnh.",
+      "points": 10
+    },
+    {
+      "id": "NTH036",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Khi đối thủ có lợi thế về số lượng, đội bạn nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chia nhỏ đội hình hơn nữa"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ qua mọi mục tiêu"
+        },
+        {
+          "id": "C",
+          "text": "Tấn công ngẫu nhiên"
+        },
+        {
+          "id": "D",
+          "text": "Tập trung lực lượng, chọn vị trí và tránh giao tranh bất lợi"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Tập trung lực lượng và chọn thời điểm giúp giảm bất lợi quân số.",
+      "points": 30
+    },
+    {
+      "id": "NTH037",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Trong PvP, vì sao không nên dùng hết kỹ năng cùng một lúc?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Vì sẽ mất nhân vật"
+        },
+        {
+          "id": "B",
+          "text": "Vì kỹ năng không gây sát thương"
+        },
+        {
+          "id": "C",
+          "text": "Có thể mất công cụ phản ứng khi đối thủ phản công"
+        },
+        {
+          "id": "D",
+          "text": "Vì trò chơi không cho phép"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Giữ lại một số kỹ năng giúp ứng phó tình huống tiếp theo.",
+      "points": 20
+    },
+    {
+      "id": "NTH038",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Khi đối thủ còn ít máu nhưng đang đứng gần đồng đội của họ, nên cân nhắc gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Nguy cơ bị phản gank và khả năng rút lui an toàn"
+        },
+        {
+          "id": "B",
+          "text": "Chắc chắn đuổi theo đến cùng"
+        },
+        {
+          "id": "C",
+          "text": "Đứng trong vùng nguy hiểm"
+        },
+        {
+          "id": "D",
+          "text": "Bỏ toàn bộ kỹ năng phòng thủ"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Không nên đổi mạng hoặc bị kéo vào vị trí bất lợi chỉ để kết liễu.",
+      "points": 30
+    },
+    {
+      "id": "NTH039",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Một đội PvP thua liên tiếp nên làm gì trước tiên?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đổ lỗi ngay cho một người"
+        },
+        {
+          "id": "B",
+          "text": "Không thay đổi bất kỳ điều gì"
+        },
+        {
+          "id": "C",
+          "text": "Xem lại cách phối hợp, trang bị và nguyên nhân thất bại"
+        },
+        {
+          "id": "D",
+          "text": "Tháo hết trang bị"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Phân tích nguyên nhân giúp cải thiện thay vì lặp lại sai lầm.",
+      "points": 10
+    },
+    {
+      "id": "NTH040",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Trong chế độ thi đấu công bằng, yếu tố nào vẫn rất quan trọng?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Kỹ năng điều khiển, lựa chọn và phối hợp"
+        },
+        {
+          "id": "B",
+          "text": "Giá trị vật phẩm trang trí"
+        },
+        {
+          "id": "C",
+          "text": "Số lượng ảnh chụp"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ số ngoại trang"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Khi lợi thế trang bị được cân bằng, kỹ năng cá nhân và chiến thuật càng quan trọng.",
+      "points": 20
+    },
+    {
+      "id": "NTH041",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Nếu mục tiêu bang chiến sắp bị chiếm, hành động nào hợp lý?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Rời bang"
+        },
+        {
+          "id": "B",
+          "text": "Đổi kênh trò chuyện"
+        },
+        {
+          "id": "C",
+          "text": "Thông báo cho đội và điều quân đến điểm nóng"
+        },
+        {
+          "id": "D",
+          "text": "Im lặng và đi làm nhiệm vụ khác"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thông tin kịp thời giúp bang hội phản ứng với mục tiêu quan trọng.",
+      "points": 10
+    },
+    {
+      "id": "NTH042",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Vai trò của người chỉ huy trong Bang chiến là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Điều phối mục tiêu và truyền đạt quyết định chiến thuật"
+        },
+        {
+          "id": "B",
+          "text": "Tự mình làm mọi nhiệm vụ"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ chọn nhạc nền"
+        },
+        {
+          "id": "D",
+          "text": "Quyết định ngoại trang cho bang"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Chỉ huy giúp đội hình hành động thống nhất.",
+      "points": 10
+    },
+    {
+      "id": "NTH043",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Khi đội đang có lợi thế, cách chơi nào thường an toàn?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Duy trì đội hình và kiểm soát mục tiêu thay vì truy đuổi thiếu tính toán"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ mục tiêu đang kiểm soát"
+        },
+        {
+          "id": "C",
+          "text": "Tách đội để săn từng người"
+        },
+        {
+          "id": "D",
+          "text": "Dồn hết kỹ năng vào khoảng trống"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Giữ lợi thế cần kỷ luật và kiểm soát khu vực.",
+      "points": 30
+    },
+    {
+      "id": "NTH044",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Trong PvP, việc đọc hoạt ảnh đối thủ giúp bạn làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Nhận biết dấu hiệu ra chiêu để né hoặc phản ứng"
+        },
+        {
+          "id": "B",
+          "text": "Nhận thêm tiền tệ"
+        },
+        {
+          "id": "C",
+          "text": "Mở khóa nhiệm vụ ẩn"
+        },
+        {
+          "id": "D",
+          "text": "Tăng cấp nhân vật"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Hoạt ảnh và dấu hiệu kỹ năng cung cấp thông tin về hành động sắp tới.",
+      "points": 20
+    },
+    {
+      "id": "NTH045",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Khi một thành viên bị khống chế trong giao tranh nhóm, đồng đội nên cân nhắc gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Bỏ mặc trong mọi trường hợp"
+        },
+        {
+          "id": "B",
+          "text": "Hỗ trợ giải cứu nếu có kỹ năng và điều kiện phù hợp"
+        },
+        {
+          "id": "C",
+          "text": "Rời khỏi trận"
+        },
+        {
+          "id": "D",
+          "text": "Tập trung chụp ảnh"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Hỗ trợ đúng lúc có thể ngăn đội mất người.",
+      "points": 30
+    },
+    {
+      "id": "NTH046",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Điều gì giúp giảm tình trạng thành viên đánh nhầm mục tiêu trong giao tranh?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Ẩn toàn bộ giao diện"
+        },
+        {
+          "id": "B",
+          "text": "Đổi tên nhân vật"
+        },
+        {
+          "id": "C",
+          "text": "Tắt hiệu ứng âm thanh"
+        },
+        {
+          "id": "D",
+          "text": "Thống nhất mục tiêu ưu tiên và dùng tín hiệu gọi mục tiêu"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Gọi mục tiêu rõ ràng giúp sát thương tập trung.",
+      "points": 10
+    },
+    {
+      "id": "NTH047",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Khi tham gia hoạt động PvP lần đầu, người mới nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ đứng ở khu vực hồi sinh"
+        },
+        {
+          "id": "B",
+          "text": "Vào trận mà không đọc hướng dẫn"
+        },
+        {
+          "id": "C",
+          "text": "Tắt hiển thị kỹ năng"
+        },
+        {
+          "id": "D",
+          "text": "Tìm hiểu luật chơi và luyện thao tác cơ bản trước"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Nắm luật và thao tác cơ bản giúp trải nghiệm dễ dàng hơn.",
+      "points": 10
+    },
+    {
+      "id": "NTH048",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Vì sao cần kiểm tra thời gian hồi chiêu trước khi mở giao tranh?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để mở rộng bản đồ"
+        },
+        {
+          "id": "B",
+          "text": "Để đổi máy chủ"
+        },
+        {
+          "id": "C",
+          "text": "Để tăng tốc độ tải"
+        },
+        {
+          "id": "D",
+          "text": "Để biết mình có đủ công cụ tấn công và phòng thủ hay không"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Bắt đầu giao tranh khi kỹ năng quan trọng chưa sẵn sàng có thể gây bất lợi.",
+      "points": 20
+    },
+    {
+      "id": "NTH049",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "expert",
+      "questionType": "scenario",
+      "question": "Trong trận đấu đội, người chơi nên ưu tiên mục tiêu nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Người có ngoại trang đẹp nhất"
+        },
+        {
+          "id": "B",
+          "text": "Mục tiêu mà đội đã thống nhất và có thể phối hợp xử lý"
+        },
+        {
+          "id": "C",
+          "text": "NPC không liên quan"
+        },
+        {
+          "id": "D",
+          "text": "Mục tiêu xa nhất bất kể tình huống"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Tập trung mục tiêu giúp đội tạo áp lực hiệu quả.",
+      "points": 20
+    },
+    {
+      "id": "NTH050",
+      "category": "pvp_pk_va_bang_chien",
+      "difficulty": "expert",
+      "questionType": "scenario",
+      "question": "Sau trận Bang chiến, hoạt động nào giúp bang hội tiến bộ?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Rút kinh nghiệm và ghi nhận điểm cần cải thiện"
+        },
+        {
+          "id": "B",
+          "text": "Xóa toàn bộ lịch sử"
+        },
+        {
+          "id": "C",
+          "text": "Cấm mọi người thảo luận"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ xem lại ảnh ngoại trang"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Đánh giá sau trận giúp cải thiện chiến thuật cho lần sau.",
+      "points": 10
+    },
+    {
+      "id": "NTH051",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "PvE là hình thức người chơi đối đầu với điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Người chơi khác"
+        },
+        {
+          "id": "B",
+          "text": "Môi trường trong game như quái, Boss và thử thách"
+        },
+        {
+          "id": "C",
+          "text": "Giao diện cài đặt"
+        },
+        {
+          "id": "D",
+          "text": "Cửa hàng vật phẩm"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "PvE tập trung vào nội dung do trò chơi tạo ra.",
+      "points": 10
+    },
+    {
+      "id": "NTH052",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Khi Boss xuất hiện vùng cảnh báo trên mặt đất, bạn nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tiếp tục đứng yên"
+        },
+        {
+          "id": "B",
+          "text": "Rời khỏi vùng nguy hiểm trước khi đòn đánh kích hoạt"
+        },
+        {
+          "id": "C",
+          "text": "Mở túi đồ"
+        },
+        {
+          "id": "D",
+          "text": "Đứng giữa vùng cảnh báo"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Vùng cảnh báo thường cho biết khu vực sắp chịu sát thương hoặc hiệu ứng.",
+      "points": 10
+    },
+    {
+      "id": "NTH053",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Phó bản nhóm 12 người Thiên Cơ Mê Thành thuộc dạng nội dung nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Phó bản nhóm quy mô lớn"
+        },
+        {
+          "id": "B",
+          "text": "Khu vực trang trí nhà"
+        },
+        {
+          "id": "C",
+          "text": "Nhiệm vụ cá nhân"
+        },
+        {
+          "id": "D",
+          "text": "Đấu trường một đấu một"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Thông báo cập nhật của VNG giới thiệu Thiên Cơ Mê Thành là phó bản nhóm 12 người.",
+      "points": 10
+    },
+    {
+      "id": "NTH054",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Theo thông báo cập nhật 2.1.1, Thiên Cơ Mê Thành được chia thành những khu vực nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tiền Đường và Hậu Đường"
+        },
+        {
+          "id": "B",
+          "text": "Đông Thành và Tây Thành"
+        },
+        {
+          "id": "C",
+          "text": "Thượng Thành và Hạ Thành"
+        },
+        {
+          "id": "D",
+          "text": "Ngoại Thành và Nội Thành"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Thông báo chính thức nêu hai phần Ngoại Thành và Nội Thành.",
+      "points": 20
+    },
+    {
+      "id": "NTH055",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Theo thông báo cập nhật 2.1.1, đội hình tham gia Thiên Cơ Mê Thành có bao nhiêu người?",
+      "options": [
+        {
+          "id": "A",
+          "text": "12 người"
+        },
+        {
+          "id": "B",
+          "text": "6 người"
+        },
+        {
+          "id": "C",
+          "text": "20 người"
+        },
+        {
+          "id": "D",
+          "text": "4 người"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Thiên Cơ Mê Thành được giới thiệu là phó bản nhóm 12 người.",
+      "points": 10
+    },
+    {
+      "id": "NTH056",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Phó bản Tước Ẩn Trùng Lâu cho phép tổ đội tối đa theo nhóm thông thường bao nhiêu người?",
+      "options": [
+        {
+          "id": "A",
+          "text": "6 người"
+        },
+        {
+          "id": "B",
+          "text": "12 người"
+        },
+        {
+          "id": "C",
+          "text": "3 người"
+        },
+        {
+          "id": "D",
+          "text": "24 người"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Thông báo cập nhật nêu đội 6 người, đồng thời có thể tham gia chế độ đơn hoặc đôi.",
+      "points": 20
+    },
+    {
+      "id": "NTH057",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Ngoài tổ đội 6 người, Tước Ẩn Trùng Lâu còn hỗ trợ cách tham gia nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ nhóm 12 người"
+        },
+        {
+          "id": "B",
+          "text": "Chế độ đơn hoặc đôi"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ người chơi cấp tối đa"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ bang chủ được vào"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Thông báo cập nhật chính thức nêu chế độ Đơn/Đôi.",
+      "points": 20
+    },
+    {
+      "id": "NTH058",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "easy",
+      "questionType": "scenario",
+      "question": "Khi Boss chuyển sang giai đoạn mới, điều gì nên được chú ý?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Rời khỏi nhóm"
+        },
+        {
+          "id": "B",
+          "text": "Thay đổi cơ chế, dấu hiệu tấn công và vị trí an toàn"
+        },
+        {
+          "id": "C",
+          "text": "Giữ nguyên cách đánh dù cơ chế đổi"
+        },
+        {
+          "id": "D",
+          "text": "Mở cửa hàng"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Boss nhiều giai đoạn có thể thay đổi đòn đánh và yêu cầu xử lý.",
+      "points": 20
+    },
+    {
+      "id": "NTH059",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Nếu cả đội liên tục bị hạ bởi cùng một chiêu Boss, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tiếp tục đánh mà không thay đổi"
+        },
+        {
+          "id": "B",
+          "text": "Tắt hiệu ứng cảnh báo"
+        },
+        {
+          "id": "C",
+          "text": "Đổ lỗi cho người hồi máu"
+        },
+        {
+          "id": "D",
+          "text": "Xác định cơ chế của chiêu và thống nhất cách né hoặc xử lý"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Tìm nguyên nhân chung giúp cả đội khắc phục lỗi.",
+      "points": 10
+    },
+    {
+      "id": "NTH060",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Vai trò chống chịu trong phó bản thường cần làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Thu hút hoặc kiểm soát sự chú ý của Boss và bảo vệ đội"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ nhặt vật phẩm"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ đứng xa gây sát thương"
+        },
+        {
+          "id": "D",
+          "text": "Rời khỏi khu vực Boss"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Người chống chịu giúp ổn định mục tiêu Boss và giảm áp lực lên đồng đội.",
+      "points": 10
+    },
+    {
+      "id": "NTH061",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Người gây sát thương trong phó bản nên chú ý điều gì ngoài việc đánh Boss?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Bỏ qua mọi cảnh báo"
+        },
+        {
+          "id": "B",
+          "text": "Đứng chắn đường đồng đội"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ nhìn chỉ số sát thương"
+        },
+        {
+          "id": "D",
+          "text": "Cơ chế, vùng nguy hiểm và thời điểm an toàn để tấn công"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Duy trì sát thương cần đi cùng việc sống sót và xử lý cơ chế.",
+      "points": 10
+    },
+    {
+      "id": "NTH062",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Khi đồng đội bị hạ trong phó bản, điều gì cần cân nhắc trước khi cứu?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Bỏ qua toàn bộ tình huống"
+        },
+        {
+          "id": "B",
+          "text": "Tất cả cùng dừng đánh"
+        },
+        {
+          "id": "C",
+          "text": "Mức độ an toàn và thời gian còn lại của cơ chế Boss"
+        },
+        {
+          "id": "D",
+          "text": "Cứu ngay giữa vùng sát thương lớn"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Cứu đồng đội cần chọn thời điểm không khiến thêm người bị hạ.",
+      "points": 30
+    },
+    {
+      "id": "NTH063",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Vì sao nên đọc hướng dẫn phó bản trước khi vào lần đầu?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để biết điều kiện tham gia, cơ chế và phần thưởng"
+        },
+        {
+          "id": "B",
+          "text": "Để đổi tên nhân vật"
+        },
+        {
+          "id": "C",
+          "text": "Để tăng dung lượng máy"
+        },
+        {
+          "id": "D",
+          "text": "Để bỏ qua mọi nhiệm vụ"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Chuẩn bị trước giúp tiết kiệm thời gian và giảm lỗi trong tổ đội.",
+      "points": 10
+    },
+    {
+      "id": "NTH064",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Trong phó bản có cơ chế chia đội xử lý nhiều mục tiêu, điều gì quan trọng?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tất cả tập trung một mục tiêu bất kể yêu cầu"
+        },
+        {
+          "id": "B",
+          "text": "Phân công rõ người xử lý từng mục tiêu"
+        },
+        {
+          "id": "C",
+          "text": "Đổi đội liên tục"
+        },
+        {
+          "id": "D",
+          "text": "Không trao đổi"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Phân công giúp các cơ chế đồng thời được xử lý đúng hạn.",
+      "points": 20
+    },
+    {
+      "id": "NTH065",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Nếu Boss có thanh phá giáp hoặc trạng thái đặc biệt, đội nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Rời phó bản"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ dùng vật phẩm trang trí"
+        },
+        {
+          "id": "C",
+          "text": "Bỏ qua thanh trạng thái"
+        },
+        {
+          "id": "D",
+          "text": "Tìm hiểu điều kiện kích hoạt và tận dụng thời điểm phù hợp"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Một số cơ chế trạng thái tạo cửa sổ gây sát thương hoặc khống chế.",
+      "points": 30
+    },
+    {
+      "id": "NTH066",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Khi đội hình thiếu người, lựa chọn nào hợp lý?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Điều chỉnh vai trò hoặc tìm thêm thành viên phù hợp"
+        },
+        {
+          "id": "B",
+          "text": "Không cần người hỗ trợ trong mọi trường hợp"
+        },
+        {
+          "id": "C",
+          "text": "Chia sẻ tài khoản"
+        },
+        {
+          "id": "D",
+          "text": "Vào phó bản bất kể điều kiện"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Đội hình phù hợp giúp tăng khả năng hoàn thành thử thách.",
+      "points": 20
+    },
+    {
+      "id": "NTH067",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "medium",
+      "questionType": "scenario",
+      "question": "Phần thưởng phó bản có thể bao gồm loại vật phẩm nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ vật phẩm ngoài trò chơi"
+        },
+        {
+          "id": "B",
+          "text": "Trang bị, nguyên liệu hoặc vật phẩm ngoại quan tùy nội dung"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ điểm danh"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ tiền thật"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Phần thưởng thay đổi theo phó bản và mùa giải.",
+      "points": 10
+    },
+    {
+      "id": "NTH068",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Vì sao cần kiểm tra điều kiện cấp độ trước khi vào phó bản?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để tăng số bạn bè"
+        },
+        {
+          "id": "B",
+          "text": "Để thay đổi ngoại hình"
+        },
+        {
+          "id": "C",
+          "text": "Một số phó bản yêu cầu cấp độ tối thiểu"
+        },
+        {
+          "id": "D",
+          "text": "Để bỏ qua hàng chờ"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thông báo cập nhật nêu các mốc cấp độ yêu cầu cho từng phó bản.",
+      "points": 10
+    },
+    {
+      "id": "NTH069",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Theo thông báo cập nhật 2.1.1, cấp độ tối thiểu vào Tước Ẩn Trùng Lâu ở mốc đầu được nêu là bao nhiêu?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Cấp 60"
+        },
+        {
+          "id": "B",
+          "text": "Cấp 90"
+        },
+        {
+          "id": "C",
+          "text": "Cấp 72"
+        },
+        {
+          "id": "D",
+          "text": "Cấp 50"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thông báo nêu mốc cấp 72/79 cho nội dung Tước Ẩn Trùng Lâu theo các đợt mở.",
+      "points": 30
+    },
+    {
+      "id": "NTH070",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Theo thông báo cập nhật 2.1.1, Tước Ẩn Trùng Lâu có những độ khó nào được đề cập?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đồng và Bạch kim"
+        },
+        {
+          "id": "B",
+          "text": "Dễ và Thần thoại"
+        },
+        {
+          "id": "C",
+          "text": "Độ khó 1 và Độ khó 2"
+        },
+        {
+          "id": "D",
+          "text": "Ngày và Đêm"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thông báo cập nhật nêu lịch mở Độ khó 1 và Độ khó 2.",
+      "points": 20
+    },
+    {
+      "id": "NTH071",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Khi Boss chuẩn bị tung đòn diện rộng, đội nên ưu tiên điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tập trung đứng cùng một điểm trong vùng cảnh báo"
+        },
+        {
+          "id": "B",
+          "text": "Mở giao diện bang hội"
+        },
+        {
+          "id": "C",
+          "text": "Ngừng quan sát"
+        },
+        {
+          "id": "D",
+          "text": "Di chuyển theo hướng an toàn và tránh chồng vùng nguy hiểm"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Tách khỏi vùng nguy hiểm giúp giảm số người cùng chịu sát thương.",
+      "points": 10
+    },
+    {
+      "id": "NTH072",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Một lần vượt phó bản thất bại vẫn có giá trị gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Xóa toàn bộ trang bị"
+        },
+        {
+          "id": "B",
+          "text": "Không có bất kỳ thông tin nào"
+        },
+        {
+          "id": "C",
+          "text": "Cung cấp thông tin để hiểu cơ chế và cải thiện chiến thuật"
+        },
+        {
+          "id": "D",
+          "text": "Làm mất vĩnh viễn nhân vật"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thất bại có thể giúp đội nhận ra cơ chế chưa xử lý tốt.",
+      "points": 10
+    },
+    {
+      "id": "NTH073",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "hard",
+      "questionType": "scenario",
+      "question": "Khi đội có người mới chưa biết cơ chế, cách hỗ trợ tốt nhất là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Yêu cầu họ tự đoán"
+        },
+        {
+          "id": "B",
+          "text": "Không cho họ biết gì"
+        },
+        {
+          "id": "C",
+          "text": "Giải thích ngắn gọn nhiệm vụ và dấu hiệu nguy hiểm trước khi bắt đầu"
+        },
+        {
+          "id": "D",
+          "text": "Mắng người mới trong trận"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Hướng dẫn rõ ràng giúp cả đội phối hợp tốt hơn.",
+      "points": 10
+    },
+    {
+      "id": "NTH074",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "expert",
+      "questionType": "scenario",
+      "question": "Vì sao không nên đứng sát nhau khi Boss có kỹ năng đánh lan hoặc đánh dấu mục tiêu?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Có thể khiến nhiều thành viên cùng chịu ảnh hưởng"
+        },
+        {
+          "id": "B",
+          "text": "Vì không thể nhận phần thưởng"
+        },
+        {
+          "id": "C",
+          "text": "Vì sẽ đổi môn phái"
+        },
+        {
+          "id": "D",
+          "text": "Vì làm giảm độ sáng màn hình"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Giãn cách hợp lý giúp hạn chế sát thương lan truyền.",
+      "points": 20
+    },
+    {
+      "id": "NTH075",
+      "category": "pve_boss_va_pho_ban",
+      "difficulty": "expert",
+      "questionType": "scenario",
+      "question": "Sau khi vượt Boss, người chơi nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Thoát game ngay trong mọi trường hợp"
+        },
+        {
+          "id": "B",
+          "text": "Kiểm tra phần thưởng và tiến trình nhiệm vụ liên quan"
+        },
+        {
+          "id": "C",
+          "text": "Bỏ qua vật phẩm rơi"
+        },
+        {
+          "id": "D",
+          "text": "Xóa nhật ký nhiệm vụ"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Kiểm tra phần thưởng giúp không bỏ lỡ vật phẩm và tiến trình.",
+      "points": 10
+    },
+    {
+      "id": "NTH076",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Nghịch Thủy Hàn được giới thiệu thuộc thể loại nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "MMORPG thế giới mở võ hiệp"
+        },
+        {
+          "id": "B",
+          "text": "Game đua xe mô phỏng"
+        },
+        {
+          "id": "C",
+          "text": "Game bóng đá"
+        },
+        {
+          "id": "D",
+          "text": "Game giải đố thuần túy"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Trang giới thiệu chính thức mô tả trò chơi là MMORPG thế giới mở võ hiệp.",
+      "points": 10
+    },
+    {
+      "id": "NTH077",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Người chơi có thể lựa chọn trải nghiệm nào ngoài chiến đấu?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Khám phá, giao lưu và tham gia hoạt động đời sống"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ được đánh Boss"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ được đấu trường"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ được đứng ở thành chính"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Game giới thiệu nhiều hoạt động khám phá và xã giao bên cạnh chiến đấu.",
+      "points": 10
+    },
+    {
+      "id": "NTH078",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Khi phát hiện một khu vực chưa khám phá trên bản đồ, bạn nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Bỏ qua mọi điểm đánh dấu"
+        },
+        {
+          "id": "B",
+          "text": "Đổi mật khẩu"
+        },
+        {
+          "id": "C",
+          "text": "Đến thăm dò và kiểm tra dấu hiệu tương tác"
+        },
+        {
+          "id": "D",
+          "text": "Xóa bản đồ"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Khám phá có thể mở ra nhiệm vụ, vật phẩm hoặc hoạt động mới.",
+      "points": 10
+    },
+    {
+      "id": "NTH079",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Kỳ ngộ trong game thường gợi đến loại trải nghiệm nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Sự kiện hoặc cuộc gặp bất ngờ trong hành trình"
+        },
+        {
+          "id": "B",
+          "text": "Nâng cấp phần cứng"
+        },
+        {
+          "id": "C",
+          "text": "Mua gói ngoại trang bắt buộc"
+        },
+        {
+          "id": "D",
+          "text": "Đổi máy chủ tự động"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Kỳ ngộ là những cuộc gặp hoặc tình huống bất ngờ trong thế giới game.",
+      "points": 10
+    },
+    {
+      "id": "NTH080",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Khi NPC đưa ra lựa chọn hội thoại, điều gì nên được cân nhắc?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chọn ngẫu nhiên mọi lần"
+        },
+        {
+          "id": "B",
+          "text": "Thoát trò chơi"
+        },
+        {
+          "id": "C",
+          "text": "Nội dung lựa chọn và mục tiêu nhiệm vụ"
+        },
+        {
+          "id": "D",
+          "text": "Đổi môn phái ngay lập tức"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Một số lựa chọn có thể ảnh hưởng diễn biến hoặc kết quả nhiệm vụ.",
+      "points": 20
+    },
+    {
+      "id": "NTH081",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Nếu bị lạc khi làm nhiệm vụ, công cụ nào nên kiểm tra trước?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Kho ngoại trang"
+        },
+        {
+          "id": "B",
+          "text": "Bảng xếp hạng PvP"
+        },
+        {
+          "id": "C",
+          "text": "Danh sách bạn bè"
+        },
+        {
+          "id": "D",
+          "text": "Bản đồ và dấu nhiệm vụ"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Bản đồ và dấu nhiệm vụ giúp xác định vị trí mục tiêu.",
+      "points": 10
+    },
+    {
+      "id": "NTH082",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Một nhiệm vụ yêu cầu tìm manh mối, cách tiếp cận phù hợp là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đứng yên chờ tự hoàn thành"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ qua lời thoại"
+        },
+        {
+          "id": "C",
+          "text": "Quan sát khu vực, tương tác vật thể và đọc gợi ý"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ đánh quái gần nhất"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Nhiệm vụ điều tra thường cần quan sát và tương tác.",
+      "points": 20
+    },
+    {
+      "id": "NTH083",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Khi đi khám phá cùng bạn bè, lợi ích rõ nhất là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tự động tăng cấp tối đa"
+        },
+        {
+          "id": "B",
+          "text": "Tự động nhận mọi vật phẩm"
+        },
+        {
+          "id": "C",
+          "text": "Có thể hỗ trợ nhau và chia sẻ trải nghiệm"
+        },
+        {
+          "id": "D",
+          "text": "Không cần làm nhiệm vụ"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Chơi cùng giúp phối hợp và khám phá thuận tiện hơn.",
+      "points": 10
+    },
+    {
+      "id": "NTH084",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Một người chơi thích ngắm cảnh và chụp ảnh nên tận dụng điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Bảng sát thương Boss"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ số xuyên giáp"
+        },
+        {
+          "id": "C",
+          "text": "Thời gian hồi chiêu"
+        },
+        {
+          "id": "D",
+          "text": "Góc máy, ánh sáng và bối cảnh trong game"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Các công cụ hình ảnh giúp lưu lại cảnh đẹp và tạo ảnh nhân vật.",
+      "points": 10
+    },
+    {
+      "id": "NTH085",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi gặp một nhiệm vụ có điều kiện thời gian, bạn nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Kiểm tra thời hạn và hoàn thành theo yêu cầu"
+        },
+        {
+          "id": "B",
+          "text": "Xóa toàn bộ nhiệm vụ"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ thay đổi ngoại trang"
+        },
+        {
+          "id": "D",
+          "text": "Để đó vô thời hạn"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Nhiệm vụ giới hạn thời gian cần được ưu tiên đúng lúc.",
+      "points": 20
+    },
+    {
+      "id": "NTH086",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Vĩnh Dạ Tinh Đô được nhắc đến trong thông tin cập nhật như nội dung nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Môn phái mới"
+        },
+        {
+          "id": "B",
+          "text": "Chức vụ bang hội"
+        },
+        {
+          "id": "C",
+          "text": "Bản đồ mới để khám phá"
+        },
+        {
+          "id": "D",
+          "text": "Loại tiền tệ"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thông tin cập nhật giới thiệu Vĩnh Dạ Tinh Đô là bản đồ mới.",
+      "points": 20
+    },
+    {
+      "id": "NTH087",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi mở một bản đồ mới, việc đầu tiên nên làm là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tắt bản đồ"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ qua mọi điểm mốc"
+        },
+        {
+          "id": "C",
+          "text": "Chạy thẳng vào vùng nguy hiểm"
+        },
+        {
+          "id": "D",
+          "text": "Quan sát địa hình, điểm dịch chuyển và khu vực nhiệm vụ"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Nắm bố cục bản đồ giúp di chuyển và làm nhiệm vụ hiệu quả.",
+      "points": 10
+    },
+    {
+      "id": "NTH088",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Trong thế giới mở, vì sao nên chú ý các điểm tương tác môi trường?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chúng luôn là vật trang trí vô dụng"
+        },
+        {
+          "id": "B",
+          "text": "Chúng có thể liên quan đến nhiệm vụ hoặc hoạt động khám phá"
+        },
+        {
+          "id": "C",
+          "text": "Chúng khóa tài khoản"
+        },
+        {
+          "id": "D",
+          "text": "Chúng làm giảm cấp nhân vật"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Tương tác môi trường có thể mở nội dung khám phá.",
+      "points": 20
+    },
+    {
+      "id": "NTH089",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Nếu gặp một NPC có biểu tượng nhiệm vụ, bạn nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Rời máy chủ"
+        },
+        {
+          "id": "B",
+          "text": "Tấn công NPC ngay"
+        },
+        {
+          "id": "C",
+          "text": "Ẩn bản đồ"
+        },
+        {
+          "id": "D",
+          "text": "Tiếp cận và kiểm tra nội dung nhiệm vụ"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Biểu tượng nhiệm vụ thường báo hiệu NPC có nội dung cần nhận hoặc hoàn thành.",
+      "points": 10
+    },
+    {
+      "id": "NTH090",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Một người chơi muốn tìm hiểu cốt truyện nên ưu tiên điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ tham gia đấu trường"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ xem bảng xếp hạng"
+        },
+        {
+          "id": "C",
+          "text": "Bỏ qua toàn bộ lời thoại"
+        },
+        {
+          "id": "D",
+          "text": "Theo dõi hội thoại và chuỗi nhiệm vụ chính"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Chuỗi nhiệm vụ và hội thoại là nguồn chính để hiểu cốt truyện.",
+      "points": 10
+    },
+    {
+      "id": "NTH091",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi thấy khu vực có cấp độ khuyến nghị cao hơn mình, lựa chọn nào an toàn?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chuẩn bị thêm hoặc quay lại khi nhân vật mạnh hơn"
+        },
+        {
+          "id": "B",
+          "text": "Tắt cảnh báo"
+        },
+        {
+          "id": "C",
+          "text": "Tháo trang bị"
+        },
+        {
+          "id": "D",
+          "text": "Lao vào bất kể chênh lệch"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Khu vực vượt sức có thể gây khó khăn nếu chưa chuẩn bị.",
+      "points": 10
+    },
+    {
+      "id": "NTH092",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Tại sao nên đọc mô tả vật thể hoặc manh mối trong nhiệm vụ khám phá?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để tăng số ô túi"
+        },
+        {
+          "id": "B",
+          "text": "Để đổi tên bang"
+        },
+        {
+          "id": "C",
+          "text": "Thông tin có thể gợi ý vị trí hoặc cách giải quyết"
+        },
+        {
+          "id": "D",
+          "text": "Để tăng tốc độ mạng"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Mô tả thường chứa gợi ý cần thiết để tiến triển nhiệm vụ.",
+      "points": 20
+    },
+    {
+      "id": "NTH093",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Một chuyến đi khám phá hiệu quả nên kết hợp điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ mở cửa hàng"
+        },
+        {
+          "id": "B",
+          "text": "Chạy vòng quanh không mục đích"
+        },
+        {
+          "id": "C",
+          "text": "Mục tiêu nhiệm vụ, điểm khám phá và quản lý hành trang"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ đứng ở một địa điểm"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Kết hợp mục tiêu giúp tiết kiệm thời gian di chuyển.",
+      "points": 20
+    },
+    {
+      "id": "NTH094",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Khi gặp thử thách nhảy vượt địa hình, thao tác nào quan trọng?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đứng yên"
+        },
+        {
+          "id": "B",
+          "text": "Mở bảng kỹ năng"
+        },
+        {
+          "id": "C",
+          "text": "Canh khoảng cách, hướng di chuyển và thời điểm nhảy"
+        },
+        {
+          "id": "D",
+          "text": "Nhấn mọi phím liên tục"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Các thử thách di chuyển cần căn thời điểm và hướng chính xác.",
+      "points": 20
+    },
+    {
+      "id": "NTH095",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Nếu nhiệm vụ không cập nhật sau khi tương tác, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Bỏ luôn tài khoản"
+        },
+        {
+          "id": "B",
+          "text": "Đọc lại điều kiện và kiểm tra xem còn bước nào chưa hoàn thành"
+        },
+        {
+          "id": "C",
+          "text": "Xóa nhân vật"
+        },
+        {
+          "id": "D",
+          "text": "Đổi mật khẩu"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Một số nhiệm vụ có nhiều bước hoặc điều kiện phụ.",
+      "points": 20
+    },
+    {
+      "id": "NTH096",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Vì sao nên bật hiển thị dấu nhiệm vụ khi khám phá?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tăng số lượng bạn bè"
+        },
+        {
+          "id": "B",
+          "text": "Tăng cấp trang bị"
+        },
+        {
+          "id": "C",
+          "text": "Tăng sát thương"
+        },
+        {
+          "id": "D",
+          "text": "Giúp định hướng và tránh bỏ sót mục tiêu"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Dấu nhiệm vụ hỗ trợ định hướng trong thế giới mở.",
+      "points": 10
+    },
+    {
+      "id": "NTH097",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Khi một khu vực có nhiều người chơi tụ tập, điều gì có thể đang diễn ra?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tất cả đang ngoại tuyến"
+        },
+        {
+          "id": "B",
+          "text": "Hoạt động cộng đồng, sự kiện hoặc giao dịch"
+        },
+        {
+          "id": "C",
+          "text": "Máy chủ chắc chắn bị lỗi"
+        },
+        {
+          "id": "D",
+          "text": "Không có hoạt động nào"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Khu vực đông người có thể là điểm diễn ra hoạt động xã hội hoặc sự kiện.",
+      "points": 20
+    },
+    {
+      "id": "NTH098",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Một nhiệm vụ yêu cầu chờ thời điểm phù hợp, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Theo dõi mô tả nhiệm vụ và điều kiện trong game"
+        },
+        {
+          "id": "B",
+          "text": "Liên tục đổi môn phái"
+        },
+        {
+          "id": "C",
+          "text": "Xóa nhật ký"
+        },
+        {
+          "id": "D",
+          "text": "Bỏ qua mọi hướng dẫn"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Điều kiện thời gian hoặc trạng thái cần được đọc kỹ.",
+      "points": 30
+    },
+    {
+      "id": "NTH099",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "expert",
+      "questionType": "knowledge",
+      "question": "Khi khám phá một khu vực nguy hiểm, nên chuẩn bị gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Trang bị phù hợp, vật phẩm cần thiết và đường rút lui"
+        },
+        {
+          "id": "B",
+          "text": "Tắt bản đồ"
+        },
+        {
+          "id": "C",
+          "text": "Bỏ toàn bộ vật phẩm hồi phục"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ chuẩn bị ngoại trang"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Chuẩn bị giúp giảm rủi ro khi gặp quái hoặc thử thách bất ngờ.",
+      "points": 10
+    },
+    {
+      "id": "NTH100",
+      "category": "giang_ho_va_kham_pha",
+      "difficulty": "expert",
+      "questionType": "knowledge",
+      "question": "Điều gì khiến thế giới mở trở nên thú vị?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Không có nhiệm vụ"
+        },
+        {
+          "id": "B",
+          "text": "Có nhiều cách khám phá, tương tác và tự chọn hoạt động"
+        },
+        {
+          "id": "C",
+          "text": "Không có NPC"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ có một tuyến đường bắt buộc"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Thế giới mở khuyến khích người chơi lựa chọn nhịp độ và hoạt động riêng.",
+      "points": 10
+    },
+    {
+      "id": "NTH101",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Trang Viên trong game chủ yếu phục vụ trải nghiệm nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Xây dựng, trang trí và sinh hoạt cá nhân"
+        },
+        {
+          "id": "B",
+          "text": "Ghép đội đánh Boss"
+        },
+        {
+          "id": "C",
+          "text": "Tăng cấp bang hội tự động"
+        },
+        {
+          "id": "D",
+          "text": "Đấu trường xếp hạng"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Trang Viên là không gian để người chơi xây dựng và trang trí.",
+      "points": 10
+    },
+    {
+      "id": "NTH102",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Khi muốn tạo một căn nhà có bố cục đẹp, nên bắt đầu từ đâu?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Dùng toàn bộ vật phẩm cùng một chỗ"
+        },
+        {
+          "id": "B",
+          "text": "Lên ý tưởng và bố trí khu vực chức năng"
+        },
+        {
+          "id": "C",
+          "text": "Đặt vật phẩm ngẫu nhiên"
+        },
+        {
+          "id": "D",
+          "text": "Bỏ qua lối đi"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Bố cục trước giúp không gian hài hòa và dễ sử dụng.",
+      "points": 10
+    },
+    {
+      "id": "NTH103",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Nếu muốn Trang Viên có cảm giác rộng rãi, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tạo khoảng trống và phân chia khu vực hợp lý"
+        },
+        {
+          "id": "B",
+          "text": "Chặn toàn bộ cửa"
+        },
+        {
+          "id": "C",
+          "text": "Đặt đồ kín mọi lối đi"
+        },
+        {
+          "id": "D",
+          "text": "Dùng vật thể lớn che hết tầm nhìn"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Khoảng trống giúp công trình dễ nhìn và dễ di chuyển.",
+      "points": 10
+    },
+    {
+      "id": "NTH104",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Khi trang trí theo một chủ đề, điều gì giúp tổng thể hài hòa?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ dùng vật phẩm lớn"
+        },
+        {
+          "id": "B",
+          "text": "Trộn mọi phong cách không chủ đích"
+        },
+        {
+          "id": "C",
+          "text": "Bỏ qua ánh sáng"
+        },
+        {
+          "id": "D",
+          "text": "Giữ bảng màu và phong cách nhất quán"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Sự nhất quán tạo cảm giác thiết kế có chủ ý.",
+      "points": 20
+    },
+    {
+      "id": "NTH105",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Một người bạn đến thăm Trang Viên, cách ứng xử phù hợp là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Yêu cầu họ đưa mật khẩu"
+        },
+        {
+          "id": "B",
+          "text": "Đuổi họ ngay lập tức"
+        },
+        {
+          "id": "C",
+          "text": "Chào hỏi và giới thiệu những khu vực mình tâm đắc"
+        },
+        {
+          "id": "D",
+          "text": "Không tương tác"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Trang Viên cũng là không gian giao lưu và chia sẻ.",
+      "points": 10
+    },
+    {
+      "id": "NTH106",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Khi xây dựng lối đi trong Trang Viên, cần chú ý điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Độ rộng và khả năng di chuyển thuận tiện"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ chọn màu đẹp"
+        },
+        {
+          "id": "C",
+          "text": "Đặt vật cản ở giữa"
+        },
+        {
+          "id": "D",
+          "text": "Chặn mọi lối ra"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Lối đi thông thoáng giúp không gian tiện dụng.",
+      "points": 10
+    },
+    {
+      "id": "NTH107",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Ánh sáng trong Trang Viên có thể ảnh hưởng điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Thời gian hồi chiêu"
+        },
+        {
+          "id": "B",
+          "text": "Không khí và cảm nhận thẩm mỹ của không gian"
+        },
+        {
+          "id": "C",
+          "text": "Cấp độ nhân vật"
+        },
+        {
+          "id": "D",
+          "text": "Sát thương PvP"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Ánh sáng góp phần tạo cảm xúc và điểm nhấn cho thiết kế.",
+      "points": 20
+    },
+    {
+      "id": "NTH108",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Khi muốn chụp ảnh Trang Viên, nên chọn gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Góc máy làm nổi bật bố cục và điểm nhấn"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ chụp nền trống"
+        },
+        {
+          "id": "C",
+          "text": "Góc nhìn bị vật thể che kín"
+        },
+        {
+          "id": "D",
+          "text": "Chụp khi giao diện che hết cảnh"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Góc máy tốt giúp thể hiện rõ ý tưởng trang trí.",
+      "points": 10
+    },
+    {
+      "id": "NTH109",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Nếu Trang Viên có quá nhiều vật phẩm nhỏ, tổng thể có thể gặp vấn đề gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tăng sát thương"
+        },
+        {
+          "id": "B",
+          "text": "Rối mắt và thiếu điểm nhấn"
+        },
+        {
+          "id": "C",
+          "text": "Tăng cấp nhân vật"
+        },
+        {
+          "id": "D",
+          "text": "Tự mở phó bản"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Quá nhiều chi tiết có thể làm giảm tính rõ ràng của bố cục.",
+      "points": 20
+    },
+    {
+      "id": "NTH110",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Một khu vườn đẹp nên cân bằng yếu tố nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ dùng đèn"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ dùng tường"
+        },
+        {
+          "id": "C",
+          "text": "Cây xanh, lối đi, vật trang trí và khoảng trống"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ đặt đồ nội thất"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Cân bằng các yếu tố giúp khu vườn tự nhiên và dễ nhìn.",
+      "points": 20
+    },
+    {
+      "id": "NTH111",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Khi thiếu ý tưởng trang trí, nguồn cảm hứng nào hữu ích?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tắt chế độ hình ảnh"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ đọc thông số Boss"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ xem bảng sát thương"
+        },
+        {
+          "id": "D",
+          "text": "Quan sát kiến trúc, thiên nhiên và công trình của người chơi khác"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Tham khảo nhiều phong cách giúp mở rộng ý tưởng.",
+      "points": 10
+    },
+    {
+      "id": "NTH112",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Một buổi gặp mặt bang hội tại Trang Viên cần chuẩn bị gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Địa điểm, thời gian và thông báo cho thành viên"
+        },
+        {
+          "id": "B",
+          "text": "Không cần báo trước"
+        },
+        {
+          "id": "C",
+          "text": "Tắt trò chuyện"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ đổi tên bang"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Thông tin rõ ràng giúp mọi người tham gia đúng hẹn.",
+      "points": 10
+    },
+    {
+      "id": "NTH113",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Khi thiết kế khu vực tiếp khách, điều gì nên được ưu tiên?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đặt mọi đồ ở góc khuất"
+        },
+        {
+          "id": "B",
+          "text": "Ẩn toàn bộ khu vực"
+        },
+        {
+          "id": "C",
+          "text": "Không gian dễ tiếp cận và có chỗ đứng hoặc ngồi hợp lý"
+        },
+        {
+          "id": "D",
+          "text": "Đặt vật cản ở lối vào"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Khu vực tiếp khách nên thân thiện và thuận tiện.",
+      "points": 20
+    },
+    {
+      "id": "NTH114",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Vì sao nên lưu lại ý tưởng hoặc bố cục Trang Viên yêu thích?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để dễ chỉnh sửa và phát triển thiết kế về sau"
+        },
+        {
+          "id": "B",
+          "text": "Để mở khóa kỹ năng"
+        },
+        {
+          "id": "C",
+          "text": "Để tăng cấp nhân vật"
+        },
+        {
+          "id": "D",
+          "text": "Để đổi máy chủ"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Ghi lại ý tưởng giúp duy trì định hướng trang trí.",
+      "points": 10
+    },
+    {
+      "id": "NTH115",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Nếu muốn Trang Viên mang phong cách cổ phong, lựa chọn nào phù hợp?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Vật liệu, màu sắc và đồ trang trí đồng điệu với kiến trúc cổ"
+        },
+        {
+          "id": "B",
+          "text": "Biển quảng cáo neon dày đặc"
+        },
+        {
+          "id": "C",
+          "text": "Nội thất công nghiệp hiện đại"
+        },
+        {
+          "id": "D",
+          "text": "Bố cục nhà kho"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Chọn chi tiết đồng bộ giúp chủ đề cổ phong rõ nét.",
+      "points": 20
+    },
+    {
+      "id": "NTH116",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Một thiết kế đẹp nhưng khó di chuyển có phải thiết kế tốt không?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Có, nếu dùng màu sáng"
+        },
+        {
+          "id": "B",
+          "text": "Không, cần cân bằng thẩm mỹ và công năng"
+        },
+        {
+          "id": "C",
+          "text": "Có, miễn là nhiều đồ"
+        },
+        {
+          "id": "D",
+          "text": "Có, nếu đặt vật phẩm hiếm"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Không gian đẹp vẫn nên thuận tiện khi sử dụng.",
+      "points": 10
+    },
+    {
+      "id": "NTH117",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Khi dùng nhiều tầng hoặc độ cao khác nhau trong công trình, cần chú ý gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Kết nối lối đi và tính hợp lý của bố cục"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ quan tâm màu mái"
+        },
+        {
+          "id": "C",
+          "text": "Chặn cầu thang"
+        },
+        {
+          "id": "D",
+          "text": "Không cần lối tiếp cận"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Kết nối hợp lý giúp công trình có tính sử dụng.",
+      "points": 20
+    },
+    {
+      "id": "NTH118",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Hoạt động xã giao trong game có thể giúp người chơi điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Bỏ qua tất cả nhiệm vụ"
+        },
+        {
+          "id": "B",
+          "text": "Tự động nhận mọi trang bị"
+        },
+        {
+          "id": "C",
+          "text": "Không cần phối hợp"
+        },
+        {
+          "id": "D",
+          "text": "Kết bạn, tìm đồng đội và xây dựng cộng đồng"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Tương tác xã hội là một phần trải nghiệm của game.",
+      "points": 10
+    },
+    {
+      "id": "NTH119",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Khi tổ chức cuộc thi Trang Viên, tiêu chí nào hợp lý?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Cấp độ Boss đã hạ"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ số sát thương nhân vật"
+        },
+        {
+          "id": "C",
+          "text": "Chủ đề, sáng tạo, bố cục và tính thẩm mỹ"
+        },
+        {
+          "id": "D",
+          "text": "Số lần tham gia PvP"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Tiêu chí nên phù hợp với nội dung thi thiết kế.",
+      "points": 20
+    },
+    {
+      "id": "NTH120",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Một bức ảnh Trang Viên đẹp thường cần điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Nhân vật đứng ngoài khung"
+        },
+        {
+          "id": "B",
+          "text": "Chụp khi màn hình bị rung"
+        },
+        {
+          "id": "C",
+          "text": "Bố cục rõ, ánh sáng phù hợp và góc chụp tốt"
+        },
+        {
+          "id": "D",
+          "text": "Giao diện che kín chủ thể"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Ba yếu tố này giúp hình ảnh dễ nhìn và có điểm nhấn.",
+      "points": 10
+    },
+    {
+      "id": "NTH121",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Khi đến thăm công trình của người khác, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Spam trò chuyện"
+        },
+        {
+          "id": "B",
+          "text": "Phá hoại hoặc quấy rối"
+        },
+        {
+          "id": "C",
+          "text": "Tôn trọng công sức thiết kế và góp ý lịch sự"
+        },
+        {
+          "id": "D",
+          "text": "Yêu cầu thông tin tài khoản"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Văn hóa cộng đồng giúp hoạt động giao lưu vui vẻ hơn.",
+      "points": 10
+    },
+    {
+      "id": "NTH122",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Nếu muốn khu vực chụp ảnh có chiều sâu, nên bố trí gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Mọi vật thể trên cùng một đường"
+        },
+        {
+          "id": "B",
+          "text": "Che toàn bộ hậu cảnh"
+        },
+        {
+          "id": "C",
+          "text": "Tiền cảnh, trung cảnh và hậu cảnh"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ một bức tường phẳng"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Các lớp không gian tạo cảm giác chiều sâu cho khung hình.",
+      "points": 30
+    },
+    {
+      "id": "NTH123",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "expert",
+      "questionType": "mixed",
+      "question": "Khi phối màu cho một căn phòng, lựa chọn nào thường dễ hài hòa?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ dùng màu tương phản ngẫu nhiên"
+        },
+        {
+          "id": "B",
+          "text": "Không quan tâm ánh sáng"
+        },
+        {
+          "id": "C",
+          "text": "Một màu chủ đạo kết hợp màu phụ và màu nhấn"
+        },
+        {
+          "id": "D",
+          "text": "Dùng mọi màu với cường độ tối đa"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Phân cấp màu giúp căn phòng có trọng tâm thị giác.",
+      "points": 20
+    },
+    {
+      "id": "NTH124",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "expert",
+      "questionType": "mixed",
+      "question": "Trang Viên có thể trở thành nơi nào cho bang hội?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Nơi thay thế hoàn toàn đấu trường"
+        },
+        {
+          "id": "B",
+          "text": "Không gian gặp mặt, chụp ảnh và sinh hoạt cộng đồng"
+        },
+        {
+          "id": "C",
+          "text": "Nơi duy nhất để đánh Boss"
+        },
+        {
+          "id": "D",
+          "text": "Nơi tăng cấp nhân vật tức thì"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Không gian cá nhân có thể được dùng cho hoạt động giao lưu.",
+      "points": 10
+    },
+    {
+      "id": "NTH125",
+      "category": "trang_vien_va_doi_song",
+      "difficulty": "expert",
+      "questionType": "mixed",
+      "question": "Điều gì quan trọng nhất khi chia sẻ ảnh Trang Viên lên cộng đồng?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Nhận công của người khác"
+        },
+        {
+          "id": "B",
+          "text": "Chỉnh sửa ảnh để gây hiểu lầm"
+        },
+        {
+          "id": "C",
+          "text": "Công khai thông tin riêng tư"
+        },
+        {
+          "id": "D",
+          "text": "Tôn trọng người chơi khác và ghi rõ nếu dùng ý tưởng tham khảo"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Chia sẻ văn minh giúp cộng đồng sáng tạo tích cực.",
+      "points": 10
+    },
+    {
+      "id": "NTH126",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Khi muốn tăng sức mạnh nhân vật, nên xem xét những yếu tố nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ số bạn bè"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ màu giao diện"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ tên nhân vật"
+        },
+        {
+          "id": "D",
+          "text": "Trang bị, thuộc tính, kỹ năng và cách xây dựng"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Sức mạnh đến từ nhiều hệ thống phát triển kết hợp.",
+      "points": 10
+    },
+    {
+      "id": "NTH127",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Trước khi thay một món trang bị, điều gì nên được so sánh?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Thuộc tính và hiệu quả phù hợp với lối chơi"
+        },
+        {
+          "id": "B",
+          "text": "Thời điểm đăng nhập"
+        },
+        {
+          "id": "C",
+          "text": "Tên người bán"
+        },
+        {
+          "id": "D",
+          "text": "Màu nền biểu tượng"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Trang bị tốt là trang bị phù hợp với nhu cầu nhân vật.",
+      "points": 10
+    },
+    {
+      "id": "NTH128",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Một món đồ có lực chiến cao hơn nhưng thuộc tính không phù hợp thì sao?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Không thể trang bị"
+        },
+        {
+          "id": "B",
+          "text": "Chưa chắc là lựa chọn tốt nhất"
+        },
+        {
+          "id": "C",
+          "text": "Tự động đổi môn phái"
+        },
+        {
+          "id": "D",
+          "text": "Luôn luôn tốt hơn"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Chỉ số tổng không phản ánh toàn bộ hiệu quả của một món đồ.",
+      "points": 20
+    },
+    {
+      "id": "NTH129",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Khi nâng cấp trang bị, nên làm gì trước?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Kiểm tra nguyên liệu, chi phí và mức tăng dự kiến"
+        },
+        {
+          "id": "B",
+          "text": "Bán hết nguyên liệu"
+        },
+        {
+          "id": "C",
+          "text": "Bỏ qua mô tả"
+        },
+        {
+          "id": "D",
+          "text": "Nâng cấp ngẫu nhiên mọi món"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Chuẩn bị giúp sử dụng tài nguyên hiệu quả.",
+      "points": 10
+    },
+    {
+      "id": "NTH130",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Nguyên liệu hiếm nên được sử dụng như thế nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Vứt bỏ để trống túi"
+        },
+        {
+          "id": "B",
+          "text": "Ưu tiên cho mục tiêu nâng cấp có giá trị lâu dài"
+        },
+        {
+          "id": "C",
+          "text": "Dùng ngay khi nhận được"
+        },
+        {
+          "id": "D",
+          "text": "Đổi lấy vật phẩm không cần thiết"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Tài nguyên hiếm nên được phân bổ có kế hoạch.",
+      "points": 20
+    },
+    {
+      "id": "NTH131",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Khi đạt cấp độ mới, người chơi nên kiểm tra gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Xóa danh sách bạn bè"
+        },
+        {
+          "id": "B",
+          "text": "Kỹ năng, nhiệm vụ, trang bị và nội dung được mở khóa"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ đổi kiểu tóc"
+        },
+        {
+          "id": "D",
+          "text": "Bỏ qua thông báo"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Cấp độ mới có thể mở thêm hệ thống hoặc hoạt động.",
+      "points": 10
+    },
+    {
+      "id": "NTH132",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Theo thông báo cập nhật 2.1.1, hệ thống Thần Khí được mở ở điều kiện nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Mua vật phẩm trong cửa hàng"
+        },
+        {
+          "id": "B",
+          "text": "Tham gia một trận Bang chiến"
+        },
+        {
+          "id": "C",
+          "text": "Đạt cấp 20 và đổi ngoại trang"
+        },
+        {
+          "id": "D",
+          "text": "Đạt cấp 71 và hoàn thành nhiệm vụ Phù Quang Diệu Thế"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Thông báo cập nhật nêu điều kiện cấp 71 và nhiệm vụ Phù Quang Diệu Thế.",
+      "points": 30
+    },
+    {
+      "id": "NTH133",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Điểm Thiên Cơ trong hệ thống Thần Khí dùng để làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Mở thêm danh sách bạn bè"
+        },
+        {
+          "id": "B",
+          "text": "Trang trí Trang Viên"
+        },
+        {
+          "id": "C",
+          "text": "Đổi tên nhân vật"
+        },
+        {
+          "id": "D",
+          "text": "Tăng cấp độ Thần Khí"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Thông báo cập nhật mô tả Điểm Thiên Cơ được dùng để tăng cấp Thần Khí.",
+      "points": 20
+    },
+    {
+      "id": "NTH134",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Theo thông báo cập nhật 2.1.1, Thiên Cơ Châu có thể nhận qua nguồn nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ qua nạp tiền"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ qua đổi tên"
+        },
+        {
+          "id": "C",
+          "text": "Phó bản, cốt truyện và thám hiểm"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ qua chụp ảnh"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thông báo nêu các nguồn miễn phí gồm phó bản, cốt truyện và thám hiểm.",
+      "points": 30
+    },
+    {
+      "id": "NTH135",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi có nhiều hướng phát triển thuộc tính, nên chọn dựa trên điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chọn theo màu biểu tượng"
+        },
+        {
+          "id": "B",
+          "text": "Chọn theo tên nhân vật"
+        },
+        {
+          "id": "C",
+          "text": "Vai trò và nội dung bạn thường tham gia"
+        },
+        {
+          "id": "D",
+          "text": "Chọn ngẫu nhiên mỗi ngày"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Hướng phát triển nên phục vụ lối chơi thực tế.",
+      "points": 20
+    },
+    {
+      "id": "NTH136",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Một nhân vật thường xuyên tham gia phó bản nên ưu tiên điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ số trang trí"
+        },
+        {
+          "id": "B",
+          "text": "Thành tích chụp ảnh"
+        },
+        {
+          "id": "C",
+          "text": "Số lượng lời mời kết bạn"
+        },
+        {
+          "id": "D",
+          "text": "Hiệu quả PvE và khả năng sống sót theo cơ chế"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Trang bị và thuộc tính nên phù hợp với nội dung PvE.",
+      "points": 20
+    },
+    {
+      "id": "NTH137",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Một nhân vật thường xuyên tham gia đấu trường nên chú ý gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ tốc độ chế tạo"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ số trang trí"
+        },
+        {
+          "id": "C",
+          "text": "Khả năng đối kháng, khống chế, sinh tồn và cơ động"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ phần thưởng Trang Viên"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "PvP cần cân nhắc nhiều yếu tố ngoài sát thương thuần.",
+      "points": 20
+    },
+    {
+      "id": "NTH138",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Vì sao nên đọc mô tả nội công hoặc hiệu ứng trang bị?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để hiểu điều kiện kích hoạt và cách kết hợp"
+        },
+        {
+          "id": "B",
+          "text": "Để đổi máy chủ"
+        },
+        {
+          "id": "C",
+          "text": "Để tăng dung lượng ổ cứng"
+        },
+        {
+          "id": "D",
+          "text": "Để mở khóa trò chuyện"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Hiểu hiệu ứng giúp xây dựng nhân vật đúng mục tiêu.",
+      "points": 20
+    },
+    {
+      "id": "NTH139",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi nhận được trang bị mới, nên làm gì với món cũ?",
+      "options": [
+        {
+          "id": "A",
+          "text": "So sánh, cân nhắc thay thế hoặc giữ làm phương án dự phòng nếu cần"
+        },
+        {
+          "id": "B",
+          "text": "Vứt bỏ ngay không kiểm tra"
+        },
+        {
+          "id": "C",
+          "text": "Giao mật khẩu cho người khác"
+        },
+        {
+          "id": "D",
+          "text": "Xóa nhân vật"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "So sánh kỹ trước khi thay giúp tránh mất lựa chọn hữu ích.",
+      "points": 10
+    },
+    {
+      "id": "NTH140",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Nếu thiếu nguyên liệu nâng cấp, cách xử lý phù hợp là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Xóa kho"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ toàn bộ nhiệm vụ"
+        },
+        {
+          "id": "C",
+          "text": "Kiểm tra nguồn kiếm và lên kế hoạch thu thập"
+        },
+        {
+          "id": "D",
+          "text": "Mua mọi thứ bất kể giá"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Biết nguồn nguyên liệu giúp tối ưu thời gian và tài nguyên.",
+      "points": 10
+    },
+    {
+      "id": "NTH141",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Vì sao không nên chạy theo mọi xu hướng xây dựng nhân vật?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Mỗi người có trang bị, kỹ năng và mục tiêu khác nhau"
+        },
+        {
+          "id": "B",
+          "text": "Vì xu hướng luôn sai"
+        },
+        {
+          "id": "C",
+          "text": "Vì không thể thay đổi kỹ năng"
+        },
+        {
+          "id": "D",
+          "text": "Vì mọi nhân vật giống hệt nhau"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Một cấu hình mạnh với người khác chưa chắc phù hợp với bạn.",
+      "points": 20
+    },
+    {
+      "id": "NTH142",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Khi thay đổi kỹ năng, điều gì cần kiểm tra?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Số lượng ảnh chụp"
+        },
+        {
+          "id": "B",
+          "text": "Tên bang hội"
+        },
+        {
+          "id": "C",
+          "text": "Sự phối hợp giữa kỹ năng, thời gian hồi và mục tiêu sử dụng"
+        },
+        {
+          "id": "D",
+          "text": "Màu nền giao diện"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Bộ kỹ năng cần vận hành tốt trong tình huống dự kiến.",
+      "points": 20
+    },
+    {
+      "id": "NTH143",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Một món trang bị có hiệu ứng kích hoạt theo điều kiện nên được đánh giá thế nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chọn vì biểu tượng đẹp"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ qua hiệu ứng"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ nhìn tên món đồ"
+        },
+        {
+          "id": "D",
+          "text": "Xem điều kiện có thường xảy ra trong lối chơi của bạn không"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Hiệu ứng chỉ có giá trị cao nếu bạn tận dụng được điều kiện kích hoạt.",
+      "points": 30
+    },
+    {
+      "id": "NTH144",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Khi nhân vật yếu hơn yêu cầu phó bản, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tháo trang bị"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ qua cơ chế"
+        },
+        {
+          "id": "C",
+          "text": "Cố vào liên tục mà không chuẩn bị"
+        },
+        {
+          "id": "D",
+          "text": "Nâng cấp phù hợp hoặc tham gia nội dung vừa sức trước"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Tăng sức mạnh và luyện cơ chế giúp vượt thử thách ổn định hơn.",
+      "points": 10
+    },
+    {
+      "id": "NTH145",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Tại sao cần quản lý túi đồ thường xuyên?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để đổi môn phái"
+        },
+        {
+          "id": "B",
+          "text": "Để có chỗ nhận vật phẩm và tránh giữ đồ không cần thiết"
+        },
+        {
+          "id": "C",
+          "text": "Để tăng sát thương trực tiếp"
+        },
+        {
+          "id": "D",
+          "text": "Để mở bản đồ"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Túi đồ gọn giúp quản lý vật phẩm thuận tiện.",
+      "points": 10
+    },
+    {
+      "id": "NTH146",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Khi có nhiều vật phẩm cùng loại, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Kiểm tra công dụng và giới hạn trước khi sử dụng hoặc phân giải"
+        },
+        {
+          "id": "B",
+          "text": "Dùng tất cả ngay"
+        },
+        {
+          "id": "C",
+          "text": "Gửi cho người lạ"
+        },
+        {
+          "id": "D",
+          "text": "Bán mọi thứ không đọc mô tả"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Một số vật phẩm có giá trị theo sự kiện hoặc hệ thống nâng cấp.",
+      "points": 20
+    },
+    {
+      "id": "NTH147",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Lực chiến có nên là tiêu chí duy nhất để đánh giá nhân vật?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Không, cần xem cả kỹ năng và hiệu quả trong nội dung thực tế"
+        },
+        {
+          "id": "B",
+          "text": "Có, vì quyết định mọi trận đấu"
+        },
+        {
+          "id": "C",
+          "text": "Có, luôn chính xác tuyệt đối"
+        },
+        {
+          "id": "D",
+          "text": "Có, vì không liên quan trang bị"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Lực chiến chỉ là một chỉ số tổng quát, không thay thế đánh giá thực chiến.",
+      "points": 10
+    },
+    {
+      "id": "NTH148",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "expert",
+      "questionType": "knowledge",
+      "question": "Khi cập nhật mùa giải, người chơi nên kiểm tra gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Xóa toàn bộ vật phẩm"
+        },
+        {
+          "id": "B",
+          "text": "Bỏ qua thông báo"
+        },
+        {
+          "id": "C",
+          "text": "Thay đổi hệ thống, phần thưởng, xếp hạng và quy tắc mùa"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ đổi ảnh đại diện"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Mùa giải mới có thể thay đổi nhiều hệ thống và tiến trình.",
+      "points": 20
+    },
+    {
+      "id": "NTH149",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "expert",
+      "questionType": "knowledge",
+      "question": "Vì sao nên lưu lại cấu hình kỹ năng hoặc trang bị đang hiệu quả?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để tăng cấp ngay lập tức"
+        },
+        {
+          "id": "B",
+          "text": "Để đổi máy chủ"
+        },
+        {
+          "id": "C",
+          "text": "Để dễ khôi phục hoặc so sánh khi thử cách xây dựng mới"
+        },
+        {
+          "id": "D",
+          "text": "Để nhận tiền tệ"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Lưu cấu hình giúp thử nghiệm mà không mất phương án cũ.",
+      "points": 20
+    },
+    {
+      "id": "NTH150",
+      "category": "trang_bi_va_phat_trien_nhan_vat",
+      "difficulty": "expert",
+      "questionType": "knowledge",
+      "question": "Khi đọc hướng dẫn xây dựng nhân vật trên mạng, nên kiểm tra gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Số lượt thích duy nhất"
+        },
+        {
+          "id": "B",
+          "text": "Phiên bản, thời điểm cập nhật và mục tiêu nội dung"
+        },
+        {
+          "id": "C",
+          "text": "Màu chữ bài viết"
+        },
+        {
+          "id": "D",
+          "text": "Tên tài khoản đăng bài"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Hướng dẫn có thể lỗi thời khi game cập nhật cân bằng.",
+      "points": 30
+    },
+    {
+      "id": "NTH151",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Khi tham gia sự kiện giới hạn thời gian, việc nào nên làm trước?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Bỏ qua thông báo"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ đổi ngoại trang"
+        },
+        {
+          "id": "C",
+          "text": "Đợi đến ngày cuối mới xem"
+        },
+        {
+          "id": "D",
+          "text": "Đọc thời gian, điều kiện và danh sách phần thưởng"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Nắm thời hạn và điều kiện giúp tránh bỏ lỡ phần thưởng.",
+      "points": 10
+    },
+    {
+      "id": "NTH152",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Trước khi mua vật phẩm trong cửa hàng, nên kiểm tra gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Giá, công dụng và nhu cầu thực tế"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ màu biểu tượng"
+        },
+        {
+          "id": "C",
+          "text": "Tên người đang online"
+        },
+        {
+          "id": "D",
+          "text": "Số lượng ảnh chụp"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Kiểm tra trước giúp tránh tiêu tài nguyên lãng phí.",
+      "points": 10
+    },
+    {
+      "id": "NTH153",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Một vật phẩm có giới hạn mua theo tuần nên được xử lý thế nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Theo dõi thời gian làm mới và ưu tiên món cần thiết"
+        },
+        {
+          "id": "B",
+          "text": "Đợi đến khi hết hạn"
+        },
+        {
+          "id": "C",
+          "text": "Mua ngẫu nhiên"
+        },
+        {
+          "id": "D",
+          "text": "Không bao giờ kiểm tra"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Giới hạn tuần cần được quản lý theo nhu cầu.",
+      "points": 20
+    },
+    {
+      "id": "NTH154",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Khi giao dịch với người chơi khác, điều gì cần được xác nhận?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tên vật phẩm, số lượng và điều kiện trao đổi"
+        },
+        {
+          "id": "B",
+          "text": "Số bạn bè của người bán"
+        },
+        {
+          "id": "C",
+          "text": "Kênh trò chuyện"
+        },
+        {
+          "id": "D",
+          "text": "Ngoại trang của người bán"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Kiểm tra nội dung giao dịch giúp tránh nhầm lẫn.",
+      "points": 10
+    },
+    {
+      "id": "NTH155",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Nếu nhận được lời mời giao dịch đáng ngờ, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Cung cấp mật khẩu"
+        },
+        {
+          "id": "B",
+          "text": "Nhấn xác nhận liên tục"
+        },
+        {
+          "id": "C",
+          "text": "Từ chối và kiểm tra thông tin qua kênh đáng tin cậy"
+        },
+        {
+          "id": "D",
+          "text": "Chia sẻ mã xác thực"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Không chia sẻ thông tin tài khoản hoặc mã bảo mật.",
+      "points": 10
+    },
+    {
+      "id": "NTH156",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Tài nguyên khóa thường nên được hiểu thế nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Là tài nguyên có giới hạn sử dụng hoặc giao dịch theo quy định game"
+        },
+        {
+          "id": "B",
+          "text": "Luôn có thể bán tự do"
+        },
+        {
+          "id": "C",
+          "text": "Không có giá trị"
+        },
+        {
+          "id": "D",
+          "text": "Luôn đổi thành tiền thật"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Cần đọc quy tắc vật phẩm để biết phạm vi sử dụng.",
+      "points": 20
+    },
+    {
+      "id": "NTH157",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "easy",
+      "questionType": "mixed",
+      "question": "Khi có nhiều nhiệm vụ sự kiện, cách làm hiệu quả là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ làm nhiệm vụ khó nhất"
+        },
+        {
+          "id": "B",
+          "text": "Ưu tiên nhiệm vụ có thời hạn ngắn và có thể kết hợp"
+        },
+        {
+          "id": "C",
+          "text": "Làm ngẫu nhiên"
+        },
+        {
+          "id": "D",
+          "text": "Bỏ hết nhiệm vụ"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Sắp xếp nhiệm vụ giúp tiết kiệm thời gian.",
+      "points": 20
+    },
+    {
+      "id": "NTH158",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Phần thưởng đăng nhập thường khuyến khích điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ đổi môn phái"
+        },
+        {
+          "id": "B",
+          "text": "Chỉ mua ngoại trang"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ chơi PvP"
+        },
+        {
+          "id": "D",
+          "text": "Duy trì đăng nhập trong thời gian sự kiện"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Phần thưởng đăng nhập gắn với mốc ngày hoặc chuỗi đăng nhập.",
+      "points": 10
+    },
+    {
+      "id": "NTH159",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Khi sự kiện có nhiều mốc tích lũy, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Không xem điều kiện"
+        },
+        {
+          "id": "B",
+          "text": "Theo dõi tiến độ và tính toán thời gian hoàn thành"
+        },
+        {
+          "id": "C",
+          "text": "Đợi sự kiện kết thúc"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ nhận mốc cuối"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Theo dõi tiến độ giúp nhận đủ phần thưởng có thể đạt.",
+      "points": 10
+    },
+    {
+      "id": "NTH160",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Một ưu đãi trong cửa hàng có thật sự cần thiết không?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Cần đối chiếu nhu cầu và ngân sách trước khi mua"
+        },
+        {
+          "id": "B",
+          "text": "Mua vì người khác mua"
+        },
+        {
+          "id": "C",
+          "text": "Luôn phải mua"
+        },
+        {
+          "id": "D",
+          "text": "Không cần đọc nội dung"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Quyết định chi tiêu nên dựa trên nhu cầu cá nhân.",
+      "points": 10
+    },
+    {
+      "id": "NTH161",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Khi thấy thông báo cập nhật bảo trì, người chơi nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tiếp tục vào hoạt động dài mà không tính thời gian"
+        },
+        {
+          "id": "B",
+          "text": "Xóa trò chơi"
+        },
+        {
+          "id": "C",
+          "text": "Chia sẻ mật khẩu"
+        },
+        {
+          "id": "D",
+          "text": "Đọc thời gian và sắp xếp hoạt động trước khi bảo trì"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Biết lịch bảo trì giúp tránh gián đoạn hoạt động.",
+      "points": 10
+    },
+    {
+      "id": "NTH162",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Nguồn thông tin nào đáng tin cậy nhất khi kiểm tra lịch cập nhật?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Bình luận không dẫn nguồn"
+        },
+        {
+          "id": "B",
+          "text": "Ảnh chụp không rõ ngày"
+        },
+        {
+          "id": "C",
+          "text": "Kênh thông báo chính thức của nhà phát hành"
+        },
+        {
+          "id": "D",
+          "text": "Tin nhắn lạ yêu cầu đăng nhập"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thông báo chính thức là nguồn phù hợp để xác nhận lịch và nội dung cập nhật.",
+      "points": 10
+    },
+    {
+      "id": "NTH163",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Nếu một phần thưởng có thời hạn nhận, cần chú ý điều gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Màu nền phần thưởng"
+        },
+        {
+          "id": "B",
+          "text": "Tên nhân vật bạn bè"
+        },
+        {
+          "id": "C",
+          "text": "Hạn cuối nhận thưởng và điều kiện hoàn thành"
+        },
+        {
+          "id": "D",
+          "text": "Số lần chụp ảnh"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Hoàn thành nhiệm vụ chưa chắc đồng nghĩa đã nhận thưởng; cần kiểm tra hạn nhận.",
+      "points": 20
+    },
+    {
+      "id": "NTH164",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Khi nhận vật phẩm từ thư trong game, nên kiểm tra gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Vị trí Trang Viên"
+        },
+        {
+          "id": "B",
+          "text": "Danh sách bang hội"
+        },
+        {
+          "id": "C",
+          "text": "Người gửi, nội dung và thời hạn đính kèm"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ số sát thương"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thư có thể chứa phần thưởng hoặc thông báo quan trọng.",
+      "points": 10
+    },
+    {
+      "id": "NTH165",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "medium",
+      "questionType": "mixed",
+      "question": "Một người chơi muốn tiết kiệm tài nguyên nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Nâng mọi thứ cùng lúc"
+        },
+        {
+          "id": "B",
+          "text": "Mua vật phẩm trùng lặp"
+        },
+        {
+          "id": "C",
+          "text": "Dùng hết tài nguyên ngay"
+        },
+        {
+          "id": "D",
+          "text": "Ưu tiên mục tiêu rõ ràng và tránh nâng cấp không cần thiết"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Kế hoạch sử dụng tài nguyên giúp tiến triển ổn định.",
+      "points": 20
+    },
+    {
+      "id": "NTH166",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Khi thấy quảng cáo nhận quà yêu cầu đăng nhập qua đường dẫn lạ, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Không truy cập và kiểm tra thông báo chính thức"
+        },
+        {
+          "id": "B",
+          "text": "Tải tệp không rõ nguồn"
+        },
+        {
+          "id": "C",
+          "text": "Nhập thông tin tài khoản"
+        },
+        {
+          "id": "D",
+          "text": "Gửi mã xác thực"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Đường dẫn giả mạo có thể dẫn đến mất tài khoản.",
+      "points": 10
+    },
+    {
+      "id": "NTH167",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Vì sao cần giữ kín mật khẩu và mã xác thực?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để đổi ngoại trang"
+        },
+        {
+          "id": "B",
+          "text": "Để bảo vệ tài khoản khỏi truy cập trái phép"
+        },
+        {
+          "id": "C",
+          "text": "Để mở khóa phó bản"
+        },
+        {
+          "id": "D",
+          "text": "Để tăng lực chiến"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Thông tin bảo mật không nên chia sẻ với bất kỳ ai.",
+      "points": 10
+    },
+    {
+      "id": "NTH168",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Khi phát hiện lỗi giao dịch hoặc mất vật phẩm, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đăng mật khẩu lên nhóm"
+        },
+        {
+          "id": "B",
+          "text": "Mua lại từ người lạ ngay"
+        },
+        {
+          "id": "C",
+          "text": "Xóa toàn bộ lịch sử"
+        },
+        {
+          "id": "D",
+          "text": "Ghi lại thông tin và liên hệ hỗ trợ chính thức"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Bằng chứng và kênh hỗ trợ chính thức giúp xử lý sự cố an toàn.",
+      "points": 20
+    },
+    {
+      "id": "NTH169",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Khi có nhiều hoạt động cùng thời điểm, cách chọn hợp lý là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tham gia tất cả cùng lúc"
+        },
+        {
+          "id": "B",
+          "text": "Ưu tiên hoạt động phù hợp mục tiêu và giới hạn thời gian"
+        },
+        {
+          "id": "C",
+          "text": "Chọn ngẫu nhiên"
+        },
+        {
+          "id": "D",
+          "text": "Không tham gia hoạt động nào"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Sắp xếp ưu tiên giúp tối ưu thời gian chơi.",
+      "points": 10
+    },
+    {
+      "id": "NTH170",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Khi trao đổi thông tin cập nhật trong bang, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Xóa ngày đăng"
+        },
+        {
+          "id": "B",
+          "text": "Chia sẻ tin đồn như sự thật"
+        },
+        {
+          "id": "C",
+          "text": "Không kiểm tra phiên bản"
+        },
+        {
+          "id": "D",
+          "text": "Đính kèm nguồn và ghi rõ thời điểm thông tin"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Thông tin có nguồn và thời điểm rõ ràng hạn chế hiểu nhầm.",
+      "points": 20
+    },
+    {
+      "id": "NTH171",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Một vật phẩm sắp hết hạn sử dụng nên được xử lý ra sao?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Kiểm tra công dụng và dùng trước hạn nếu cần"
+        },
+        {
+          "id": "B",
+          "text": "Để hết hạn dù đang cần"
+        },
+        {
+          "id": "C",
+          "text": "Chuyển mật khẩu cho bạn"
+        },
+        {
+          "id": "D",
+          "text": "Bỏ qua thông báo"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Vật phẩm giới hạn thời gian cần được quản lý chủ động.",
+      "points": 10
+    },
+    {
+      "id": "NTH172",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "hard",
+      "questionType": "mixed",
+      "question": "Nếu không hiểu điều kiện đổi thưởng, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Cung cấp tài khoản cho người lạ"
+        },
+        {
+          "id": "B",
+          "text": "Đọc mô tả hoặc hỏi hỗ trợ cộng đồng đáng tin cậy"
+        },
+        {
+          "id": "C",
+          "text": "Bỏ qua toàn bộ"
+        },
+        {
+          "id": "D",
+          "text": "Đổi thử mọi vật phẩm"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Hiểu điều kiện trước khi đổi giúp tránh lãng phí.",
+      "points": 10
+    },
+    {
+      "id": "NTH173",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "expert",
+      "questionType": "mixed",
+      "question": "Vì sao nên chụp lại thông tin lỗi khi gửi hỗ trợ?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Để tăng sát thương"
+        },
+        {
+          "id": "B",
+          "text": "Giúp mô tả vấn đề và cung cấp dữ liệu đối chiếu"
+        },
+        {
+          "id": "C",
+          "text": "Để đổi tên nhân vật"
+        },
+        {
+          "id": "D",
+          "text": "Để nhận ngoại trang"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Ảnh và thời điểm lỗi giúp bộ phận hỗ trợ kiểm tra chính xác hơn.",
+      "points": 20
+    },
+    {
+      "id": "NTH174",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "expert",
+      "questionType": "mixed",
+      "question": "Khi một sự kiện được gia hạn, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tin vào lịch cũ"
+        },
+        {
+          "id": "B",
+          "text": "Không cần đọc cập nhật"
+        },
+        {
+          "id": "C",
+          "text": "Kiểm tra thông báo mới và thời hạn được xác nhận"
+        },
+        {
+          "id": "D",
+          "text": "Tự suy đoán thời gian"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thông báo mới nhất mới phản ánh thời hạn hiện tại.",
+      "points": 20
+    },
+    {
+      "id": "NTH175",
+      "category": "kinh_te_giao_dich_va_su_kien",
+      "difficulty": "expert",
+      "questionType": "mixed",
+      "question": "Một bang hội muốn chia sẻ quà sự kiện công bằng nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Phân phát tùy hứng"
+        },
+        {
+          "id": "B",
+          "text": "Công khai tiêu chí và cách phân phối trước"
+        },
+        {
+          "id": "C",
+          "text": "Không thông báo"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ ưu tiên người thân"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Tiêu chí minh bạch giúp tránh tranh cãi trong cộng đồng.",
+      "points": 20
+    },
+    {
+      "id": "NTH176",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Khi một thành viên mới gia nhập bang, cách chào đón tốt nhất là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Giới thiệu quy định và hỗ trợ họ làm quen"
+        },
+        {
+          "id": "B",
+          "text": "Chế giễu vì chưa biết cơ chế"
+        },
+        {
+          "id": "C",
+          "text": "Yêu cầu rời bang"
+        },
+        {
+          "id": "D",
+          "text": "Không cho tham gia hoạt động"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Môi trường thân thiện giúp thành viên mới hòa nhập.",
+      "points": 10
+    },
+    {
+      "id": "NTH177",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Nếu đồng đội mắc lỗi trong phó bản, phản ứng nào hữu ích nhất?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Spam tin nhắn trách móc"
+        },
+        {
+          "id": "B",
+          "text": "Giải thích cơ chế và cùng tìm cách khắc phục"
+        },
+        {
+          "id": "C",
+          "text": "Rời đội ngay lập tức"
+        },
+        {
+          "id": "D",
+          "text": "Công kích cá nhân"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Góp ý cụ thể giúp cả đội tiến bộ.",
+      "points": 10
+    },
+    {
+      "id": "NTH178",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Khi tranh luận về cách xây dựng nhân vật, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đưa ra lý do và tôn trọng trải nghiệm khác nhau"
+        },
+        {
+          "id": "B",
+          "text": "Công kích người khác"
+        },
+        {
+          "id": "C",
+          "text": "Phát tán thông tin cá nhân"
+        },
+        {
+          "id": "D",
+          "text": "Khẳng định ý kiến mình luôn đúng"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Trao đổi văn minh giúp cộng đồng học hỏi.",
+      "points": 10
+    },
+    {
+      "id": "NTH179",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Một thành viên đăng ảnh Trang Viên đẹp, phản hồi nào phù hợp?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đăng thông tin riêng tư"
+        },
+        {
+          "id": "B",
+          "text": "Khen điểm sáng tạo và góp ý lịch sự nếu được hỏi"
+        },
+        {
+          "id": "C",
+          "text": "Chê bai ngoại hình người chơi"
+        },
+        {
+          "id": "D",
+          "text": "Spam quảng cáo"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Tôn trọng công sức sáng tạo giúp cộng đồng tích cực.",
+      "points": 10
+    },
+    {
+      "id": "NTH180",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Khi nhận được lời mời kết bạn từ người lạ, bạn nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Cài tệp họ gửi"
+        },
+        {
+          "id": "B",
+          "text": "Kiểm tra ngữ cảnh và không chia sẻ thông tin nhạy cảm"
+        },
+        {
+          "id": "C",
+          "text": "Gửi mã xác thực"
+        },
+        {
+          "id": "D",
+          "text": "Gửi mật khẩu ngay"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Giữ an toàn tài khoản là ưu tiên khi giao tiếp trực tuyến.",
+      "points": 10
+    },
+    {
+      "id": "NTH181",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Nếu bang hội có lịch hoạt động cố định, thành viên nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tự ý thay đổi lịch"
+        },
+        {
+          "id": "B",
+          "text": "Theo dõi thông báo và phản hồi khi không thể tham gia"
+        },
+        {
+          "id": "C",
+          "text": "Đến muộn mà không báo"
+        },
+        {
+          "id": "D",
+          "text": "Spam kênh bang"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Thông tin rõ ràng giúp bang hội tổ chức hiệu quả.",
+      "points": 10
+    },
+    {
+      "id": "NTH182",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "easy",
+      "questionType": "knowledge",
+      "question": "Một người chơi liên tục hỏi lại cơ chế đã được hướng dẫn, cách xử lý tốt là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Gửi lại hướng dẫn ngắn hoặc nguồn tham khảo"
+        },
+        {
+          "id": "B",
+          "text": "Công khai thông tin cá nhân"
+        },
+        {
+          "id": "C",
+          "text": "Cấm họ hỏi"
+        },
+        {
+          "id": "D",
+          "text": "Chế giễu họ"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Kiên nhẫn và hướng dẫn rõ ràng tạo cộng đồng dễ chịu.",
+      "points": 10
+    },
+    {
+      "id": "NTH183",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi tổ chức mini game trong bang, điều gì giúp cuộc chơi công bằng?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ công bố kết quả"
+        },
+        {
+          "id": "B",
+          "text": "Thay luật giữa chừng"
+        },
+        {
+          "id": "C",
+          "text": "Luật rõ ràng, cách tính điểm minh bạch và thời gian thống nhất"
+        },
+        {
+          "id": "D",
+          "text": "Tự chọn người thắng"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Luật minh bạch giúp mọi người hiểu và tin kết quả.",
+      "points": 10
+    },
+    {
+      "id": "NTH184",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Nếu phát hiện người chơi có hành vi quấy rối, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đáp trả bằng cách quấy rối"
+        },
+        {
+          "id": "B",
+          "text": "Chia sẻ tài khoản"
+        },
+        {
+          "id": "C",
+          "text": "Sử dụng công cụ báo cáo và chặn phù hợp"
+        },
+        {
+          "id": "D",
+          "text": "Công khai thông tin cá nhân"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Công cụ báo cáo và chặn giúp xử lý hành vi không phù hợp.",
+      "points": 10
+    },
+    {
+      "id": "NTH185",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi chia sẻ hướng dẫn lên cộng đồng, điều gì nên được ghi rõ?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Phiên bản áp dụng và thời điểm cập nhật"
+        },
+        {
+          "id": "B",
+          "text": "Mật khẩu tài khoản"
+        },
+        {
+          "id": "C",
+          "text": "Chỉ tên người viết"
+        },
+        {
+          "id": "D",
+          "text": "Không cần nội dung"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Hướng dẫn có thể thay đổi sau các bản cập nhật.",
+      "points": 20
+    },
+    {
+      "id": "NTH186",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Một người chơi mới hỏi cách chọn môn phái, câu trả lời tốt nhất là gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ chọn theo ngoại trang"
+        },
+        {
+          "id": "B",
+          "text": "Nói môn phái khác đều vô dụng"
+        },
+        {
+          "id": "C",
+          "text": "Hỏi họ thích vai trò và phong cách chiến đấu nào"
+        },
+        {
+          "id": "D",
+          "text": "Bắt buộc chọn môn phái của mình"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Lựa chọn phù hợp sở thích giúp người mới có trải nghiệm tốt.",
+      "points": 10
+    },
+    {
+      "id": "NTH187",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Trong một buổi chụp ảnh bang hội, điều gì giúp ảnh đẹp hơn?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Che mặt nhau"
+        },
+        {
+          "id": "B",
+          "text": "Mỗi người đứng một nơi"
+        },
+        {
+          "id": "C",
+          "text": "Thống nhất vị trí, đội hình và thời điểm chụp"
+        },
+        {
+          "id": "D",
+          "text": "Di chuyển liên tục khi chụp"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Sắp xếp đội hình giúp bức ảnh có bố cục rõ.",
+      "points": 10
+    },
+    {
+      "id": "NTH188",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi hai thành viên bất đồng, cách giải quyết nào phù hợp?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Kích động tranh cãi"
+        },
+        {
+          "id": "B",
+          "text": "Kêu gọi công kích"
+        },
+        {
+          "id": "C",
+          "text": "Trao đổi bình tĩnh và nhờ quản lý bang hỗ trợ nếu cần"
+        },
+        {
+          "id": "D",
+          "text": "Đăng thông tin riêng tư"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Giải quyết bình tĩnh hạn chế xung đột lan rộng.",
+      "points": 10
+    },
+    {
+      "id": "NTH189",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Một lời mời tham gia hoạt động nên có thông tin nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Thời gian, nội dung, điều kiện và cách đăng ký"
+        },
+        {
+          "id": "B",
+          "text": "Thông tin cá nhân nhạy cảm"
+        },
+        {
+          "id": "C",
+          "text": "Mật khẩu tài khoản"
+        },
+        {
+          "id": "D",
+          "text": "Chỉ một biểu tượng cảm xúc"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Thông tin rõ ràng giúp thành viên chuẩn bị.",
+      "points": 10
+    },
+    {
+      "id": "NTH190",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "medium",
+      "questionType": "knowledge",
+      "question": "Khi người chơi chia sẻ mẹo chưa được kiểm chứng, nên phản hồi ra sao?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đánh dấu là kinh nghiệm cá nhân và kiểm tra trước khi áp dụng"
+        },
+        {
+          "id": "B",
+          "text": "Công kích người đăng"
+        },
+        {
+          "id": "C",
+          "text": "Khẳng định chắc chắn đúng"
+        },
+        {
+          "id": "D",
+          "text": "Lan truyền như thông báo chính thức"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Phân biệt mẹo cá nhân với thông tin xác nhận giúp tránh hiểu nhầm.",
+      "points": 20
+    },
+    {
+      "id": "NTH191",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Nếu bang hội muốn lưu trữ hướng dẫn cho thành viên mới, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chỉ gửi tin nhắn rời rạc"
+        },
+        {
+          "id": "B",
+          "text": "Không ghi ngày cập nhật"
+        },
+        {
+          "id": "C",
+          "text": "Tạo tài liệu có mục lục và cập nhật theo phiên bản"
+        },
+        {
+          "id": "D",
+          "text": "Xóa hướng dẫn cũ mà không báo"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Tài liệu có cấu trúc giúp người mới tìm thông tin dễ hơn.",
+      "points": 10
+    },
+    {
+      "id": "NTH192",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Khi một thành viên có thành tích tốt, phản hồi nào phù hợp?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Chúc mừng và ghi nhận đóng góp"
+        },
+        {
+          "id": "B",
+          "text": "Spam tranh cãi"
+        },
+        {
+          "id": "C",
+          "text": "Yêu cầu chia sẻ mật khẩu"
+        },
+        {
+          "id": "D",
+          "text": "Hạ thấp thành tích"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Ghi nhận tích cực giúp tăng tinh thần tập thể.",
+      "points": 10
+    },
+    {
+      "id": "NTH193",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Một trò đùa trong bang vượt quá giới hạn khiến người khác khó chịu, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đăng thông tin riêng tư"
+        },
+        {
+          "id": "B",
+          "text": "Đổ lỗi cho người bị ảnh hưởng"
+        },
+        {
+          "id": "C",
+          "text": "Tiếp tục trêu chọc"
+        },
+        {
+          "id": "D",
+          "text": "Dừng lại và xin lỗi nếu đã làm người khác tổn thương"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Tôn trọng ranh giới giúp giữ môi trường giao tiếp lành mạnh.",
+      "points": 10
+    },
+    {
+      "id": "NTH194",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Khi tham gia cộng đồng công khai, nên bảo vệ thông tin nào?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tên môn phái"
+        },
+        {
+          "id": "B",
+          "text": "Ảnh phong cảnh trong game"
+        },
+        {
+          "id": "C",
+          "text": "Mật khẩu, mã xác thực và thông tin cá nhân"
+        },
+        {
+          "id": "D",
+          "text": "Mẹo né Boss"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Thông tin bảo mật không nên công khai hoặc gửi cho người khác.",
+      "points": 10
+    },
+    {
+      "id": "NTH195",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "hard",
+      "questionType": "knowledge",
+      "question": "Nếu một người chơi hỏi đáp án mini game, điều gì công bằng nhất?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tiết lộ đáp án riêng cho bạn bè"
+        },
+        {
+          "id": "B",
+          "text": "Tự cộng điểm không theo luật"
+        },
+        {
+          "id": "C",
+          "text": "Theo đúng quy định công bố trước của trò chơi"
+        },
+        {
+          "id": "D",
+          "text": "Thay đáp án sau khi nộp"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Tuân thủ luật đã thống nhất bảo đảm công bằng.",
+      "points": 10
+    },
+    {
+      "id": "NTH196",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "hard",
+      "questionType": "fun",
+      "question": "Đố vui: Bang hội hẹn 20:00 nhưng bạn đến lúc 20:30, điều gì nên làm?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đổ lỗi cho người khác"
+        },
+        {
+          "id": "B",
+          "text": "Rời bang ngay"
+        },
+        {
+          "id": "C",
+          "text": "Yêu cầu mọi người làm lại"
+        },
+        {
+          "id": "D",
+          "text": "Xin lỗi và hỏi đội đang ở giai đoạn nào để bắt nhịp"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Chủ động thông báo và bắt nhịp giúp không ảnh hưởng đội.",
+      "points": 10
+    },
+    {
+      "id": "NTH197",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "hard",
+      "questionType": "fun",
+      "question": "Đố vui: Bạn nhặt được vật phẩm đồng đội đang cần sau Boss, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Giữ luôn bất kể quy định"
+        },
+        {
+          "id": "B",
+          "text": "Thoát đội"
+        },
+        {
+          "id": "C",
+          "text": "Bán ngay mà không nói"
+        },
+        {
+          "id": "D",
+          "text": "Trao đổi và phân chia theo quy định đội đã thống nhất"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Phân chia minh bạch giúp giữ tinh thần đồng đội.",
+      "points": 10
+    },
+    {
+      "id": "NTH198",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "expert",
+      "questionType": "fun",
+      "question": "Đố vui: Cả đội đang chụp ảnh thì Boss xuất hiện, bạn nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Tắt trò chơi"
+        },
+        {
+          "id": "B",
+          "text": "Spam biểu cảm"
+        },
+        {
+          "id": "C",
+          "text": "Đứng tạo dáng trong vùng nguy hiểm"
+        },
+        {
+          "id": "D",
+          "text": "Ưu tiên xử lý tình huống hoặc di chuyển đến nơi an toàn"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "An toàn trong hoạt động quan trọng hơn việc tiếp tục chụp ảnh.",
+      "points": 10
+    },
+    {
+      "id": "NTH199",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "expert",
+      "questionType": "fun",
+      "question": "Đố vui: Bạn phát hiện hướng dẫn cũ không còn đúng sau cập nhật, nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Báo lại và cập nhật nội dung theo phiên bản mới"
+        },
+        {
+          "id": "B",
+          "text": "Tiếp tục chia sẻ như cũ"
+        },
+        {
+          "id": "C",
+          "text": "Đổ lỗi cho người đọc"
+        },
+        {
+          "id": "D",
+          "text": "Xóa nguồn tham khảo"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Hướng dẫn cần được cập nhật để tránh gây nhầm lẫn.",
+      "points": 20
+    },
+    {
+      "id": "NTH200",
+      "category": "van_hoa_cong_dong_va_do_vui",
+      "difficulty": "expert",
+      "questionType": "fun",
+      "question": "Đố vui: Thành viên mới chưa biết cách gọi mục tiêu trong Bang chiến, bạn nên làm gì?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Đổi toàn bộ chiến thuật không báo"
+        },
+        {
+          "id": "B",
+          "text": "Hướng dẫn tín hiệu và quy ước chung của bang"
+        },
+        {
+          "id": "C",
+          "text": "Không cho tham gia lần sau"
+        },
+        {
+          "id": "D",
+          "text": "Chê trách họ giữa trận"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Quy ước rõ ràng giúp thành viên mới phối hợp nhanh hơn.",
+      "points": 10
+    }
+  ]
+}
