@@ -41,8 +41,30 @@ function handValue(cards) {
     return { total, soft: aces > 0 };
 }
 
+/** Xì Dách: đúng 2 lá đầu gồm A + lá 10 điểm (10/J/Q/K). */
 function isBlackjack(cards) {
     return cards.length === 2 && handValue(cards).total === 21;
+}
+
+/** Xì Bàn: 2 lá đầu đều là A — mạnh hơn Xì Dách. */
+function isXiBan(cards) {
+    return cards.length === 2 && cards[0].rank === 'A' && cards[1].rank === 'A';
+}
+
+/** Ngũ Linh: 5 lá mà tổng điểm vẫn không quá 21. */
+function isNguLinh(cards) {
+    return cards.length >= 5 && handValue(cards).total <= 21;
+}
+
+/**
+ * Bậc của tay bài (cao thắng thấp, cùng bậc đặc biệt thì hòa):
+ * 4 Xì Bàn › 3 Xì Dách › 2 Ngũ Linh › 0 bài thường (so điểm).
+ */
+function handTier(cards) {
+    if (isXiBan(cards)) return 4;
+    if (isBlackjack(cards)) return 3;
+    if (isNguLinh(cards)) return 2;
+    return 0;
 }
 
 function formatCard(card) {
@@ -63,22 +85,26 @@ function dealerPlay(dealerCards, shoe) {
 
 /**
  * So kết quả một tay bài với nhà cái.
- * Trả về hệ số lời/lỗ trên mức cược: 1.5 (Xì Dách), 1 (thắng), 0 (hòa), -1 (thua)
+ * Hệ số lời/lỗ trên mức cược: 2 (Xì Bàn, Ngũ Linh), 1.5 (Xì Dách), 1 (thắng), 0 (hòa), -1 (thua)
  */
+const TIER_PAYOUT = { 4: { result: 'xiban', multiplier: 2 }, 3: { result: 'blackjack', multiplier: 1.5 }, 2: { result: 'ngulinh', multiplier: 2 } };
+
 function settleHand(playerCards, dealerCards) {
     const p = handValue(playerCards).total;
     const d = handValue(dealerCards).total;
-    const pBJ = isBlackjack(playerCards);
-    const dBJ = isBlackjack(dealerCards);
+    const pTier = handTier(playerCards);
+    const dTier = handTier(dealerCards);
 
     if (p > 21) return { result: 'bust', multiplier: -1 };
-    if (pBJ && dBJ) return { result: 'push', multiplier: 0 };
-    if (pBJ) return { result: 'blackjack', multiplier: 1.5 };
-    if (dBJ) return { result: 'lose', multiplier: -1 };
+    if (pTier || dTier) {
+        if (pTier === dTier) return { result: 'push', multiplier: 0 };
+        if (pTier > dTier) return { ...TIER_PAYOUT[pTier] };
+        return { result: 'lose', multiplier: -1 };
+    }
     if (d > 21) return { result: 'win', multiplier: 1 };
     if (p > d) return { result: 'win', multiplier: 1 };
     if (p === d) return { result: 'push', multiplier: 0 };
     return { result: 'lose', multiplier: -1 };
 }
 
-module.exports = { createShoe, handValue, isBlackjack, formatCard, formatHand, dealerPlay, settleHand };
+module.exports = { createShoe, handValue, isBlackjack, isXiBan, isNguLinh, handTier, formatCard, formatHand, dealerPlay, settleHand };

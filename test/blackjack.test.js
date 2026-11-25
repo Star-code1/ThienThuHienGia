@@ -52,3 +52,21 @@ test('so kết quả với nhà cái', () => {
     // Người chơi quắc thua ngay cả khi nhà cái cũng quắc
     assert.deepStrictEqual(r('10♠ 6♥ 9♦', '10♦ 6♣ 9♠'), { result: 'bust', multiplier: -1 });
 });
+
+test('Xì Bàn, Xì Dách, Ngũ Linh: thứ tự bậc và hệ số trả thưởng', () => {
+    const { handTier, isXiBan, isNguLinh } = require('../src/features/game-blackjack/blackjackEngine');
+    const r = (p, d) => settleHand(hand(p), hand(d));
+    assert.ok(isXiBan(hand('A♠ A♥')));
+    assert.ok(!isXiBan(hand('A♠ A♥ 9♦')));
+    assert.ok(isNguLinh(hand('2♠ 3♥ 4♦ 5♣ 2♥')));
+    assert.ok(!isNguLinh(hand('10♠ 3♥ 4♦ 5♣ 2♥'))); // 24 điểm: quắc
+    assert.strictEqual(handTier(hand('A♠ K♥')), 3);
+    assert.deepStrictEqual(r('A♠ A♥', '10♠ 9♥'), { result: 'xiban', multiplier: 2 });
+    assert.deepStrictEqual(r('A♠ A♥', 'A♦ Q♣'), { result: 'xiban', multiplier: 2 });   // Xì Bàn thắng Xì Dách
+    assert.deepStrictEqual(r('A♠ K♥', 'A♦ A♣'), { result: 'lose', multiplier: -1 });   // Xì Dách thua Xì Bàn
+    assert.deepStrictEqual(r('A♠ A♥', 'A♦ A♣'), { result: 'push', multiplier: 0 });
+    assert.deepStrictEqual(r('2♠ 3♥ 4♦ 5♣ 2♥', '10♦ 10♣'), { result: 'ngulinh', multiplier: 2 });
+    assert.deepStrictEqual(r('2♠ 3♥ 4♦ 5♣ 2♥', 'A♦ K♣'), { result: 'lose', multiplier: -1 }); // thua Xì Dách
+    assert.deepStrictEqual(r('2♠ 3♥ 4♦ 5♣ 2♥', '2♦ 3♣ 4♠ 5♥ 2♣'), { result: 'push', multiplier: 0 });
+    assert.deepStrictEqual(r('10♠ 10♥', '2♦ 3♣ 4♠ 5♥ 2♣'), { result: 'lose', multiplier: -1 }); // nhà cái Ngũ Linh
+});

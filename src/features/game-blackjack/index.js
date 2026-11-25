@@ -6,7 +6,7 @@ const {
     ButtonStyle
 } = require('discord.js');
 const {
-    createShoe, handValue, isBlackjack, formatHand, dealerPlay, settleHand
+    createShoe, handValue, isBlackjack, isNguLinh, handTier, formatHand, dealerPlay, settleHand
 } = require('./blackjackEngine');
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
@@ -27,6 +27,16 @@ const COLORS = {
 const tables = new Map();
 
 const unix = (ms) => Math.floor(ms / 1000);
+
+/** Hoàn Linh Thạch đã giữ (lỗi DB chỉ ghi log để không chặn luồng game). */
+async function refund(userId, amount) {
+    if (!(amount > 0)) return;
+    try {
+        await UserProfile.incLinhThachById(userId, amount);
+    } catch (err) {
+        console.error(`❌ [Blackjack] Lỗi hoàn ${amount} Linh Thạch cho ${userId}:`, err);
+    }
+}
 
 function findPlayerTable(userId) {
     for (const t of tables.values()) {
@@ -50,6 +60,8 @@ const STATUS_BADGE = {
 };
 
 const RESULT_BADGE = {
+    xiban: '🌟🌟 XÌ BÀN — Thắng x2',
+    ngulinh: '🐉 NGŨ LINH — Thắng x2',
     blackjack: '🌟 Xì Dách — Thắng x1.5',
     win: '🏆 Thắng',
     push: '🤝 Hòa',
@@ -99,7 +111,8 @@ function renderPrivate(table, player) {
     const { total } = handValue(player.cards);
 
     let status;
-    if (isBlackjack(player.cards)) status = '🌟 **XÌ DÁCH!** Chờ lật bài so kết quả.';
+    if (handTier(player.cards) >= 3) status = '🌟 **XÌ DÁCH / XÌ BÀN!** Chờ lật bài so kết quả.';
+    else if (isNguLinh(player.cards)) status = '🐉 **NGŨ LINH!** Chờ lật bài so kết quả.';
     else if (total > 21) status = '💥 **Quắc** (quá 21). Chờ ván kết thúc.';
     else if (isTurn) status = `🎯 **Tới lượt đạo hữu!** Tự động Dằn <t:${unix(table.turnEndsAt)}:R>`;
     else if (player.status === 'playing') status = '⌛ Chưa tới lượt, hãy chờ đạo hữu phía trước.';
@@ -191,8 +204,10 @@ function renderPlaying(table) {
 
 function renderResult(table) {
     const { total: dealerTotal } = handValue(table.dealer);
-    const dealerLabel = isBlackjack(table.dealer)
-        ? '🌟 XÌ DÁCH!'
+    const dealerTier = handTier(table.dealer);
+    const dealerLabel = dealerTier >= 3
+        ? (dealerTier === 4 ? '🌟🌟 XÌ BÀN!' : '🌟 XÌ DÁCH!')
+        : dealerTier === 2 ? '🐉 NGŨ LINH!'
         : dealerTotal > 21 ? `💥 Quắc (${dealerTotal})` : `**${dealerTotal}** điểm`;
 
     const winners = table.players.filter(p => p.delta > 0);
@@ -240,10 +255,13 @@ function rulesEmbed() {
             `• 🎴 **Bài úp kín:** bấm **Xem bài** để xem bài tẩy và ra quyết định (chỉ mình thấy). Bài mọi người chỉ lật khi kết thúc ván.\n\n` +
             `🎮 **Hành động:**\n` +
             `• 🃏 **Rút** thêm 1 lá • ✋ **Dằn** giữ bài\n` +
-            `• 💰 **Gấp đôi**: chỉ với 2 lá đầu, nhân đôi cược và rút đúng 1 lá\n\n` +
+            `• 💰 **Gấp đôi**: chỉ với 2 lá đầu, đặt thêm đúng một lần cược và rút đúng 1 lá\n\n` +
             `🧙‍♂️ **Nhà cái** rút đến khi đạt từ 17 điểm.\n\n` +
-            `💰 **Trả thưởng:**\n` +
+            `💰 **Trả thưởng** (tiền cược được trừ ngay khi vào bàn, hoàn lại nếu bàn bị huỷ):\n` +
+            `• 🌟🌟 Xì Bàn (2 lá A ngay 2 lá đầu): **x2** cược\n` +
             `• 🌟 Xì Dách (A + lá 10 điểm ngay 2 lá đầu): **x1.5** cược\n` +
+            `• 🐉 Ngũ Linh (5 lá mà tổng không quá 21): **x2** cược\n` +
+            `• Thứ tự mạnh nhất: Xì Bàn › Xì Dách › Ngũ Linh › điểm thường; cùng bậc đặc biệt thì hòa\n` +
             `• 🏆 Thắng: **x1** cược • 🤝 Hòa: hoàn cược\n` +
             `• 💥 Quắc (quá 21) hoặc thua: mất cược\n` +
             `• Thắng được thưởng thêm **+${WIN_TUVI} Tu Vi**`
@@ -270,11 +288,17 @@ async function openTable(interaction, bet) {
 
     const displayName = getDisplayName(interaction);
     const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
-    if (profile.linhThach < bet) {
+    // Giữ tiền cược NGAY (không đủ thì từ chối) — không thể tiêu mất tiền ở nơi khác rồi mới thua
+    if (await profile.incLinhThach(-bet, { requireFunds: true }) === null) {
         return interaction.reply({
             content: `⚠️ Đạo hữu không đủ Linh Thạch! Hiện có: \`${profile.linhThach.toLocaleString()}\` 💎, cần cược: \`${bet.toLocaleString()}\` 💎.`,
             flags: 64,
         });
+    }
+    // Có thể đã ngồi bàn khác trong lúc chờ DB
+    if (findPlayerTable(interaction.user.id)) {
+        await refund(interaction.user.id, bet);
+        return interaction.reply({ content: '⚠️ Đạo hữu đang ngồi ở một bàn Xì Dách khác rồi!', flags: 64 });
     }
 
     const table = {
@@ -283,7 +307,7 @@ async function openTable(interaction, bet) {
         hostId: interaction.user.id,
         bet,
         phase: 'lobby',
-        players: [{ id: interaction.user.id, name: displayName, cards: [], status: 'playing', doubled: false }],
+        players: [{ id: interaction.user.id, name: displayName, cards: [], status: 'playing', doubled: false, escrow: bet }],
         dealer: [],
         shoe: null,
         turn: -1,
@@ -295,8 +319,16 @@ async function openTable(interaction, bet) {
     };
     tables.set(table.id, table);
 
-    await interaction.reply(renderLobby(table));
-    table.message = await interaction.fetchReply();
+    try {
+        await interaction.reply(renderLobby(table));
+        table.message = await interaction.fetchReply();
+    } catch (err) {
+        // Không đăng được bàn → huỷ bàn và hoàn cược
+        console.error('❌ [Blackjack] Không mở được bàn:', err.message);
+        tables.delete(table.id);
+        await refund(interaction.user.id, bet);
+        return;
+    }
 
     table.lobbyTimer = setTimeout(() => {
         if (tables.get(table.id) === table && table.phase === 'lobby') {
@@ -315,11 +347,11 @@ async function startGame(table) {
         table.dealer.push(table.shoe.pop());
     }
     for (const p of table.players) {
-        if (isBlackjack(p.cards)) p.status = 'blackjack';
+        if (handTier(p.cards) >= 3) p.status = 'blackjack'; // Xì Dách hoặc Xì Bàn
     }
 
-    // Nhà cái có Xì Dách → lật bài ngay, kết thúc ván
-    if (isBlackjack(table.dealer)) {
+    // Nhà cái có Xì Dách / Xì Bàn → lật bài ngay, kết thúc ván
+    if (handTier(table.dealer) >= 3) {
         return finishGame(table);
     }
 
@@ -361,16 +393,16 @@ async function finishGame(table) {
     }
 
     for (const p of table.players) {
-        const stake = table.bet * (p.doubled ? 2 : 1);
+        const stake = p.escrow; // đã bị trừ lúc vào bàn (và lúc Gấp đôi)
         p.result = settleHand(p.cards, table.dealer);
-        p.delta = Math.round(stake * p.result.multiplier);
+        const payout = Math.max(0, Math.round(stake * (1 + p.result.multiplier))); // vốn + lời (0 nếu thua)
+        p.delta = payout - stake;
 
         try {
             const profile = await UserProfile.getOrCreate(p.id, p.name);
             const inc = { 'stats.blackjackGames': 1 };
             if (p.delta > 0) inc['stats.blackjackWins'] = 1;
-            // Thua thì trừ tối đa tới 0, không để số dư âm
-            p.delta = await profile.incLinhThach(p.delta, { clampZero: true, inc });
+            await profile.incLinhThach(payout, { inc });
             if (p.delta > 0) {
                 profile.addTuVi(WIN_TUVI);
                 await profile.save();
@@ -433,17 +465,27 @@ const handleBlackjackButtons = async (interaction) => {
             if (player.cards.length !== 2 || player.doubled) {
                 return interaction.update(renderPrivate(table, player));
             }
-            const profile = await UserProfile.getOrCreate(userId, displayName);
-            if (profile.linhThach < table.bet * 2) {
-                return interaction.reply({
-                    content: `⚠️ Cần \`${(table.bet * 2).toLocaleString()}\` 💎 để Gấp đôi, đạo hữu chỉ có \`${profile.linhThach.toLocaleString()}\` 💎.`,
-                    flags: 64,
-                });
+            if (player.doubling) return interaction.deferUpdate();
+            player.doubling = true; // chặn bấm đúp trong lúc chờ DB
+            let held;
+            try {
+                const profile = await UserProfile.getOrCreate(userId, displayName);
+                held = await profile.incLinhThach(-table.bet, { requireFunds: true });
+                if (held === null) {
+                    return interaction.reply({
+                        content: `⚠️ Cần thêm \`${table.bet.toLocaleString()}\` 💎 để Gấp đôi, đạo hữu chỉ có \`${profile.linhThach.toLocaleString()}\` 💎.`,
+                        flags: 64,
+                    });
+                }
+            } finally {
+                player.doubling = false;
             }
-            // Trạng thái có thể đã đổi trong lúc chờ DB (vd: hết giờ)
+            // Trạng thái có thể đã đổi trong lúc chờ DB (vd: hết giờ) → hoàn lại phần vừa giữ
             if (table.phase !== 'playing' || currentPlayer(table) !== player || player.doubled) {
+                await refund(userId, table.bet);
                 return interaction.update(renderPrivate(table, player));
             }
+            player.escrow += table.bet;
             player.doubled = true;
             player.cards.push(table.shoe.pop());
             player.status = handValue(player.cards).total > 21 ? 'bust' : 'stand';
@@ -454,7 +496,8 @@ const handleBlackjackButtons = async (interaction) => {
         if (action === 'bj_hit') {
             player.cards.push(table.shoe.pop());
             const { total } = handValue(player.cards);
-            if (total >= 21) player.status = total > 21 ? 'bust' : 'stand';
+            if (total > 21) player.status = 'bust';
+            else if (total === 21 || isNguLinh(player.cards)) player.status = 'stand'; // 21 điểm hoặc Ngũ Linh: tự dằn
             const turnOver = player.status !== 'playing';
             await interaction.update(renderPrivate(table, player));
             return turnOver ? advanceTurn(table) : editTable(table, renderPlaying(table));
@@ -488,18 +531,20 @@ const handleBlackjackButtons = async (interaction) => {
         if (table.players.length >= MAX_PLAYERS) return interaction.reply({ content: '⚠️ Bàn đã đủ người!', flags: 64 });
 
         const profile = await UserProfile.getOrCreate(userId, displayName);
-        if (profile.linhThach < table.bet) {
+        if (await profile.incLinhThach(-table.bet, { requireFunds: true }) === null) {
             return interaction.reply({
                 content: `⚠️ Đạo hữu không đủ Linh Thạch! Hiện có: \`${profile.linhThach.toLocaleString()}\` 💎, cần: \`${table.bet.toLocaleString()}\` 💎.`,
                 flags: 64,
             });
         }
-        // Kiểm tra lại sau await để tránh trùng ghế
-        if (table.phase !== 'lobby' || table.players.length >= MAX_PLAYERS || table.players.some(p => p.id === userId)) {
-            return interaction.reply({ content: '⚠️ Không thể vào bàn lúc này.', flags: 64 });
+        // Kiểm tra lại sau await (bàn đã bắt đầu / đầy / trùng ghế / ngồi bàn khác) → hoàn cược
+        if (table.phase !== 'lobby' || tables.get(table.id) !== table || table.players.length >= MAX_PLAYERS
+            || table.players.some(p => p.id === userId) || findPlayerTable(userId)) {
+            await refund(userId, table.bet);
+            return interaction.reply({ content: '⚠️ Không thể vào bàn lúc này, tiền cược đã được hoàn lại.', flags: 64 });
         }
 
-        table.players.push({ id: userId, name: displayName, cards: [], status: 'playing', doubled: false });
+        table.players.push({ id: userId, name: displayName, cards: [], status: 'playing', doubled: false, escrow: table.bet });
         return interaction.update(renderLobby(table));
     }
 
@@ -508,7 +553,8 @@ const handleBlackjackButtons = async (interaction) => {
         const idx = table.players.findIndex(p => p.id === userId);
         if (idx === -1) return interaction.reply({ content: 'Đạo hữu chưa ngồi tại bàn này.', flags: 64 });
 
-        table.players.splice(idx, 1);
+        const [left] = table.players.splice(idx, 1);
+        await refund(left.id, left.escrow);
         if (table.players.length === 0) {
             clearTimeout(table.lobbyTimer);
             tables.delete(table.id);
@@ -530,18 +576,19 @@ const handleBlackjackButtons = async (interaction) => {
     }
 };
 
-/** Bot tắt/khởi động lại: huỷ mọi bàn. Linh Thạch chỉ ghi khi kết thúc ván nên ván dở không ai mất tiền. */
+/** Bot tắt/khởi động lại: huỷ mọi bàn và hoàn lại toàn bộ tiền cược đã giữ. */
 async function cancelAllTables(reason) {
     const all = [...tables.values()];
     tables.clear();
-    await Promise.all(all.map((table) => {
+    await Promise.all(all.map(async (table) => {
         table.phase = 'done';
         clearTimeout(table.lobbyTimer);
         clearTimeout(table.turnTimer);
+        await Promise.all(table.players.map((p) => refund(p.id, p.escrow)));
         const embed = new EmbedBuilder()
             .setColor(COLORS.cancel)
             .setTitle('🃏 XÌ DÁCH TIÊN PHỦ • BÀN ĐÃ BỊ HUỶ')
-            .setDescription(`⚠️ ${reason}\nVán dở được huỷ, không ai mất Linh Thạch. Dùng \`/xidach\` để mở bàn mới.`);
+            .setDescription(`⚠️ ${reason}\nVán dở được huỷ, tiền cược đã được hoàn lại cho mọi người. Dùng \`/xidach\` để mở bàn mới.`);
         return editTable(table, { content: '', embeds: [embed], components: [] });
     }));
 }
@@ -568,6 +615,7 @@ module.exports = {
     listRooms,
     onShutdown: () => cancelAllTables('Bot đang khởi động lại để bảo trì.'),
     commands: [blackjackCommand],
+    _internal: { tables },
     interactions: {
         'bj_join': handleBlackjackButtons,
         'bj_leave': handleBlackjackButtons,

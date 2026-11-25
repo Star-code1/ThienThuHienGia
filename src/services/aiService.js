@@ -56,6 +56,7 @@ Câu trả lời hiển thị trên Discord: dùng **in đậm** cho ý chính, 
 `;
 
 const { callMultiProviderAI, callMultiProviderAIJson, extractJsonObject } = require('./aiProviders');
+const { lookupVietnamese, lookupEnglish } = require('./dictionaryService');
 
 /**
  * Danh sách câu dự phòng khi toàn bộ pipeline AI thất bại — random để tránh
@@ -128,122 +129,173 @@ ${question}
 }
 
 /**
- * Kiểm tra tính hợp lệ của từ nối tiếng Việt (Prompt Tiên Trưởng Lão Khó Tính + Pre-check 0ms)
+ * Bộ nhớ đệm phán quyết "từ có nghĩa hay không" — cùng một từ luôn cho cùng một kết luận,
+ * đỡ tốn lượt gọi AI và tránh việc AI lúc duyệt lúc chê.
+ */
+const WORD_VERDICT_CACHE = new Map(); // `${lang}:${key}` -> { valid, reason, meaning }
+const WORD_VERDICT_CACHE_MAX = 3000;
+function cacheVerdict(key, verdict) {
+    if (WORD_VERDICT_CACHE.size >= WORD_VERDICT_CACHE_MAX) {
+        WORD_VERDICT_CACHE.delete(WORD_VERDICT_CACHE.keys().next().value);
+    }
+    WORD_VERDICT_CACHE.set(key, verdict);
+}
+
+/**
+ * Kiểm tra tính hợp lệ của từ nối tiếng Việt.
+ * - Hình thức (chữ cái, số tiếng) & luật nối tiếng do code kiểm tra trước, không tốn AI.
+ * - AI chỉ xét nghĩa. AI lỗi → trả `unavailable: true` (KHÔNG tự duyệt bừa, tránh farm thưởng bằng từ rác).
  */
 async function validateWordVI(lastWord, currentWord) {
+    const { parseVietnameseWord, splitSyllables, toKey } = require('../shared/utils/wordGame');
+    const parsed = parseVietnameseWord(currentWord);
+    if (!parsed.ok) {
+        return { valid: false, reason: 'Phải là từ ghép tiếng Việt gồm từ 2 đến 4 tiếng, chỉ có chữ cái!', nextWord: '' };
+    }
+    const cleanCurr = parsed.text;
     const cleanLast = (lastWord || '').trim();
-    const cleanCurr = (currentWord || '').trim();
 
-    // ⚡ PRE-CHECK SIÊU TỐC (0ms Latency): Nếu không khớp âm tiết nối -> Từ chối ngay lập tức không cần chờ AI!
     if (cleanLast) {
-        const lastPart = cleanLast.split(/\s+/).pop().toLowerCase();
-        const firstPart = cleanCurr.split(/\s+/)[0].toLowerCase();
+        const lastPart = toKey(splitSyllables(cleanLast).pop());
+        const firstPart = toKey(parsed.syllables[0]);
         if (lastPart !== firstPart) {
             return {
                 valid: false,
-                reason: `Âm tiết đầu "${firstPart.toUpperCase()}" của ngươi không khớp với âm tiết cuối "${lastPart.toUpperCase()}" của từ trước! Quy tắc cơ bản cũng không thuộc sao?`,
+                reason: `Tiếng đầu "${firstPart.toUpperCase()}" không khớp tiếng cuối "${lastPart.toUpperCase()}" của từ trước!`,
                 nextWord: ''
             };
         }
     }
 
-    const prompt = `Bạn là một vị Tiên trưởng lão uyên bác, phụ trách thẩm định trò chơi "Nối từ Tiếng Việt".
+    const cacheKey = `vi:${toKey(cleanCurr)}`;
+    const cached = WORD_VERDICT_CACHE.get(cacheKey);
+    if (cached) return { ...cached, nextWord: '' };
 
-TỪ CẦN KIỂM ĐỊNH: "${cleanCurr}" (nối tiếp từ "${cleanLast || 'Không có'}")
+    // 1) Từ điển trực tuyến: có trong từ điển → hợp lệ ngay, không cần AI
+    const dict = await lookupVietnamese(cleanCurr);
+    if (dict.status === 'found') {
+        const verdict = { valid: true, reason: dict.meaning ? `Từ điển: ${dict.meaning}` : 'Từ này có trong từ điển.' };
+        cacheVerdict(cacheKey, verdict);
+        return { ...verdict, nextWord: '' };
+    }
+    // 2) Không có trong từ điển (thuật ngữ game, tên riêng...) hoặc từ điển lỗi → nhờ AI xét nghĩa
 
-QUY TẮC QUAN TRỌNG:
-1. QUY TẮC NỐI ÂM TIẾT ĐÃ ĐƯỢC HỆ THỐNG XÁC THỰC 100% HỢP LỆ (tiếng đầu trùng khớp với tiếng cuối). Tuyệt đối KHÔNG kiểm tra hay bắt bẻ lại luật nối âm tiết.
-2. KHÔNG ĐÒI HỎI LIÊN QUAN NGỮ NGHĨA: Hai từ KHÔNG CẦN cùng chủ đề hay ngữ cảnh (ví dụ: "Cây cối" -> "Cối xay", "Tu tiên" -> "Tiên giới" đều 100% hợp lệ).
-3. NHIỆM VỤ DUY NHẤT: Xác thực xem "${cleanCurr}" có phải là một từ ghép hoặc cụm từ có nghĩa xác thực, hợp lệ trong Tiếng Việt hay không.
-   - Hợp lệ: Từ ghép có nghĩa trong từ điển / đời sống / văn học / kiếm hiệp Nghịch Thủy Hàn.
-   - Không hợp lệ: Từ vô nghĩa bịa đặt, tiếng lóng vô nghĩa, từ viết tắt rời rạc.
+    const prompt = `Bạn là giám khảo từ điển cho trò chơi "Nối từ Tiếng Việt".
 
-PHONG CÁCH PHẢN HỒI:
-- Giọng điệu của một tiền bối cổ xưa, dí dỏm, mang chất tiên hiệp Nghịch Thủy Hàn.
-- Đưa ra nhận xét ngắn gọn (dưới 25 từ).
+TỪ CẦN KIỂM ĐỊNH: "${cleanCurr}"
 
-ĐỊNH DẠNG ĐẦU RA (JSON):
-Chỉ trả về một đối tượng JSON hợp lệ:
-{
-  "valid": boolean,
-  "reason": "string",
-  "nextWord": "string"
-}`;
+NHIỆM VỤ DUY NHẤT: xác định "${cleanCurr}" có phải là từ ghép / từ láy / cụm từ / thành ngữ CÓ NGHĨA, đúng chính tả trong tiếng Việt hay không.
+- Hợp lệ: từ có trong từ điển hoặc dùng phổ biến trong đời sống, văn học, truyện kiếm hiệp/tiên hiệp (Linh Thạch, Kim Đan, Giang Hồ...). Tên riêng nổi tiếng/địa danh cũng được chấp nhận.
+- Không hợp lệ: chuỗi tiếng bịa đặt, sai chính tả (sai dấu thanh, thiếu/thừa chữ), ghép các tiếng rời rạc không thành từ, tiếng lóng vô nghĩa, từ viết tắt.
+- Luật nối âm tiết ĐÃ được hệ thống kiểm tra, KHÔNG bàn tới. Hai từ không cần cùng chủ đề.
+- Khi phân vân: chỉ duyệt nếu bạn chắc chắn người Việt bình thường hiểu được nghĩa.
+
+Nhận xét ngắn (dưới 20 từ), giọng tiền bối tiên hiệp dí dỏm, viết ĐÚNG chính tả tiếng Việt.
+Chỉ trả về JSON: {"valid": boolean, "reason": "string", "nextWord": ""}`;
 
     try {
-        return await callMultiProviderAIJson({
+        const data = await callMultiProviderAIJson({
             systemPrompt: 'Trả về CHÍNH XÁC cấu trúc JSON: {"valid": boolean, "reason": string, "nextWord": string}. Không kèm codeblock thừa.',
             userPrompt: prompt,
-            maxTokens: 350
+            maxTokens: 350,
+            temperature: 0
         });
+        const valid = data?.valid === true || data?.valid === 'true';
+        const verdict = {
+            valid,
+            reason: String(data?.reason || (valid ? 'Từ này hợp lệ.' : 'Lão phu chưa từng nghe từ này.')).slice(0, 200)
+        };
+        cacheVerdict(cacheKey, verdict);
+        return { ...verdict, nextWord: '' };
     } catch (e) {
         console.error('❌ Lỗi AI validateWordVI:', e.message);
         return {
-            valid: true,
-            reason: 'Bổn trưởng lão du ngoạn qua, tạm chấp thuận từ nối này!',
+            valid: false,
+            unavailable: true,
+            reason: 'Hiền Giả đang bế quan nên chưa thẩm định được từ này. Đạo hữu thử gửi lại sau ít giây nhé!',
             nextWord: ''
         };
     }
 }
 
 /**
- * Kiểm tra tính hợp lệ từ nối Tiếng Anh (Prompt Strict Ancient Librarian + Pre-check 0ms)
+ * Kiểm tra tính hợp lệ từ nối Tiếng Anh. AI lỗi → `unavailable: true` (không tự duyệt bừa).
  */
 async function validateWordEN(lastWord, currentWord) {
+    const { parseEnglishWord } = require('../shared/utils/wordGame');
+    const parsed = parseEnglishWord(currentWord);
+    if (!parsed.ok) {
+        return { valid: false, reason: 'Send ONE English word using letters only (2-30 letters).', nextWord: '', meaning: '' };
+    }
+    const cleanCurr = parsed.text;
     const cleanLast = (lastWord || '').trim();
-    const cleanCurr = (currentWord || '').trim();
 
-    // ⚡ PRE-CHECK SIÊU TỐC (0ms Latency): Nếu chữ cái đầu không khớp chữ cái cuối -> Từ chối ngay!
     if (cleanLast) {
         const lastChar = cleanLast.slice(-1).toLowerCase();
         const firstChar = cleanCurr.slice(0, 1).toLowerCase();
         if (lastChar !== firstChar) {
             return {
                 valid: false,
-                reason: `The first letter '${firstChar.toUpperCase()}' does not match the last letter '${lastChar.toUpperCase()}' of "${cleanLast}"! Learn basic spelling, novice.`,
+                reason: `The first letter '${firstChar.toUpperCase()}' does not match the last letter '${lastChar.toUpperCase()}' of "${cleanLast}"!`,
                 nextWord: '',
-                meaning: 'Mismatch'
+                meaning: ''
             };
         }
     }
 
+    const cacheKey = `en:${cleanCurr.toLowerCase()}`;
+    const cached = WORD_VERDICT_CACHE.get(cacheKey);
+    if (cached) return { ...cached, nextWord: '' };
+
+    // 1) Từ điển trực tuyến: có trong từ điển → hợp lệ ngay
+    const dict = await lookupEnglish(cleanCurr);
+    if (dict.status === 'found') {
+        const verdict = {
+            valid: true,
+            meaning: dict.meaning || 'English word',
+            reason: dict.definition ? `Dictionary: ${dict.definition}` : 'Found in the dictionary.'
+        };
+        cacheVerdict(cacheKey, verdict);
+        return { ...verdict, nextWord: '' };
+    }
+    // 2) Từ điển không có (biến thể chia từ...) hoặc lỗi → nhờ AI xét
+
     const prompt = `You are a fair English dictionary referee for a Word Chain game.
 
-INPUT WORD TO CHECK: "${cleanCurr}" (following "${cleanLast || 'None'}")
+WORD TO CHECK: "${cleanCurr}"
 
-CRITICAL RULES:
-1. LETTER-CHAINING RULE HAS ALREADY BEEN VERIFIED AND PASSED BY SYSTEM CODE. Do NOT check or reject based on letter matching.
-2. SEMANTIC INDEPENDENCE: In Word Chain, words DO NOT need to be related in meaning, theme, or topic at all. Any legitimate English word starting with the required letter is valid (e.g., "Tetris" -> "Sandwich" is 100% valid).
-3. YOUR ONLY TASK: Verify if "${cleanCurr}" is a real, legitimate English word found in standard English dictionaries (nouns, verbs, adjectives, adverbs, plurals, past tense, etc.).
-   - Valid: Any standard English word, common noun, loanword, or recognized term.
-   - Invalid: Random gibberish (e.g., "asdfjkl"), acronyms/abbreviations (e.g., "LOL"), or severe misspellings.
+YOUR ONLY TASK: decide whether "${cleanCurr}" is a real English word listed in a standard dictionary (nouns, verbs, adjectives, adverbs, plurals, inflected forms, established loanwords).
+- Invalid: gibberish, misspellings, acronyms/abbreviations (LOL, ASAP), slang that is not in dictionaries, single letters.
+- Proper nouns are invalid unless they are also common words.
+- The letter-chaining rule is already verified; do NOT discuss it. Words need no topical relation.
+- If unsure, answer invalid.
 
-RESPONSE STYLE:
-- Brief comment (under 20 words) explaining validity.
-
-OUTPUT FORMAT (JSON only):
-{
-  "valid": boolean,
-  "meaning": "Short Vietnamese translation (1-3 words)",
-  "reason": "string",
-  "nextWord": "string"
-}`;
+Reply with a brief comment (under 20 words). "meaning" is the Vietnamese meaning in 1-3 words, correctly spelled with diacritics.
+JSON only: {"valid": boolean, "meaning": "string", "reason": "string", "nextWord": ""}`;
 
     try {
         const data = await callMultiProviderAIJson({
             systemPrompt: 'Return ONLY valid JSON format: {"valid": boolean, "meaning": string, "reason": string, "nextWord": string}.',
             userPrompt: prompt,
-            maxTokens: 350
+            maxTokens: 350,
+            temperature: 0
         });
-        data.meaning = data.meaning || 'English Lexicon';
-        return data;
+        const valid = data?.valid === true || data?.valid === 'true';
+        const verdict = {
+            valid,
+            meaning: String(data?.meaning || 'English word').slice(0, 60),
+            reason: String(data?.reason || (valid ? 'A fine word.' : 'No such word in my library.')).slice(0, 200)
+        };
+        cacheVerdict(cacheKey, verdict);
+        return { ...verdict, nextWord: '' };
     } catch (e) {
         console.error('❌ Lỗi AI validateWordEN:', e.message);
         return {
-            valid: true,
-            reason: 'The ancient librarian nods in silent approval of this word.',
+            valid: false,
+            unavailable: true,
+            reason: 'The librarian is meditating and cannot verify this word right now. Please try again in a few seconds!',
             nextWord: '',
-            meaning: 'Accepted'
+            meaning: ''
         };
     }
 }
@@ -294,73 +346,76 @@ const VUA_TOPIC_CATEGORIES = [
     'Tri thức & Khai phá (ví dụ: Trí tuệ, Uyên bác, Khai phá, Kỳ tích, Bác học)'
 ];
 
+const VUA_LEVEL_GUIDE = {
+    de: 'DỄ: từ rất quen thuộc trong đời sống hằng ngày, học sinh tiểu học đều biết.',
+    trung_binh: 'TRUNG BÌNH: từ thông dụng trong văn viết, văn học, báo chí.',
+    kho: 'KHÓ: từ Hán Việt / tiên hiệp / kiếm hiệp ít gặp hơn nhưng vẫn là từ có thật trong từ điển.'
+};
+
 /**
- * Sinh câu hỏi xáo từ cho Vua Tiếng Việt (100% AI tự duy duy nhất, KHÔNG DÙNG dataset cứng)
+ * Sinh câu đố cho Vua Tiếng Việt.
+ * AI sinh từ → code kiểm định (2 tiếng, chữ cái hợp lệ, chưa dùng, gợi ý không lộ đáp án).
+ * Thử tối đa 3 lần, vẫn hỏng thì lấy từ ngân hàng dự phòng đã soát tay — hàm này KHÔNG ném lỗi.
  */
 async function generateVuaTiengVietQuestion(difficulty = 'trung_binh', usedWords = []) {
-    const randomTopic = VUA_TOPIC_CATEGORIES[Math.floor(Math.random() * VUA_TOPIC_CATEGORIES.length)];
-    const excludeStr = usedWords.length > 0
-        ? `Danh sách từ đã dùng: [${usedWords.join(', ')}]. KHÔNG ĐƯỢC trùng lặp với bất kỳ từ nào trong danh sách này.`
-        : '';
+    const {
+        parseVietnameseWord, toPlainKey, hintLeaksAnswer, describeStructure
+    } = require('../shared/utils/wordGame');
+    const { WORD_BANK } = require('../shared/data/vuaWordBank');
 
-    const buildPrompt = (topic) => `Bạn là "Thiên Thư Hiền Giả" - bậc tiên sinh uyên bác. Nhiệm vụ: TỰ TƯ DUY NGHĨ RA 1 từ ghép tiếng Việt 2 âm tiết MỚI LẠ, ĐỘC ĐÁO, HỢP LÝ cho trò chơi "Vua Tiếng Việt".
+    const usedKeys = new Set(usedWords.map(toPlainKey));
+    const level = VUA_LEVEL_GUIDE[difficulty] ? difficulty : 'trung_binh';
 
-=== YÊU CẦU TƯ DUY (100% DYNAMIC) ===
-1. **Chủ đề gợi ý cho lượt này**: "${topic}".
-2. **Độ khó**: "${difficulty}".
-3. ${excludeStr}
+    const build = (originalWord, hint) => ({
+        originalWord,
+        scrambledLetters: scrambleVietnameseWord(originalWord),
+        structure: describeStructure(originalWord),
+        hint,
+    });
 
-=== QUY TẮC TẠO TỪ ===
-1. **Từ (originalWord)**:
-   - Phải là từ ghép **gồm đúng 2 âm tiết** có nghĩa trong Tiếng Việt.
-   - LƯU Ý MẪU: Các từ như "BAN MAI", "ANH HÙNG", "PHONG BA", "HOÀNG HÔN" chỉ dùng làm mẫu cấu trúc 2 âm tiết. **KHÔNG ĐƯỢC** chọn các từ mẫu này, và **KHÔNG ĐƯỢC** lặp lại các từ rập khuôn quen thuộc (như "TU TIÊN", "THIÊN NHIÊN", "THIÊN TÀI").
-   - Hãy suy nghĩ sáng tạo ra một từ ghép 2 âm tiết hoàn toàn mới mẻ thuộc chủ đề được gợi ý ở trên.
+    const buildPrompt = (topic, rejected) => `Bạn là "Thiên Thư Hiền Giả" - bậc tiên sinh uyên bác. Nhiệm vụ: chọn 1 từ ghép tiếng Việt gồm ĐÚNG 2 tiếng, CÓ NGHĨA, ĐÚNG CHÍNH TẢ cho trò chơi xáo chữ "Vua Tiếng Việt".
 
-2. **Gợi ý (hint)**:
-   - Một câu thơ hoặc câu ẩn dụ ngắn (4–6 từ) mang phong cách tiên hiệp Nghịch Thủy Hàn, gợi ý nghĩa của từ.
-   - Gợi ý KHÔNG được chứa bất kỳ âm tiết nào của từ gốc.
+- Chủ đề gợi ý: "${topic}".
+- Độ khó: ${VUA_LEVEL_GUIDE[level]}
+- Từ phải có thật trong từ điển tiếng Việt; tuyệt đối không bịa từ, không dùng tên riêng, không dùng từ viết tắt.
+- Không chọn các từ quá rập khuôn như TU TIÊN, THIÊN NHIÊN, THIÊN TÀI, ANH HÙNG, BAN MAI.
+- Đã dùng (cấm trùng): [${[...usedWords, ...rejected].join(', ')}]
+- "hint": câu gợi ý/ẩn dụ ngắn 4–8 từ, phong cách tiên hiệp, viết đúng chính tả, KHÔNG chứa bất kỳ tiếng nào của từ gốc (kể cả khi bỏ dấu).
 
-=== ĐỊNH DẠNG ĐẦU RA ===
-Trả về CHÍNH XÁC cấu trúc JSON:
-{
-  "originalWord": "TỪ GHÉP IN HOA 2 ÂM TIẾT",
-  "hint": "Câu thơ gợi ý 4-6 từ"
-}`;
+Chỉ trả về JSON: {"originalWord": "TỪ IN HOA 2 TIẾNG", "hint": "câu gợi ý"}`;
 
-    const tryGenerate = async (topic, temperature, maxTokens) => {
-        const data = await callMultiProviderAIJson({
-            systemPrompt: 'Return ONLY valid JSON format: {"originalWord": string, "hint": string}. Do not add extra text outside JSON.',
-            userPrompt: buildPrompt(topic),
-            maxTokens,
-            temperature
-        });
-        if (!data || !data.originalWord) throw new Error('AI generated invalid word format');
-
-        const cleanWord = data.originalWord.trim().toUpperCase().normalize('NFC');
-        const parts = cleanWord.split(/\s+/);
-        if (parts.length !== 2 || cleanWord.length < 4) throw new Error('AI generated invalid word format');
-
-        return {
-            originalWord: cleanWord,
-            scrambledLetters: scrambleVietnameseWord(cleanWord),
-            hint: data.hint || 'Câu đố ẩn ngữ từ Thiên Thư Hiền Giả.'
-        };
-    };
-
-    try {
-        return await tryGenerate(randomTopic, 0.95, 400);
-    } catch (e) {
-        console.error('❌ AI generateVuaTiengVietQuestion Error:', e.message);
-
-        // Thử lại 1 lần với chủ đề khác & nhiệt độ tối đa
+    const rejected = [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const topic = VUA_TOPIC_CATEGORIES[Math.floor(Math.random() * VUA_TOPIC_CATEGORIES.length)];
         try {
-            const retryTopic = VUA_TOPIC_CATEGORIES[Math.floor(Math.random() * VUA_TOPIC_CATEGORIES.length)];
-            return await tryGenerate(retryTopic, 1.0, 400);
-        } catch (retryErr) {
-            console.error('❌ AI Retry failed:', retryErr.message);
-            throw new Error('Bổn Hiền Giả đang bận nhập định suy nghĩ, xin hãy thử lại sau ít phút!');
+            const data = await callMultiProviderAIJson({
+                systemPrompt: 'Return ONLY valid JSON format: {"originalWord": string, "hint": string}. Do not add extra text outside JSON.',
+                userPrompt: buildPrompt(topic, rejected),
+                maxTokens: 300,
+                temperature: attempt === 0 ? 0.9 : 1.0
+            });
+            const parsed = parseVietnameseWord(data?.originalWord, { minSyllables: 2, maxSyllables: 2 });
+            if (!parsed.ok) { rejected.push(String(data?.originalWord || '').slice(0, 30)); continue; }
+            const word = parsed.text.toUpperCase();
+            const hint = String(data?.hint || '').trim();
+            if (usedKeys.has(toPlainKey(word))) { rejected.push(word); continue; }
+            if (hint.length < 8 || hint.length > 120 || hintLeaksAnswer(hint, word)) { rejected.push(word); continue; }
+            // Từ điển xác nhận từ có thật; từ điển lỗi (error) thì chấp nhận vì đã qua các bước kiểm tra khác
+            const dict = await lookupVietnamese(word);
+            if (dict.status === 'missing') { rejected.push(word); continue; }
+            return build(word, hint);
+        } catch (e) {
+            console.error('❌ AI generateVuaTiengVietQuestion Error:', e.message);
         }
     }
+
+    // Dự phòng: ngân hàng từ đã soát tay (ưu tiên đúng độ khó, chưa dùng)
+    const fresh = (entry) => !usedKeys.has(toPlainKey(entry.word));
+    const levelPool = WORD_BANK.filter((e) => e.level === level && fresh(e));
+    const pool = levelPool.length ? levelPool : WORD_BANK.filter(fresh);
+    const choices = pool.length ? pool : WORD_BANK;
+    const entry = choices[Math.floor(Math.random() * choices.length)];
+    return build(entry.word, entry.hint);
 }
 
 /**

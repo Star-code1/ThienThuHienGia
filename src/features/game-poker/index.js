@@ -14,6 +14,7 @@ const { getDisplayName } = require('../../shared/utils/nameHelper');
 const TURN_TIMEOUT_MS = 60_000;
 const LOBBY_TIMEOUT_MS = 5 * 60_000;
 const BOT_STACK_MULTIPLIER = 30;
+const BUY_IN_MULTIPLIER = 20; // tiền mua chip khi ngồi vào bàn = 20 × mức cược, bị trừ ngay khỏi Linh Thạch
 const BOT_NAMES = ['Thiên Thư Hiền Giả', 'Kiếm Khách Vô Danh', 'Hồ Ly Tinh', 'Lão Ăn Mày', 'Tiểu Sư Muội'];
 const COLOR = { table: 0x9B59B6, lobby: 0x5865F2, win: 0x2ECC71, lose: 0xE74C3C, closed: 0x95A5A6 };
 
@@ -25,6 +26,31 @@ const cardStr = (cards) => cards.map(String).join('  ');
 const boardStr = (board) => [...board.map(String), ...Array(5 - board.length).fill('🂠')].join('  ');
 const isPlaying = (table) => T.STAGES.includes(table.stage);
 const humans = (table) => table.players.filter((p) => !p.isBot);
+const buyInOf = (table) => table.bet * BUY_IN_MULTIPLIER;
+
+// ── Tiền mua chip (buy-in): trừ khi vào bàn, hoàn phần còn lại khi rời/đóng bàn ────────────
+async function cashOutAmount(userId, amount) {
+    if (!(amount > 0)) return;
+    try {
+        await UserProfile.incLinhThachById(userId, amount);
+    } catch (e) {
+        console.error(`[Poker] Lỗi hoàn ${amount} Linh Thạch cho ${userId}:`, e.message);
+    }
+}
+
+/** Số chip phải trả lại cho một ghế (ván đang dở bị huỷ thì trả cả phần đã bỏ vào pot). */
+function chipsOwed(table, p) {
+    return p.stack + (isPlaying(table) ? p.total : 0);
+}
+
+/** Trả chip của một người về Linh Thạch rồi xoá chip khỏi ghế (chống trả hai lần). */
+function cashOutSeat(table, p) {
+    if (p.isBot) return Promise.resolve();
+    const amount = chipsOwed(table, p);
+    p.stack = 0;
+    p.total = 0;
+    return cashOutAmount(p.id, amount);
+}
 
 // ── Khóa tuần tự mỗi bàn (tránh 2 click xử lý chồng nhau) ─────────────────────
 function withLock(table, fn) {
@@ -156,6 +182,8 @@ function closeTable(table, reason) {
     payload.components = [];
     payload.content = '';
     payload.embeds[0].setColor(COLOR.closed).setFooter({ text: `⛔ ${reason}` });
+    // Trả lại chip còn lại cho người chơi (sau khi đã dựng xong giao diện)
+    table.cashOutPromise = Promise.all(humans(table).map((p) => cashOutSeat(table, p)));
     return payload;
 }
 
@@ -201,7 +229,7 @@ async function settleHand(table) {
             const profile = await UserProfile.getOrCreate(row.id, row.name);
             const inc = { 'stats.pokerGames': 1 };
             if (row.net > 0) inc['stats.pokerWins'] = 1;
-            await profile.incLinhThach(row.net, { clampZero: true, inc });
+            await profile.incLinhThach(0, { inc }); // Linh Thạch nằm trong chip tại bàn, chỉ ghi thống kê
             if (row.net > 0) {
                 profile.addTuVi(30);
                 await profile.save();
@@ -226,7 +254,7 @@ function requestCommentary(table) {
     })).catch(() => {});
 }
 
-/** Cập nhật Linh Thạch thật từ DB trước mỗi ván; loại người không đủ tiền. */
+/** Trước mỗi ván: nạp lại chip cho máy, loại người không còn đủ chip để đặt ante. */
 async function refreshStacks(table) {
     const kicked = [];
     for (const p of [...table.players]) {
@@ -234,13 +262,11 @@ async function refreshStacks(table) {
             if (p.stack < table.bet) p.stack = table.bet * BOT_STACK_MULTIPLIER;
             continue;
         }
-        const profile = await UserProfile.getOrCreate(p.id, p.name);
-        if (profile.linhThach < table.bet) {
+        if (p.stack < table.bet) {
             kicked.push(p.name);
+            await cashOutSeat(table, p); // trả nốt phần chip lẻ
             T.removePlayer(table, p.id);
             userTable.delete(p.id);
-        } else {
-            p.stack = profile.linhThach;
         }
     }
     return kicked;
@@ -283,13 +309,18 @@ const pokerCommand = {
         if (userTable.has(userId)) {
             return interaction.reply({ content: '⚠️ Đạo hữu đang ngồi ở một bàn Poker khác. Rời bàn đó trước nhé!', flags: 64 });
         }
+        const buyIn = bet * BUY_IN_MULTIPLIER;
         const profile = await UserProfile.getOrCreate(userId, displayName);
-        if (profile.linhThach < bet) {
-            return interaction.reply({ content: `⚠️ Không đủ Linh Thạch! Hiện có **${fmt(profile.linhThach)}** 💎, cần ít nhất **${fmt(bet)}** 💎.`, flags: 64 });
+        if (await profile.incLinhThach(-buyIn, { requireFunds: true }) === null) {
+            return interaction.reply({ content: `⚠️ Không đủ Linh Thạch! Hiện có **${fmt(profile.linhThach)}** 💎, cần **${fmt(buyIn)}** 💎 mua chip (${BUY_IN_MULTIPLIER}× mức cược).`, flags: 64 });
+        }
+        if (userTable.has(userId)) {
+            await cashOutAmount(userId, buyIn);
+            return interaction.reply({ content: '⚠️ Đạo hữu đang ngồi ở một bàn Poker khác. Rời bàn đó trước nhé!', flags: 64 });
         }
 
         const table = T.createTable({ id: interaction.id, mode, bet, hostId: userId });
-        T.addPlayer(table, { id: userId, name: displayName, stack: profile.linhThach });
+        T.addPlayer(table, { id: userId, name: displayName, stack: buyIn });
         tables.set(table.id, table);
         userTable.set(userId, table.id);
 
@@ -301,8 +332,14 @@ const pokerCommand = {
             armTimer(table);
         }
 
-        const res = await interaction.reply({ ...render(table), withResponse: true });
-        table.message = res.resource?.message || null;
+        try {
+            const res = await interaction.reply({ ...render(table), withResponse: true });
+            table.message = res.resource?.message || null;
+        } catch (err) {
+            console.error('[Poker] Không đăng được bàn:', err.message);
+            closeTable(table, 'Không đăng được bàn'); // trả lại chip
+            await table.cashOutPromise;
+        }
     },
 };
 
@@ -313,7 +350,8 @@ const RULES_EMBED = new EmbedBuilder()
     .setTitle('📖 Luật Hồng Trần Poker (Texas Hold\'em)')
     .setDescription(
         '**Diễn biến ván**\n' +
-        '• Mỗi người đặt **ante** = mức cược, nhận 2 lá bài riêng.\n' +
+        '• Vào bàn phải **mua chip** = ' + BUY_IN_MULTIPLIER + '× mức cược (trừ ngay khỏi Linh Thạch); rời/đóng bàn được hoàn chip còn lại.\n' +
+        '• Mỗi ván người chơi đặt **ante** = mức cược, nhận 2 lá bài riêng.\n' +
         '• 4 vòng cược: **Preflop → Flop** (3 lá chung) **→ Turn** (lá 4) **→ River** (lá 5).\n' +
         '• Ghép 2 lá riêng + 5 lá chung thành bộ 5 lá mạnh nhất. Còn từ 2 người tới cuối thì lật bài.\n\n' +
         '**Hành động mỗi lượt**\n' +
@@ -370,15 +408,24 @@ async function handlePokerButtons(interaction) {
                 if (seat) return reply('Đạo hữu đã ngồi bàn này rồi.');
                 if (userTable.has(userId)) return reply('Đạo hữu đang ngồi ở một bàn khác.');
                 const name = getDisplayName(interaction);
+                const buyIn = buyInOf(table);
                 const profile = await UserProfile.getOrCreate(userId, name);
-                if (profile.linhThach < table.bet) return reply(`Cần ít nhất **${fmt(table.bet)}** 💎 để vào bàn.`);
-                const err = T.addPlayer(table, { id: userId, name, stack: profile.linhThach });
-                if (err) return reply(err);
+                if (await profile.incLinhThach(-buyIn, { requireFunds: true }) === null) {
+                    return reply(`Cần **${fmt(buyIn)}** 💎 để mua chip vào bàn (${BUY_IN_MULTIPLIER}× mức cược). Đạo hữu đang có **${fmt(profile.linhThach)}** 💎.`);
+                }
+                const err = tables.has(table.id) && !userTable.has(userId)
+                    ? T.addPlayer(table, { id: userId, name, stack: buyIn })
+                    : 'Không thể vào bàn lúc này.';
+                if (err) {
+                    await cashOutAmount(userId, buyIn);
+                    return reply(`${err} Tiền mua chip đã được hoàn lại.`);
+                }
                 userTable.set(userId, table.id);
                 break;
             }
             case 'leave': {
                 if (!seat) return reply('Đạo hữu không ngồi ở bàn này.');
+                await cashOutSeat(table, seat); // trả chip còn lại
                 T.removePlayer(table, userId);
                 userTable.delete(userId);
                 if (table.hostId === userId) {
@@ -441,10 +488,11 @@ module.exports = {
                 url: t.message?.url,
             };
         }),
-    // Bot tắt/khởi động lại: đóng mọi bàn (tiền chỉ ghi khi kết thúc ván nên ván dở không ai mất tiền)
-    onShutdown: () => Promise.all([...tables.values()].map((table) =>
-        editTableMessage(table, closeTable(table, 'Bot khởi động lại để bảo trì — ván dở được huỷ, không ai mất Linh Thạch'))
-    )),
+    // Bot tắt/khởi động lại: đóng mọi bàn và trả chip (kể cả phần đã bỏ vào pot của ván dở)
+    onShutdown: () => Promise.all([...tables.values()].map(async (table) => {
+        await editTableMessage(table, closeTable(table, 'Bot khởi động lại để bảo trì — ván dở được huỷ, chip được hoàn lại Linh Thạch'));
+        await table.cashOutPromise;
+    })),
     // xuất cho test
     _internal: { render, tables },
 };

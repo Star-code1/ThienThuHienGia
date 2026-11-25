@@ -2,91 +2,148 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const { validateWordVI, validateWordEN, getRandomEnglishStartWord } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
+const {
+    parseVietnameseWord, parseEnglishWord, splitSyllables, toKey,
+} = require('../../shared/utils/wordGame');
+const { claimChannel, releaseChannel, gameLabel } = require('../../shared/channelGames');
 
-// Stores active games per channel: channelId -> gameObject
+const GAME_TYPE = 'noitu';
+const TURN_MS = 30_000;
+const MAX_TIMEOUTS = 5;
+const REWARD_LINH_THACH = 15;
+const REWARD_TU_VI = 10;
+const TIMEOUT_BONUS = 20;
+const NO_MENTIONS = { parse: [], repliedUser: false };
+
+// Các sòng đang chạy theo kênh: channelId -> game
 const activeGames = new Map();
 
 const FALLBACK_WORDS_VI = ['Tu Tiên', 'Nghịch Thủy', 'Huyết Hà', 'Tố Vấn', 'Linh Thạch', 'Kim Đan', 'Bang Chiến', 'Hiền Giả', 'Giang Hồ', 'Thiên Thư'];
 const FALLBACK_WORDS_EN = ['Dragon', 'Immortal', 'Phoenix', 'Guild', 'Warrior', 'Mystic', 'Legend', 'Arcane', 'Crystal', 'Shadow'];
 
+const lastSyllable = (word) => splitSyllables(word).pop();
+const nextHintOf = (game) => (game.lang === 'vi' ? lastSyllable(game.lastWord).toUpperCase() : game.lastWord.slice(-1).toUpperCase());
+
+/** Kết thúc sòng: dọn timer, bỏ khỏi sổ, nhả kênh. */
+function endGame(channelId) {
+    const game = activeGames.get(channelId);
+    if (!game) return null;
+    if (game.timer) clearTimeout(game.timer);
+    game.timer = null;
+    activeGames.delete(channelId);
+    releaseChannel(channelId, GAME_TYPE);
+    return game;
+}
+
+/** Chọn từ mới chưa dùng cho lượt mới / lúc mở sòng. */
+async function pickFreshWord(game) {
+    for (let i = 0; i < 3; i++) {
+        const w = game.lang === 'vi'
+            ? FALLBACK_WORDS_VI[Math.floor(Math.random() * FALLBACK_WORDS_VI.length)]
+            : await getRandomEnglishStartWord();
+        if (!game.usedWords.has(toKey(w))) return w;
+    }
+    const list = game.lang === 'vi' ? FALLBACK_WORDS_VI : FALLBACK_WORDS_EN;
+    return list.find((w) => !game.usedWords.has(toKey(w))) || list[Math.floor(Math.random() * list.length)];
+}
+
 /**
- * Đặt lại đồng hồ 30s cho Nối Từ
+ * Đặt lại đồng hồ 30s. Mỗi lần đặt = một "lượt" mới (turnId tăng) để phát hiện
+ * các lượt thẩm định AI đã quá hạn.
  */
 function resetTurnTimer(channelId, channel) {
     const game = activeGames.get(channelId);
     if (!game) return;
 
     if (game.timer) clearTimeout(game.timer);
+    game.turnId += 1;
 
     game.timer = setTimeout(async () => {
-        const currentGame = activeGames.get(channelId);
-        if (!currentGame) return;
+        const current = activeGames.get(channelId);
+        if (current !== game) return;
 
-        currentGame.consecutiveTimeouts++;
+        game.consecutiveTimeouts++;
 
-        // Thưởng linh thạch cho người vừa nối từ thành công cuối cùng
-        if (currentGame.lastUserId) {
+        // Thưởng một lần cho người vừa nối từ thành công cuối cùng (chủ sòng chưa nối thì không có thưởng)
+        const rewardee = game.lastPlayerId;
+        game.lastPlayerId = null;
+        if (rewardee) {
             try {
-                const profile = await UserProfile.getOrCreate(currentGame.lastUserId);
-                await profile.incLinhThach(20);
-            } catch (e) {}
+                const profile = await UserProfile.getOrCreate(rewardee);
+                await profile.incLinhThach(TIMEOUT_BONUS);
+            } catch (e) { /* bỏ qua lỗi DB, không chặn game */ }
         }
 
-        if (currentGame.consecutiveTimeouts >= 5) {
-            // Đã 5 lần không ai nối -> Dừng game
-            activeGames.delete(channelId);
+        if (activeGames.get(channelId) !== game) return;
+
+        if (game.consecutiveTimeouts >= MAX_TIMEOUTS) {
+            endGame(channelId);
             const stopEmbed = new EmbedBuilder()
                 .setColor('#E74C3C')
                 .setTitle('🛑 SÒNG NỐI TỪ ĐÃ KẾT THÚC')
                 .setDescription(
-                    `⏳ Đã trôi qua **5 lượt liên tiếp (30 giây/lượt)** không có đạo hữu nào tham gia nối từ!\n` +
+                    `⏳ Đã trôi qua **${MAX_TIMEOUTS} lượt liên tiếp (${TURN_MS / 1000} giây/lượt)** không có đạo hữu nào nối từ!\n` +
                     `🧙‍♂️ **Thiên Thư Hiền Giả** đã thu hồi trận pháp. Dùng lệnh \`/noitu-vi\` hoặc \`/noitu-en\` để mở sòng mới!`
                 )
                 .setFooter({ text: 'Thiên Thư Môn • Đạo pháp tự nhiên' });
-
             await channel.send({ embeds: [stopEmbed] }).catch(() => {});
             return;
         }
 
-        // Chọn từ mới ngẫu nhiên để tiếp tục lượt mới
-        let newWord = '';
-        if (currentGame.lang === 'vi') {
-            newWord = FALLBACK_WORDS_VI[Math.floor(Math.random() * FALLBACK_WORDS_VI.length)];
-        } else {
-            newWord = await getRandomEnglishStartWord();
-        }
+        const newWord = await pickFreshWord(game);
+        if (activeGames.get(channelId) !== game) return;
 
-        currentGame.lastWord = newWord;
-        currentGame.usedWords.add(newWord.toLowerCase());
-        const nextCharOrPart = currentGame.lang === 'vi' 
-            ? newWord.split(/\s+/).pop().toUpperCase() 
-            : newWord.slice(-1).toUpperCase();
+        game.lastWord = newWord;
+        game.usedWords.add(toKey(newWord));
 
         const timeoutEmbed = new EmbedBuilder()
             .setColor('#E67E22')
-            .setTitle(`⏳ HẾT 30 GIÂY! MỞ LƯỢT MỚI (${currentGame.consecutiveTimeouts}/5)`)
+            .setTitle(`⏳ HẾT ${TURN_MS / 1000} GIÂY! MỞ LƯỢT MỚI (${game.consecutiveTimeouts}/${MAX_TIMEOUTS})`)
             .setDescription(
-                `⏱️ Quá 30s không ai nối từ!\n` +
-                (currentGame.lastUserId ? `🏆 Đạo hữu nối từ cuối nhận thưởng thêm **+20 💎 Linh Thạch**!\n\n` : '\n') +
+                `⏱️ Quá ${TURN_MS / 1000}s không ai nối từ!\n` +
+                (rewardee ? `🏆 Đạo hữu nối từ cuối nhận thưởng thêm **+${TIMEOUT_BONUS} 💎 Linh Thạch**!\n\n` : '\n') +
                 `👉 **Thiên Thư Hiền Giả** khởi tạo từ mới: **"${newWord}"**\n` +
-                `👉 Từ tiếp theo bắt đầu bằng: **"${nextCharOrPart}"**!`
+                `👉 Từ tiếp theo bắt đầu bằng: **"${nextHintOf(game)}"**!`
             )
-            .setFooter({ text: 'Nhắn từ trực tiếp vào kênh để nối • Đếm ngược 30 giây' });
-
+            .setFooter({ text: `Nhắn từ trực tiếp vào kênh để nối • Đếm ngược ${TURN_MS / 1000} giây` });
         await channel.send({ embeds: [timeoutEmbed] }).catch(() => {});
 
-        // Đặt lại đếm ngược 30s cho lượt mới
         resetTurnTimer(channelId, channel);
-    }, 30000);
+    }, TURN_MS);
+}
+
+function newGame(lang, startWord) {
+    return {
+        lang,
+        lastWord: startWord,
+        lastPlayerId: null,        // người nối thành công gần nhất (null: chưa ai / vừa hết giờ)
+        players: new Set(),        // những người đã nối ít nhất 1 từ trong sòng
+        usedWords: new Set([toKey(startWord)]),
+        consecutiveTimeouts: 0,
+        timer: null,
+        turnId: 0,
+        busy: false,               // đang thẩm định một từ → chặn các tin nhắn chen ngang
+    };
+}
+
+/** Chặn nếu kênh đang có game chữ khác chạy. Trả về true nếu bị chặn (đã trả lời). */
+async function rejectIfChannelBusy(interaction) {
+    const owner = claimChannel(interaction.channelId, GAME_TYPE);
+    if (!owner) return false;
+    await interaction.reply({
+        content: `⚠️ Kênh này đang chơi **${gameLabel(owner)}**. Hãy kết thúc game đó trước khi mở Nối Từ!`,
+        flags: 64,
+    });
+    return true;
 }
 
 const noituViCommand = {
     data: new SlashCommandBuilder()
         .setName('noitu-vi')
         .setDescription('🐲 Khai mở sòng Nối Từ Tiếng Việt (Nghịch Thủy Hàn & Tu Tiên)')
-        .addStringOption(option => 
+        .addStringOption(option =>
             option.setName('tudau')
-                .setDescription('Từ khởi đầu (Để trống sẽ chọn ngẫu nhiên)')
+                .setDescription('Từ khởi đầu, từ ghép 2–4 tiếng (Để trống sẽ chọn ngẫu nhiên)')
                 .setRequired(false)
         ),
     async execute(interaction) {
@@ -99,17 +156,23 @@ const noituViCommand = {
         }
 
         const inputWord = interaction.options.getString('tudau');
-        const startWord = (inputWord || FALLBACK_WORDS_VI[Math.floor(Math.random() * FALLBACK_WORDS_VI.length)]).trim();
+        let startWord;
+        if (inputWord) {
+            const parsed = parseVietnameseWord(inputWord);
+            if (!parsed.ok) {
+                return interaction.reply({
+                    content: '⚠️ Từ khởi đầu phải là từ ghép tiếng Việt gồm 2–4 tiếng, chỉ có chữ cái (ví dụ: `Tu Tiên`).',
+                    flags: 64
+                });
+            }
+            startWord = parsed.text;
+        } else {
+            startWord = FALLBACK_WORDS_VI[Math.floor(Math.random() * FALLBACK_WORDS_VI.length)];
+        }
 
-        const game = {
-            lang: 'vi',
-            lastWord: startWord,
-            lastUserId: interaction.user.id,
-            usedWords: new Set([startWord.toLowerCase()]),
-            consecutiveTimeouts: 0,
-            timer: null
-        };
+        if (await rejectIfChannelBusy(interaction)) return;
 
+        const game = newGame('vi', startWord);
         activeGames.set(channelId, game);
 
         const row = new ActionRowBuilder().addComponents(
@@ -125,15 +188,13 @@ const noituViCommand = {
             .setDescription(
                 `🧙‍♂️ **Thiên Thư Hiền Giả** đã mở trận Luận Từ tại Thiên Thư Môn!\n\n` +
                 `👉 Từ mở màn: **"${startWord}"**\n` +
-                `👉 Người chơi tiếp theo hãy nhắn một từ ghép tiếng Việt bắt đầu bằng tiếng **"${startWord.split(/\s+/).pop()}"**!\n\n` +
-                `⏱️ **Thời gian mỗi lượt:** 30 giây (Quá 30s không ai nối sẽ tự động đổi từ mới; 5 lần liên tiếp sẽ dừng game).\n` +
-                `🎁 **Phần thưởng:** +15 Linh Thạch & +10 Tu Vi mỗi từ đúng.`
+                `👉 Người chơi tiếp theo hãy nhắn một từ ghép tiếng Việt bắt đầu bằng tiếng **"${nextHintOf(game)}"**!\n\n` +
+                `⏱️ **Thời gian mỗi lượt:** ${TURN_MS / 1000} giây (quá giờ không ai nối sẽ tự đổi từ mới; ${MAX_TIMEOUTS} lần liên tiếp sẽ dừng game).\n` +
+                `🎁 **Phần thưởng:** +${REWARD_LINH_THACH} Linh Thạch & +${REWARD_TU_VI} Tu Vi mỗi từ đúng.`
             )
             .setFooter({ text: 'Nhắn từ trực tiếp vào kênh để tham gia • /noitu-stop để dừng' });
 
         await interaction.reply({ embeds: [embed], components: [row] });
-
-        // Khởi động đồng hồ 30s
         resetTurnTimer(channelId, interaction.channel);
     }
 };
@@ -150,21 +211,23 @@ const noituEnCommand = {
                 flags: 64
             });
         }
+        if (await rejectIfChannelBusy(interaction)) return;
 
         await interaction.deferReply();
 
-        // Lựa chọn ngẫu nhiên 1 từ Tiếng Anh khởi đầu
-        const startWord = await getRandomEnglishStartWord();
+        let startWord;
+        try {
+            startWord = await getRandomEnglishStartWord();
+        } catch (e) {
+            startWord = FALLBACK_WORDS_EN[Math.floor(Math.random() * FALLBACK_WORDS_EN.length)];
+        }
 
-        const game = {
-            lang: 'en',
-            lastWord: startWord,
-            lastUserId: interaction.user.id,
-            usedWords: new Set([startWord.toLowerCase()]),
-            consecutiveTimeouts: 0,
-            timer: null
-        };
+        // Có thể có người mở sòng khác trong lúc chờ AI
+        if (activeGames.has(channelId)) {
+            return interaction.editReply('⚠️ Active word chain game running in this channel! Use `/noitu-stop` to stop.');
+        }
 
+        const game = newGame('en', startWord);
         activeGames.set(channelId, game);
 
         const row = new ActionRowBuilder().addComponents(
@@ -180,15 +243,13 @@ const noituEnCommand = {
             .setDescription(
                 `🧙‍♂️ **Thiên Thư Hiền Giả** has initiated the English Word Chain!\n\n` +
                 `👉 Random initial word: **"${startWord}"**\n` +
-                `👉 Next player must enter ANY valid English word starting with letter **"${startWord.slice(-1).toUpperCase()}"**!\n\n` +
-                `⏱️ **Time limit:** 30 seconds per turn (5 consecutive timeouts = game over).\n` +
-                `🎁 **Reward:** +15 Linh Thạch & +10 Tu Vi.`
+                `👉 Next player must enter ONE valid English word starting with the letter **"${nextHintOf(game)}"**!\n\n` +
+                `⏱️ **Time limit:** ${TURN_MS / 1000} seconds per turn (${MAX_TIMEOUTS} consecutive timeouts = game over).\n` +
+                `🎁 **Reward:** +${REWARD_LINH_THACH} Linh Thạch & +${REWARD_TU_VI} Tu Vi.`
             )
             .setFooter({ text: 'Type your word directly in channel • Use /noitu-stop to end' });
 
         await interaction.editReply({ embeds: [embed], components: [row] });
-
-        // Khởi động đồng hồ 30s
         resetTurnTimer(channelId, interaction.channel);
     }
 };
@@ -198,15 +259,10 @@ const noituStopCommand = {
         .setName('noitu-stop')
         .setDescription('⛔ Kết thúc trận Nối Từ đang diễn ra trong kênh'),
     async execute(interaction) {
-        const channelId = interaction.channelId;
-        const game = activeGames.get(channelId);
+        const game = endGame(interaction.channelId);
         if (!game) {
             return interaction.reply({ content: 'Không có trận Nối Từ nào đang diễn ra ở kênh này.', flags: 64 });
         }
-
-        if (game.timer) clearTimeout(game.timer);
-        activeGames.delete(channelId);
-
         await interaction.reply(`🛑 **Thiên Thư Hiền Giả** đã đóng sòng Nối Từ (${game.lang.toUpperCase()}) theo yêu cầu của đạo hữu!`);
     }
 };
@@ -218,20 +274,26 @@ const handleNoituRules = async (interaction) => {
         .setTitle('📖 HƯỚNG DẪN & LUẬT CHƠI NỐI TỪ')
         .setDescription(
             `🐲 **NỐI TỪ TIẾNG VIỆT (\`/noitu-vi\`):**\n` +
-            `• Nhắn trực tiếp từ ghép tiếng Việt vào kênh.\n` +
-            `• Tiếng đầu của từ bạn nhắn phải TRÙNG với tiếng cuối của từ trước.\n` +
+            `• Nhắn trực tiếp một từ ghép **2–4 tiếng** có nghĩa vào kênh.\n` +
+            `• Tiếng đầu của từ bạn nhắn phải TRÙNG (cả dấu thanh) với tiếng cuối của từ trước.\n` +
             `  *Ví dụ:* "Tu **Tiên**" ➔ "**Tiên** Giới" ➔ "**Giới** Hạn".\n\n` +
             `🐉 **ENGLISH WORD CHAIN (\`/noitu-en\`):**\n` +
-            `• Chấp nhận mọi từ Tiếng Anh có thật ngẫu nhiên.\n` +
-            `• Chữ cái ĐẦU TIÊN của từ bạn nhắn phải trùng với chữ cái CUỐI CÙNG của từ trước.\n` +
+            `• Nhắn MỘT từ tiếng Anh có thật (chỉ chữ cái).\n` +
+            `• Chữ cái ĐẦU của từ bạn nhắn phải trùng với chữ cái CUỐI của từ trước.\n` +
             `  *Ví dụ:* "Drago**n**" ➔ "**N**irvana" ➔ "**A**rcane".\n\n` +
-            `⏱️ **Luật chung:** 30 giây/lượt. Quá 30s không ai trả lời sẽ đổi từ ngẫu nhiên. Quá 5 lượt timeout sòng sẽ tự hủy.\n` +
-            `🎁 **Thưởng:** +15 Linh Thạch & +10 Tu Vi cho mỗi từ đúng!`
+            `📏 **Luật chung:**\n` +
+            `• Không dùng lại từ đã xuất hiện trong sòng.\n` +
+            `• Khi đã có từ 2 người chơi trở lên, không được nối **2 lượt liền nhau**.\n` +
+            `• ⏱️ ${TURN_MS / 1000} giây/lượt. Quá giờ không ai nối sẽ đổi từ ngẫu nhiên (người nối cuối được +${TIMEOUT_BONUS} 💎). ${MAX_TIMEOUTS} lượt hết giờ liên tiếp sòng sẽ tự đóng.\n` +
+            `• Tin nhắn trò chuyện thường (không giống một từ) sẽ được bỏ qua.\n\n` +
+            `🎁 **Thưởng:** +${REWARD_LINH_THACH} Linh Thạch & +${REWARD_TU_VI} Tu Vi cho mỗi từ đúng!`
         )
         .setFooter({ text: 'Thiên Thư Hiền Giả Ban Luật' });
 
     await interaction.reply({ embeds: [embed], flags: 64 });
 };
+
+const reply = (message, content) => message.reply({ content, allowedMentions: NO_MENTIONS }).catch(() => {});
 
 // Listener cho messageCreate
 const onMessageCreate = {
@@ -243,113 +305,94 @@ const onMessageCreate = {
         const game = activeGames.get(message.channelId);
         if (!game) return;
 
-        const userText = message.content.trim();
-        if (userText.startsWith('/')) return;
+        const isVi = game.lang === 'vi';
+        const parsed = isVi ? parseVietnameseWord(message.content) : parseEnglishWord(message.content);
+        // Tin nhắn không giống một lượt nối từ → là trò chuyện thường, bỏ qua im lặng
+        if (!parsed.ok) return;
 
-        const lowerText = userText.toLowerCase();
+        const word = parsed.text;
+        const key = toKey(word);
 
-        // Kiểm tra từ bị trùng
-        if (game.usedWords.has(lowerText)) {
+        // Luật nối (so sánh có dấu, đã chuẩn hoá NFC). Sai luật → chỉ thả ❌, không spam kênh.
+        const need = isVi ? toKey(lastSyllable(game.lastWord)) : game.lastWord.slice(-1).toLowerCase();
+        const got = isVi ? toKey(parsed.syllables[0]) : key.slice(0, 1);
+        if (need !== got) {
             await message.react('❌').catch(() => {});
-            await message.reply(`⚠️ Từ **"${userText}"** đã được dùng trước đó rồi! Đạo hữu hãy chọn từ khác.`).catch(() => {});
             return;
         }
 
-        if (game.lang === 'vi') {
-            const lastPart = game.lastWord.trim().split(/\s+/).pop().toLowerCase();
-            const firstPart = userText.split(/\s+/)[0].toLowerCase();
-
-            if (lastPart !== firstPart) {
-                await message.react('❌').catch(() => {});
-                await message.reply(`⚠️ Không hợp lệ! Từ phải bắt đầu bằng tiếng **"${lastPart.toUpperCase()}"** (Từ trước: "${game.lastWord}").`).catch(() => {});
-                return;
-            }
-
-            // Thẩm định AI
-            const res = await validateWordVI(game.lastWord, userText);
-            if (!res.valid) {
-                await message.react('❌').catch(() => {});
-                await message.reply(`❌ ${res.reason}`).catch(() => {});
-                return;
-            }
-
-            // Nối từ thành công!
-            game.lastWord = userText;
-            game.usedWords.add(lowerText);
-            game.lastUserId = message.author.id;
-            game.consecutiveTimeouts = 0; // Reset số lần timeout liên tiếp
-
-            // Đặt lại timer 30s
-            resetTurnTimer(message.channelId, message.channel);
-
-            const authorName = getDisplayName(message);
-            const profile = await UserProfile.getOrCreate(message.author.id, authorName);
-            await profile.incLinhThach(15, { inc: { 'stats.noituWins': 1 } });
-            profile.addTuVi(10);
-            await profile.save();
-
-            await message.react('✅').catch(() => {});
-            
-            const lastWordPart = userText.split(/\s+/).pop();
-            const embed = new EmbedBuilder()
-                .setColor('#2ECC71')
-                .setAuthor({ name: authorName, iconURL: message.author.displayAvatarURL() })
-                .setDescription(
-                    `✨ **Nối từ thành công:** "${userText}"\n` +
-                    `💬 *Hiền Giả:* "${res.reason}"\n` +
-                    `🎁 Thưởng: **+15 💎 Linh Thạch** | **+10 ✨ Tu Vi**\n` +
-                    `👉 Từ tiếp theo phải bắt đầu bằng tiếng: **"${lastWordPart.toUpperCase()}"**`
-                );
-
-            await message.channel.send({ embeds: [embed] }).catch(() => {});
-
-        } else if (game.lang === 'en') {
-            const lastChar = game.lastWord.trim().slice(-1).toLowerCase();
-            const firstChar = userText.slice(0, 1).toLowerCase();
-
-            if (lastChar !== firstChar) {
-                await message.react('❌').catch(() => {});
-                await message.reply(`⚠️ Must start with letter **"${lastChar.toUpperCase()}"** (Last word: "${game.lastWord}").`).catch(() => {});
-                return;
-            }
-
-            const res = await validateWordEN(game.lastWord, userText);
-            if (!res.valid) {
-                await message.react('❌').catch(() => {});
-                await message.reply(`❌ ${res.reason}`).catch(() => {});
-                return;
-            }
-
-            // Valid English word!
-            game.lastWord = userText;
-            game.usedWords.add(lowerText);
-            game.lastUserId = message.author.id;
-            game.consecutiveTimeouts = 0; // Reset timeout counter
-
-            // Đặt lại timer 30s
-            resetTurnTimer(message.channelId, message.channel);
-
-            const authorName = getDisplayName(message);
-            const profile = await UserProfile.getOrCreate(message.author.id, authorName);
-            await profile.incLinhThach(15, { inc: { 'stats.noituWins': 1 } });
-            profile.addTuVi(10);
-            await profile.save();
-
-            await message.react('✅').catch(() => {});
-
-            const nextChar = userText.slice(-1).toUpperCase();
-            const embed = new EmbedBuilder()
-                .setColor('#3498DB')
-                .setAuthor({ name: authorName, iconURL: message.author.displayAvatarURL() })
-                .setDescription(
-                    `✨ **Word Accepted:** "${userText}" (${res.meaning})\n` +
-                    `💬 *Hiền Giả:* "${res.reason}"\n` +
-                    `🎁 Reward: **+15 💎 Linh Thạch** | **+10 ✨ Tu Vi**\n` +
-                    `👉 Next word must start with letter: **"${nextChar}"**`
-                );
-
-            await message.channel.send({ embeds: [embed] }).catch(() => {});
+        if (game.usedWords.has(key)) {
+            await message.react('❌').catch(() => {});
+            return reply(message, `⚠️ ${isVi ? 'Từ' : 'The word'} **"${word}"** ${isVi ? 'đã được dùng trước đó rồi! Đạo hữu hãy chọn từ khác.' : 'was already used! Pick another one.'}`);
         }
+
+        if (game.lastPlayerId === message.author.id && game.players.size >= 2) {
+            await message.react('⏳').catch(() => {});
+            return reply(message, isVi
+                ? '⚠️ Đạo hữu vừa nối xong, hãy nhường lượt cho người khác nhé!'
+                : '⚠️ You just played — let someone else take the next turn!');
+        }
+
+        // Đang thẩm định từ khác → chặn chen ngang (tránh 2 người cùng "nối thành công" một lượt)
+        if (game.busy) {
+            await message.react('⏳').catch(() => {});
+            return;
+        }
+        game.busy = true;
+        const turnAtStart = game.turnId;
+        let res;
+        try {
+            res = isVi ? await validateWordVI(game.lastWord, word) : await validateWordEN(game.lastWord, word);
+        } finally {
+            game.busy = false;
+        }
+
+        // Trong lúc chờ AI sòng có thể đã đóng / hết giờ / đổi từ
+        if (activeGames.get(message.channelId) !== game || game.turnId !== turnAtStart) {
+            return reply(message, isVi
+                ? '⌛ Lượt này đã hết giờ trong lúc Hiền Giả thẩm định, đạo hữu thử với từ mới nhé!'
+                : '⌛ That turn timed out while I was checking. Try again with the new word!');
+        }
+
+        if (!res.valid) {
+            await message.react(res.unavailable ? '⚠️' : '❌').catch(() => {});
+            return reply(message, `${res.unavailable ? '⚠️' : '❌'} ${res.reason}`);
+        }
+
+        // Nối từ thành công!
+        game.lastWord = word;
+        game.usedWords.add(key);
+        game.lastPlayerId = message.author.id;
+        game.players.add(message.author.id);
+        game.consecutiveTimeouts = 0;
+        resetTurnTimer(message.channelId, message.channel);
+
+        const authorName = getDisplayName(message);
+        try {
+            const profile = await UserProfile.getOrCreate(message.author.id, authorName);
+            await profile.incLinhThach(REWARD_LINH_THACH, { inc: { 'stats.noituWins': 1 } });
+            profile.addTuVi(REWARD_TU_VI);
+            await profile.save();
+        } catch (err) {
+            console.error('❌ [NoiTu] Lỗi trả thưởng:', err.message);
+        }
+
+        await message.react('✅').catch(() => {});
+
+        const embed = new EmbedBuilder()
+            .setColor(isVi ? '#2ECC71' : '#3498DB')
+            .setAuthor({ name: authorName, iconURL: message.author.displayAvatarURL() })
+            .setDescription(
+                (isVi
+                    ? `✨ **Nối từ thành công:** "${word}"\n💬 *Hiền Giả:* "${res.reason}"\n` +
+                      `🎁 Thưởng: **+${REWARD_LINH_THACH} 💎 Linh Thạch** | **+${REWARD_TU_VI} ✨ Tu Vi**\n` +
+                      `👉 Từ tiếp theo phải bắt đầu bằng tiếng: **"${nextHintOf(game)}"**`
+                    : `✨ **Word Accepted:** "${word}" (${res.meaning})\n💬 *Hiền Giả:* "${res.reason}"\n` +
+                      `🎁 Reward: **+${REWARD_LINH_THACH} 💎 Linh Thạch** | **+${REWARD_TU_VI} ✨ Tu Vi**\n` +
+                      `👉 Next word must start with letter: **"${nextHintOf(game)}"**`)
+            );
+
+        await message.channel.send({ embeds: [embed], allowedMentions: NO_MENTIONS }).catch(() => {});
     }
 };
 
@@ -358,5 +401,7 @@ module.exports = {
     interactions: {
         'noitu_rules': handleNoituRules
     },
-    events: [onMessageCreate]
+    events: [onMessageCreate],
+    onShutdown: () => { for (const id of [...activeGames.keys()]) endGame(id); },
+    _internal: { activeGames, newGame, endGame },
 };
