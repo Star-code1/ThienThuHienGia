@@ -148,7 +148,7 @@ test('luồng game: ra đề → mọi người chọn 1 lần → công bố �
     await quiz.commands[0].execute(startInteraction(channel));
     const game = quiz._internal.games.get('room-1');
     assert.ok(game);
-    assert.equal(game.answerSeconds, 5);
+    assert.equal(game.answerSeconds, 12);
 
     t.mock.timers.tick(4000); await flush();            // hết lời dẫn → câu 1
     assert.equal(channel.sent.length, 1);
@@ -165,7 +165,7 @@ test('luồng game: ra đề → mọi người chọn 1 lần → công bố �
     assert.match(c1again.replies[0].content, /không đổi được/);
     assert.equal(game.round.answers.size, 3);
 
-    t.mock.timers.tick(5000); await flush();            // hết 5s → công bố
+    t.mock.timers.tick(12000); await flush();           // hết 12s → công bố
     assert.equal(qMsg.edits.length, 1);
     const reveal = qMsg.edits[0];
     assert.match(reveal.embeds[0].data.description, new RegExp(`Đáp án đúng: ${correct}\\.`));

@@ -14,7 +14,7 @@ const {
 } = require('./quizEngine');
 
 const REWARD_LINH_THACH = 100;      // mỗi đạo hữu trả lời đúng, mỗi câu
-const DEFAULT_ANSWER_SECONDS = 5;   // thời gian chọn đáp án, rồi Hiền Giả công bố
+const DEFAULT_ANSWER_SECONDS = 12;  // thời gian chọn đáp án, rồi Hiền Giả công bố
 const MIN_ANSWER_SECONDS = 5;
 const MAX_ANSWER_SECONDS = 30;
 const EMPTY_ROUND_LIMIT = 5;        // 5 lượt liên tiếp không ai trả lời thì dừng
