@@ -10,6 +10,8 @@ const GameEscrowSchema = new mongoose.Schema({
     game: { type: String, required: true },          // 'xidach' | 'poker' | 'baucua'
     refId: { type: String, required: true },         // id bàn / sòng
     amount: { type: Number, required: true, default: 0 },
+    // Ý định giữ(+)/trả(−) tiền đã ghi sổ nhưng chưa xác nhận — dùng để khôi phục chính xác khi bot sập giữa chừng
+    pending: { type: [{ _id: false, txId: String, amount: Number }], default: [] },
     channelId: { type: String, default: null },      // kênh để báo tin nếu không nhắn riêng được
     instanceId: { type: String, required: true },    // tiến trình bot đang giữ dòng này
     heartbeatAt: { type: Date, required: true, default: Date.now, index: true },

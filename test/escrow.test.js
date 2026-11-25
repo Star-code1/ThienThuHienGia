@@ -1,4 +1,5 @@
 // Xì Dách & Poker: tiền được giữ ngay khi vào bàn, hoàn đủ khi rời/huỷ, và tổng tiền luôn được bảo toàn.
+process.env.GAME_DRAIN_MS = '300'; // tắt êm chỉ chờ ngắn trong test
 const test = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
@@ -9,7 +10,9 @@ const mock = (rel, exports) => {
 };
 
 const balances = new Map();
+const txMarks = new Map();
 const UserProfile = {
+    async getEscrowTxs(userId) { return txMarks.get(userId) || []; },
     async getOrCreate(userId) {
         if (!balances.has(userId)) balances.set(userId, 1000);
         return {
@@ -23,10 +26,11 @@ const UserProfile = {
             save: async () => {},
         };
     },
-    async incLinhThachById(userId, delta, { requireFunds = false } = {}) {
+    async incLinhThachById(userId, delta, { requireFunds = false, tx = null } = {}) {
         const bal = balances.get(userId) ?? 1000;
         if (requireFunds && delta < 0 && bal < -delta) return null;
         balances.set(userId, bal + delta);
+        if (tx) { if (!txMarks.has(userId)) txMarks.set(userId, []); txMarks.get(userId).push(tx); }
         return { applied: delta, linhThach: bal + delta, fields: {} };
     },
 };
@@ -270,4 +274,57 @@ test('khôi phục chỉ áp dụng cho dòng đã mất heartbeat, không đụ
     assert.equal(await escrowService.recoverStale({}), 0);
     assert.equal(balances.get('a'), 800);
     await blackjack.onShutdown();
+});
+
+// ───────────── Sập GIỮA CHỪNG khi đang ghi sổ / trả tiền ─────────────
+
+const OLD = () => new Date(Date.now() - escrowService.STALE_MS - 5000);
+const sdkClient = () => ({ users: { fetch: async () => ({ send: async () => {} }) } });
+
+test('sập sau khi ghi sổ nhưng TRƯỚC khi trừ tiền → không hoàn (tiền chưa mất), không đền bù', async () => {
+    balances.set('a', 1000);
+    fakeEscrow.docs.push({ _id: 'x1', userId: 'a', game: 'xidach', refId: 't', amount: 0, pending: [{ txId: 'in:never-applied', amount: 200 }], instanceId: 'dead', heartbeatAt: OLD() });
+    assert.equal(await escrowService.recoverStale(sdkClient()), 0);
+    assert.equal(balances.get('a'), 1000);
+    assert.equal(fakeEscrow.docs.length, 0);
+});
+
+test('sập sau khi TRỪ tiền nhưng trước khi xác nhận sổ → vẫn hoàn đủ + đền bù', async () => {
+    balances.set('a', 1000);
+    await UserProfile.incLinhThachById('a', -200, { requireFunds: true, tx: 'in:applied' }); // đã trừ, dấu vết đã ghi
+    fakeEscrow.docs.push({ _id: 'x2', userId: 'a', game: 'xidach', refId: 't', amount: 0, pending: [{ txId: 'in:applied', amount: 200 }], instanceId: 'dead', heartbeatAt: OLD() });
+    assert.equal(await escrowService.recoverStale(sdkClient()), 1);
+    assert.equal(balances.get('a'), 800 + 200 + escrowService.COMPENSATION);
+});
+
+test('sập sau khi ĐÃ trả thưởng nhưng chưa xoá sổ → không trả lần hai, không đền bù', async () => {
+    balances.set('a', 1000);
+    await UserProfile.incLinhThachById('a', 400, { tx: 'out:applied' }); // đã nhận thưởng 400 của cược 200
+    fakeEscrow.docs.push({ _id: 'x3', userId: 'a', game: 'xidach', refId: 't', amount: 200, pending: [{ txId: 'out:applied', amount: -200 }], instanceId: 'dead', heartbeatAt: OLD() });
+    assert.equal(await escrowService.recoverStale(sdkClient()), 0);
+    assert.equal(balances.get('a'), 1400);
+    assert.equal(fakeEscrow.docs.length, 0);
+});
+
+// ───────────── Tắt êm: hoàn thành ván rồi mới huỷ ─────────────
+
+test('tắt êm Xì Dách: bàn chưa chia bài bị huỷ ngay, bàn đang chơi được CHỜ cho tới khi ván xong', async () => {
+    await bjOpen(bjInteraction('a', ''));
+    await bjOpen(bjInteraction('b', ''));
+    const [t1, t2] = blackjack._internal.tables.values();
+    await bjHandler(bjInteraction('a', `bj_start:${t1.id}`));
+    if (t1.phase !== 'playing') return; // có Xì Dách ngay → ván đã xong, không cần kiểm tra thêm
+
+    const draining = blackjack.onShutdown();
+    await new Promise((r) => setTimeout(r, 60));
+    assert.equal(blackjack._internal.tables.has(t2.id), false);   // bàn chưa chia bài: huỷ + hoàn
+    assert.equal(balances.get('b'), 1000);
+    assert.equal(blackjack._internal.tables.has(t1.id), true);    // ván đang chơi vẫn còn, chưa bị huỷ
+
+    await bjHandler(bjInteraction('a', `bj_stand:${t1.id}`));     // người chơi hoàn thành ván
+    await draining;
+    assert.equal(t1.phase, 'done');
+    assert.ok(t1.result !== undefined || t1.players[0].result, 'ván phải được thanh toán bình thường, không bị huỷ');
+    assert.equal(balances.get('a'), 1000 + t1.players[0].delta);
+    assert.equal(fakeEscrow.docs.length, 0);
 });

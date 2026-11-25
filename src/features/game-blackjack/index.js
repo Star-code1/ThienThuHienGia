@@ -11,6 +11,7 @@ const {
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
 const escrow = require('../../services/escrowService');
+const shutdown = require('../../shared/shutdownState');
 
 const MAX_PLAYERS = 6;
 const LOBBY_SECONDS = 30;
@@ -29,11 +30,10 @@ const tables = new Map();
 
 const unix = (ms) => Math.floor(ms / 1000);
 
-/** Hoàn Linh Thạch đã giữ (lỗi DB chỉ ghi log để không chặn luồng game). */
-async function refund(userId, amount) {
-    if (!(amount > 0)) return;
+/** Trả lại `amount` Linh Thạch đã giữ qua sổ (lỗi DB chỉ ghi log; dòng sổ còn lại sẽ được khôi phục sau). */
+async function giveBack(table, userId, amount, { closes = false } = {}) {
     try {
-        await UserProfile.incLinhThachById(userId, amount);
+        await escrow.payout(userId, 'xidach', table.id, { credit: amount, discharge: amount, closes });
     } catch (err) {
         console.error(`❌ [Blackjack] Lỗi hoàn ${amount} Linh Thạch cho ${userId}:`, err);
     }
@@ -275,12 +275,14 @@ async function editTable(table, payload) {
 
 async function openTable(interaction, bet) {
     const channelId = interaction.channelId;
+    if (shutdown.isDraining()) return interaction.reply({ content: shutdown.MAINTENANCE_TEXT, flags: 64 });
 
     // Một người được mở/ngồi nhiều bàn cùng lúc — tiền cược của mỗi bàn được giữ riêng
     const displayName = getDisplayName(interaction);
     const profile = await UserProfile.getOrCreate(interaction.user.id, displayName);
-    // Giữ tiền cược NGAY (không đủ thì từ chối) — không thể tiêu mất tiền ở nơi khác rồi mới thua
-    if (await profile.incLinhThach(-bet, { requireFunds: true }) === null) {
+    // Giữ tiền cược NGAY, ghi sổ trước rồi mới trừ (không đủ thì từ chối)
+    const tableId = `${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
+    if (!(await escrow.charge(interaction.user.id, 'xidach', tableId, bet, channelId))) {
         return interaction.reply({
             content: `⚠️ Đạo hữu không đủ Linh Thạch! Hiện có: \`${profile.linhThach.toLocaleString()}\` 💎, cần cược: \`${bet.toLocaleString()}\` 💎.`,
             flags: 64,
@@ -288,7 +290,7 @@ async function openTable(interaction, bet) {
     }
 
     const table = {
-        id: `${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`,
+        id: tableId,
         channelId,
         hostId: interaction.user.id,
         bet,
@@ -304,7 +306,6 @@ async function openTable(interaction, bet) {
         turnEndsAt: 0,
     };
     tables.set(table.id, table);
-    await escrow.hold(interaction.user.id, 'xidach', table.id, bet, channelId);
 
     try {
         await interaction.reply(renderLobby(table));
@@ -313,8 +314,7 @@ async function openTable(interaction, bet) {
         // Không đăng được bàn → huỷ bàn và hoàn cược
         console.error('❌ [Blackjack] Không mở được bàn:', err.message);
         tables.delete(table.id);
-        await refund(interaction.user.id, bet);
-        await escrow.release(interaction.user.id, 'xidach', table.id);
+        await giveBack(table, interaction.user.id, bet, { closes: true });
         return;
     }
 
@@ -324,6 +324,8 @@ async function openTable(interaction, bet) {
         }
     }, LOBBY_SECONDS * 1000);
 }
+
+let settling = 0; // số bàn đang trả thưởng (để tắt êm không bỏ dở giữa chừng)
 
 async function startGame(table) {
     clearTimeout(table.lobbyTimer);
@@ -374,6 +376,7 @@ async function finishGame(table) {
     clearTimeout(table.turnTimer);
     clearTimeout(table.lobbyTimer);
     tables.delete(table.id);
+    settling++;
 
     // Nhà cái chỉ cần rút nếu còn người chưa Quắc
     if (table.players.some(p => p.status !== 'bust')) {
@@ -390,8 +393,8 @@ async function finishGame(table) {
             const profile = await UserProfile.getOrCreate(p.id, p.name);
             const inc = { 'stats.blackjackGames': 1 };
             if (p.delta > 0) inc['stats.blackjackWins'] = 1;
-            await profile.incLinhThach(payout, { inc });
-            await escrow.release(p.id, 'xidach', table.id); // đã thanh toán xong, hết "tiền đang giữ"
+            // Trả thưởng qua sổ: ghi trước, cộng tiền kèm dấu vết, rồi xoá dòng giữ tiền
+            await escrow.payout(p.id, 'xidach', table.id, { credit: payout, discharge: stake, inc, closes: true });
             if (p.delta > 0) {
                 profile.addTuVi(WIN_TUVI);
                 await profile.save();
@@ -401,6 +404,7 @@ async function finishGame(table) {
         }
     }
 
+    settling--;
     await editTable(table, renderResult(table));
 }
 
@@ -459,8 +463,8 @@ const handleBlackjackButtons = async (interaction) => {
             let held;
             try {
                 const profile = await UserProfile.getOrCreate(userId, displayName);
-                held = await profile.incLinhThach(-table.bet, { requireFunds: true });
-                if (held === null) {
+                held = await escrow.charge(userId, 'xidach', table.id, table.bet, table.channelId);
+                if (!held) {
                     return interaction.reply({
                         content: `⚠️ Cần thêm \`${table.bet.toLocaleString()}\` 💎 để Gấp đôi, đạo hữu chỉ có \`${profile.linhThach.toLocaleString()}\` 💎.`,
                         flags: 64,
@@ -471,11 +475,10 @@ const handleBlackjackButtons = async (interaction) => {
             }
             // Trạng thái có thể đã đổi trong lúc chờ DB (vd: hết giờ) → hoàn lại phần vừa giữ
             if (table.phase !== 'playing' || currentPlayer(table) !== player || player.doubled) {
-                await refund(userId, table.bet);
+                await giveBack(table, userId, table.bet);
                 return interaction.update(renderPrivate(table, player));
             }
             player.escrow += table.bet;
-            await escrow.hold(userId, 'xidach', table.id, table.bet, table.channelId);
             player.doubled = true;
             player.cards.push(table.shoe.pop());
             player.status = handValue(player.cards).total > 21 ? 'bust' : 'stand';
@@ -515,12 +518,13 @@ const handleBlackjackButtons = async (interaction) => {
 
     // ── Phòng chờ ──
     if (action === 'bj_join') {
+        if (shutdown.isDraining()) return interaction.reply({ content: shutdown.MAINTENANCE_TEXT, flags: 64 });
         if (table.phase !== 'lobby') return interaction.reply({ content: '⚠️ Ván đã bắt đầu, hãy đợi ván sau!', flags: 64 });
         if (table.players.some(p => p.id === userId)) return interaction.reply({ content: 'Đạo hữu đã ngồi tại bàn rồi!', flags: 64 });
         if (table.players.length >= MAX_PLAYERS) return interaction.reply({ content: '⚠️ Bàn đã đủ người!', flags: 64 });
 
         const profile = await UserProfile.getOrCreate(userId, displayName);
-        if (await profile.incLinhThach(-table.bet, { requireFunds: true }) === null) {
+        if (!(await escrow.charge(userId, 'xidach', table.id, table.bet, table.channelId))) {
             return interaction.reply({
                 content: `⚠️ Đạo hữu không đủ Linh Thạch! Hiện có: \`${profile.linhThach.toLocaleString()}\` 💎, cần: \`${table.bet.toLocaleString()}\` 💎.`,
                 flags: 64,
@@ -529,12 +533,11 @@ const handleBlackjackButtons = async (interaction) => {
         // Kiểm tra lại sau await (bàn đã bắt đầu / đầy / trùng ghế / ngồi bàn khác) → hoàn cược
         if (table.phase !== 'lobby' || tables.get(table.id) !== table || table.players.length >= MAX_PLAYERS
             || table.players.some(p => p.id === userId)) {
-            await refund(userId, table.bet);
+            await giveBack(table, userId, table.bet);
             return interaction.reply({ content: '⚠️ Không thể vào bàn lúc này, tiền cược đã được hoàn lại.', flags: 64 });
         }
 
         table.players.push({ id: userId, name: displayName, cards: [], status: 'playing', doubled: false, escrow: table.bet });
-        await escrow.hold(userId, 'xidach', table.id, table.bet, table.channelId);
         return interaction.update(renderLobby(table));
     }
 
@@ -544,8 +547,7 @@ const handleBlackjackButtons = async (interaction) => {
         if (idx === -1) return interaction.reply({ content: 'Đạo hữu chưa ngồi tại bàn này.', flags: 64 });
 
         const [left] = table.players.splice(idx, 1);
-        await refund(left.id, left.escrow);
-        await escrow.release(left.id, 'xidach', table.id);
+        await giveBack(table, left.id, left.escrow, { closes: true });
         if (table.players.length === 0) {
             clearTimeout(table.lobbyTimer);
             tables.delete(table.id);
@@ -560,6 +562,7 @@ const handleBlackjackButtons = async (interaction) => {
     }
 
     if (action === 'bj_start') {
+        if (shutdown.isDraining()) return interaction.reply({ content: shutdown.MAINTENANCE_TEXT, flags: 64 });
         if (table.phase !== 'lobby') return interaction.reply({ content: 'Ván đã bắt đầu rồi!', flags: 64 });
         if (userId !== table.hostId) return interaction.reply({ content: '⚠️ Chỉ chủ bàn 👑 mới được bắt đầu sớm.', flags: 64 });
         await interaction.deferUpdate();
@@ -567,24 +570,33 @@ const handleBlackjackButtons = async (interaction) => {
     }
 };
 
-/** Bot tắt/khởi động lại: huỷ mọi bàn và hoàn lại toàn bộ tiền cược đã giữ. */
-async function cancelAllTables(reason) {
-    const all = [...tables.values()];
-    tables.clear();
-    await Promise.all(all.map(async (table) => {
-        table.phase = 'done';
-        clearTimeout(table.lobbyTimer);
-        clearTimeout(table.turnTimer);
-        await Promise.all(table.players.map(async (p) => {
-            await refund(p.id, p.escrow);
-            await escrow.release(p.id, 'xidach', table.id);
-        }));
-        const embed = new EmbedBuilder()
-            .setColor(COLORS.cancel)
-            .setTitle('🃏 XÌ DÁCH TIÊN PHỦ • BÀN ĐÃ BỊ HUỶ')
-            .setDescription(`⚠️ ${reason}\nVán dở được huỷ, tiền cược đã được hoàn lại cho mọi người. Dùng \`/xidach\` để mở bàn mới.`);
-        return editTable(table, { content: '', embeds: [embed], components: [] });
-    }));
+/** Huỷ một bàn và hoàn lại toàn bộ tiền cược đã giữ. */
+async function cancelTable(table, reason) {
+    if (!tables.delete(table.id)) return;
+    table.phase = 'done';
+    clearTimeout(table.lobbyTimer);
+    clearTimeout(table.turnTimer);
+    await Promise.all(table.players.map((p) => giveBack(table, p.id, p.escrow, { closes: true })));
+    const embed = new EmbedBuilder()
+        .setColor(COLORS.cancel)
+        .setTitle('🃏 XÌ DÁCH TIÊN PHỦ • BÀN ĐÃ BỊ HUỶ')
+        .setDescription(`⚠️ ${reason}\nTiền cược đã được hoàn lại cho mọi người. Dùng \`/xidach\` để mở bàn mới.`);
+    await editTable(table, { content: '', embeds: [embed], components: [] });
+}
+
+/**
+ * Bot tắt êm: ngừng nhận bàn mới, huỷ ngay các bàn CHƯA chia bài, để các ván ĐANG chơi hoàn thành
+ * (tối đa tới hạn chót), bàn nào chưa xong kịp mới bị huỷ + hoàn tiền.
+ */
+async function drainTables() {
+    const reasonLobby = 'Bot đang khởi động lại để bảo trì, bàn chưa chia bài nên được huỷ.';
+    const until = shutdown.deadline(); // chốt hạn chót MỘT lần
+    while (Date.now() < until) {
+        for (const t of [...tables.values()]) if (t.phase === 'lobby') await cancelTable(t, reasonLobby);
+        if (!tables.size && settling === 0) return;
+        await shutdown.sleep(300);
+    }
+    for (const t of [...tables.values()]) await cancelTable(t, 'Bot khởi động lại, ván không kịp hoàn thành nên được huỷ.');
 }
 
 /** Liệt kê bàn đang mở trong kênh (cho /banchoi) */
@@ -607,7 +619,8 @@ function listRooms(channelId) {
 
 module.exports = {
     listRooms,
-    onShutdown: () => cancelAllTables('Bot đang khởi động lại để bảo trì.'),
+    onShutdown: drainTables,
+    drainInteractions: ['bj_hit', 'bj_stand', 'bj_double', 'bj_view', 'bj_rules', 'bj_join', 'bj_leave', 'bj_start', 'bj_again'],
     commands: [blackjackCommand],
     _internal: { tables },
     interactions: {

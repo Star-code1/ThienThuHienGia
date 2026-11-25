@@ -24,9 +24,10 @@ let shuttingDown = false;
 async function gracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
-  client.shuttingDown = true; // interactionCreate sẽ từ chối thao tác mới
+  client.shuttingDown = true; // interactionCreate sẽ từ chối thao tác mới (trừ nút của ván đang chơi)
+  require('./src/shared/shutdownState').begin(); // game ngừng nhận ván/cược mới, cho ván đang chơi hoàn thành
   console.log(`
-🛑 Nhận ${signal}, đang huỷ các ván đang chơi và hoàn tiền cược...`);
+🛑 Nhận ${signal}, đang chờ các ván đang chơi hoàn thành rồi mới đóng bàn, hoàn tiền...`);
   try {
     await runShutdownHooks(client);
   } finally {

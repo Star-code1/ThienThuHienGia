@@ -77,6 +77,9 @@ const UserProfileSchema = new mongoose.Schema({
     }],
     activePetId: { type: String, default: null },
 
+    // Dấu vết các giao dịch giữ/trả tiền ở bàn chơi gần nhất (để khôi phục khi bot sập, xem escrowService)
+    escrowTx: { type: [String], default: [] },
+
     stats: {
         noituWins: { type: Number, default: 0 },
         vuatiengvietWins: { type: Number, default: 0 },
@@ -140,8 +143,8 @@ UserProfileSchema.statics.getOrCreate = async function (userId, username = 'Đ�
  * @param {object}  [opts.inc]          Các trường số khác cộng cùng lúc, vd { 'stats.baucuaGames': 1 }
  * @returns {Promise<number|null>} Số Linh Thạch thực sự đã thay đổi, hoặc null nếu không đủ tiền
  */
-UserProfileSchema.methods.incLinhThach = async function (delta, { requireFunds = false, clampZero = false, inc = {} } = {}) {
-    const result = await this.constructor.incLinhThachById(this.userId, delta, { requireFunds, clampZero, inc });
+UserProfileSchema.methods.incLinhThach = async function (delta, { requireFunds = false, clampZero = false, inc = {}, tx = null } = {}) {
+    const result = await this.constructor.incLinhThachById(this.userId, delta, { requireFunds, clampZero, inc, tx });
     if (!result) return null;
     this.set('linhThach', result.linhThach);
     this.unmarkModified('linhThach');
@@ -153,13 +156,16 @@ UserProfileSchema.methods.incLinhThach = async function (delta, { requireFunds =
 };
 
 /** Bản static của incLinhThach, dùng khi không có sẵn document. Trả về { applied, linhThach, fields } hoặc null. */
-UserProfileSchema.statics.incLinhThachById = async function (userId, delta, { requireFunds = false, clampZero = false, inc = {} } = {}) {
+UserProfileSchema.statics.incLinhThachById = async function (userId, delta, { requireFunds = false, clampZero = false, inc = {}, tx = null } = {}) {
     delta = Math.trunc(Number(delta) || 0);
     const added = { $add: [{ $ifNull: ['$linhThach', 0] }, delta] };
     const set = { linhThach: clampZero ? { $max: [0, added] } : added };
     for (const [key, value] of Object.entries(inc)) {
         set[key] = { $add: [{ $ifNull: [`$${key}`, 0] }, value] };
     }
+
+    // Ghi dấu giao dịch NGAY trong cùng thao tác nguyên tử với việc đổi số dư (giữ 100 dấu gần nhất)
+    if (tx) set.escrowTx = { $slice: [{ $concatArrays: [{ $ifNull: ['$escrowTx', []] }, [tx]] }, -100] };
 
     const filter = { userId };
     if (requireFunds && delta < 0) filter.linhThach = { $gte: -delta };
@@ -195,6 +201,12 @@ UserProfileSchema.statics.transferLinhThach = async function (fromProfile, toPro
         throw err;
     }
     return true;
+};
+
+/** Các dấu vết giao dịch giữ/trả tiền ở bàn chơi của người chơi (xem escrowService). */
+UserProfileSchema.statics.getEscrowTxs = async function (userId) {
+    const doc = await this.findOne({ userId }, { escrowTx: 1 }).lean();
+    return doc?.escrowTx || [];
 };
 
 UserProfileSchema.methods.addTuVi = function (amount) {

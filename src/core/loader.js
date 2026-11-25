@@ -51,6 +51,12 @@ function loadFeatures(client) {
             client.shutdownHooks.push({ name: dir, fn: feature.onShutdown });
         }
 
+        // Nút bấm vẫn được xử lý khi bot đang tắt êm (để ván đang chơi kịp hoàn thành)
+        if (Array.isArray(feature.drainInteractions)) {
+            client.drainPrefixes ??= new Set();
+            for (const prefix of feature.drainInteractions) client.drainPrefixes.add(prefix);
+        }
+
         // Liệt kê bàn chơi đang mở (cho /banchoi)
         if (typeof feature.listRooms === 'function') {
             client.roomListers.push({ name: dir, fn: feature.listRooms });
@@ -63,7 +69,7 @@ function loadFeatures(client) {
 /**
  * Chạy mọi hook dọn dẹp của features (song song, có giới hạn thời gian)
  */
-async function runShutdownHooks(client, timeoutMs = 15000) {
+async function runShutdownHooks(client, timeoutMs = require('../shared/shutdownState').DRAIN_MS + 8000) {
     const hooks = client.shutdownHooks || [];
     const all = Promise.allSettled(hooks.map(async ({ name, fn }) => {
         try {

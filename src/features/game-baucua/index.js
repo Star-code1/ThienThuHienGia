@@ -12,6 +12,7 @@ const { generateBaucuaCommentary } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
 const escrow = require('../../services/escrowService');
+const shutdown = require('../../shared/shutdownState');
 const { LINH_THU, rollDice, settleBets, totalOf } = require('./baucuaEngine');
 
 const BET_SECONDS = 30;
@@ -54,6 +55,8 @@ async function sendToSession(session, payload) {
 async function settleSession(sessionId) {
     const session = activeBaucuaGames.get(sessionId);
     if (!session) return;
+    session.closed = true; // từ giây này không nhận thêm cược nào nữa
+    clearTimeout(session.timer);
     activeBaucuaGames.delete(sessionId);
     lockSessionMessage(session);
 
@@ -72,10 +75,12 @@ async function settleSession(sessionId) {
         totalNetProfitAll += net;
 
         try {
-            await UserProfile.incLinhThachById(userId, payout, {
+            await escrow.payout(userId, 'baucua', sessionId, {
+                credit: payout,
+                discharge: totalBet,
                 inc: { 'stats.baucuaGames': 1, 'stats.baucuaWinLinhThach': net },
+                closes: true,
             });
-            await escrow.release(userId, 'baucua', sessionId);
         } catch (err) {
             console.error(`❌ [BauCua] Lỗi trả thưởng cho ${userId}:`, err);
         }
@@ -128,8 +133,7 @@ async function cancelAllSessions(reason) {
             const total = totalOf(userBetObj.beastBets);
             if (total <= 0) continue;
             try {
-                await UserProfile.incLinhThachById(userId, total);
-                await escrow.release(userId, 'baucua', session.id);
+                await escrow.payout(userId, 'baucua', session.id, { credit: total, discharge: total, closes: true });
                 refunded.push(`• **${userBetObj.username}**: hoàn \`${total.toLocaleString()}\` 💎`);
             } catch (err) {
                 console.error(`❌ [BauCua] Lỗi hoàn cược cho ${userId}:`, err);
@@ -152,6 +156,7 @@ const baucuaCommand = {
         .setName('baucua')
         .setDescription('🎲 Khai mở sòng Bầu Cua 30s đếm ngược (Tùy chọn cược nhiều Linh Thú)'),
     async execute(interaction) {
+        if (shutdown.isDraining()) return interaction.reply({ content: shutdown.MAINTENANCE_TEXT, flags: 64 });
         const sessionId = `${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
         const hostName = getDisplayName(interaction);
 
@@ -218,9 +223,10 @@ const handleBaucuaInteractions = async (interaction) => {
     const [, sessionId, beastId] = customId.split(':');
     const session = activeBaucuaGames.get(sessionId);
 
-    if (!session) {
-        return interaction.reply({ content: '⚠️ Ván Bầu Cua này đã hết giờ cược hoặc chưa khởi tạo. Dùng `/baucua` để mở sòng mới!', flags: 64 });
+    if (!session || session.closed) {
+        return interaction.reply({ content: '⚠️ Ván Bầu Cua này đã đóng cược (đang lắc hoặc đã lắc xong). Dùng `/baucua` để mở sòng mới!', flags: 64 });
     }
+    if (shutdown.isDraining()) return interaction.reply({ content: shutdown.MAINTENANCE_TEXT, flags: 64 });
 
     if (customId.startsWith('bc_modal:')) {
         const beast = LINH_THU.find(b => b.id === beastId);
@@ -251,9 +257,10 @@ const handleBaucuaModalSubmit = async (interaction) => {
 
     const [, sessionId, beastId] = customId.split(':');
     const session = activeBaucuaGames.get(sessionId);
-    if (!session) {
-        return interaction.reply({ content: `⚠️ Ván Bầu Cua đã hết ${BET_SECONDS}s đếm ngược!`, flags: 64 });
+    if (!session || session.closed) {
+        return interaction.reply({ content: `⚠️ Ván Bầu Cua đã đóng cược (hết ${BET_SECONDS}s hoặc đang lắc), cược của đạo hữu chưa bị trừ.`, flags: 64 });
     }
+    if (shutdown.isDraining()) return interaction.reply({ content: shutdown.MAINTENANCE_TEXT, flags: 64 });
 
     const beast = LINH_THU.find(b => b.id === beastId);
     if (!beast) return;
@@ -268,17 +275,18 @@ const handleBaucuaModalSubmit = async (interaction) => {
     const userId = interaction.user.id;
     const profile = await UserProfile.getOrCreate(userId, displayName);
 
-    // Trừ tiền ngay (chỉ khi đủ) — không thể cược vượt số dư dù mở nhiều sòng hay tiêu Linh Thạch chỗ khác
-    if (await profile.incLinhThach(-betAmount, { requireFunds: true }) === null) {
+    // Ghi sổ rồi trừ tiền ngay (chỉ khi đủ) — không thể cược vượt số dư dù mở nhiều sòng hay tiêu Linh Thạch chỗ khác
+    if (!(await escrow.charge(userId, 'baucua', sessionId, betAmount, session.channel?.id))) {
         return interaction.reply({
             content: `⚠️ Đạo hữu không đủ Linh Thạch! Hiện có: \`${profile.linhThach.toLocaleString()}\` 💎, cần cược: \`${betAmount.toLocaleString()}\` 💎.`,
             flags: 64
         });
     }
 
-    // Sòng có thể đã lắc trong lúc chờ DB → hoàn lại
-    if (activeBaucuaGames.get(sessionId) !== session) {
-        await profile.incLinhThach(betAmount).catch(err => console.error('❌ [BauCua] Lỗi hoàn cược trễ:', err));
+    // Sòng có thể đã bắt đầu lắc trong lúc chờ DB → hoàn lại ngay, không nhận cược muộn
+    if (session.closed || activeBaucuaGames.get(sessionId) !== session) {
+        await escrow.payout(userId, 'baucua', sessionId, { credit: betAmount, discharge: betAmount })
+            .catch(err => console.error('❌ [BauCua] Lỗi hoàn cược trễ:', err));
         return interaction.reply({ content: `⚠️ Ván Bầu Cua vừa lắc xong, đã hoàn lại \`${betAmount.toLocaleString()}\` 💎 cho đạo hữu.`, flags: 64 });
     }
 
@@ -288,11 +296,10 @@ const handleBaucuaModalSubmit = async (interaction) => {
     session.bets[userId].username = displayName;
     const userBetsObj = session.bets[userId].beastBets;
     userBetsObj[beastId] = (userBetsObj[beastId] || 0) + betAmount;
-    await escrow.hold(userId, 'baucua', sessionId, betAmount, session.channel?.id);
 
     await interaction.reply({
         content: `✅ **Thành công:** Đạo hữu **${displayName}** đã cược **${betAmount.toLocaleString()} Linh Thạch** vào **${beast.emoji} ${beast.name}**!\n` +
-                 `💰 Tổng cược ván này của đạo hữu: \`${totalOf(userBetsObj).toLocaleString()}\` Linh Thạch · Còn lại: \`${profile.linhThach.toLocaleString()}\` 💎.`,
+                 `💰 Tổng cược ván này của đạo hữu: \`${totalOf(userBetsObj).toLocaleString()}\` Linh Thạch · Còn lại: \`${Math.max(0, profile.linhThach - betAmount).toLocaleString()}\` 💎.`,
         flags: 64
     });
 };
@@ -304,7 +311,12 @@ module.exports = {
         'bc_rules': handleBaucuaInteractions,
         'bc_submit': handleBaucuaModalSubmit,
     },
-    onShutdown: () => cancelAllSessions('Bot đang khởi động lại để bảo trì.'),
+    // Bot tắt êm: sòng đã có người cược thì lắc NGAY để hoàn thành ván; sòng trống thì đóng
+    onShutdown: async () => {
+        const withBets = [...activeBaucuaGames.values()].filter((s) => Object.keys(s.bets).length > 0);
+        await Promise.all(withBets.map((s) => settleSession(s.id).catch((err) => console.error('❌ [BauCua] settle khi tắt:', err))));
+        await cancelAllSessions('Bot đang khởi động lại để bảo trì.');
+    },
     // Liệt kê sòng đang mở trong kênh (cho /banchoi)
     listRooms: (channelId) => [...activeBaucuaGames.values()]
         .filter(s => s.channel?.id === channelId)

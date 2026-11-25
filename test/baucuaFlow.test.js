@@ -11,7 +11,9 @@ const mock = (rel, exports) => {
 // ── DB giả: số dư theo userId ──
 const balances = new Map();
 const stats = new Map();
+const txMarks = new Map();
 const UserProfile = {
+    async getEscrowTxs(userId) { return txMarks.get(userId) || []; },
     async getOrCreate(userId) {
         if (!balances.has(userId)) balances.set(userId, 1000);
         return {
@@ -23,10 +25,11 @@ const UserProfile = {
             },
         };
     },
-    async incLinhThachById(userId, delta, { requireFunds = false, inc = {} } = {}) {
+    async incLinhThachById(userId, delta, { requireFunds = false, inc = {}, tx = null } = {}) {
         const bal = balances.get(userId) ?? 1000;
         if (requireFunds && delta < 0 && bal < -delta) return null;
         balances.set(userId, bal + delta);
+        if (tx) { if (!txMarks.has(userId)) txMarks.set(userId, []); txMarks.get(userId).push(tx); }
         for (const [k, v] of Object.entries(inc)) stats.set(`${userId}.${k}`, (stats.get(`${userId}.${k}`) || 0) + v);
         return { applied: delta, linhThach: bal + delta, fields: {} };
     },
@@ -119,7 +122,7 @@ test('luồng Bầu Cua', async (t) => {
         assert.match(await bet(sid, 'u2', 'bau', 10), /hết/); // sòng đã đóng
     });
 
-    await t.test('bot tắt: huỷ sòng và hoàn trả toàn bộ tiền cược', async () => {
+    await t.test('bot tắt êm: sòng đã có người cược được LẮC NGAY cho xong ván (không huỷ), sòng trống thì đóng', async () => {
         balances.clear();
         const ch = fakeChannel();
         const sid = await openSession(ch);
@@ -135,15 +138,35 @@ test('luồng Bầu Cua', async (t) => {
         assert.deepStrictEqual(baucua.listRooms('kenh-khac'), []);
 
         await baucua.onShutdown();
-        assert.strictEqual(balances.get('u3'), 1000);
-        assert.strictEqual(balances.get('u4'), 1000);
-        assert.match(ch.sent[0].embeds[0].data.title, /HUỶ/);
+        // Ván được hoàn thành: có bảng kết quả, tiền = số dư đầu + lãi/lỗ (cược 400 vào Gà: -400, hoặc +400×số con trúng)
+        assert.match(ch.sent[0].embeds[0].data.title, /KẾT QUẢ/);
+        assert.ok((balances.get('u3') - 600) % 400 === 0 && balances.get('u3') >= 600);
+        assert.ok((balances.get('u4') - 750) % 250 === 0 && balances.get('u4') >= 750);
+        assert.strictEqual(fakeEscrow.docs.length, 0);
 
         t.mock.timers.tick(30_000); // timer cũ không được chạy nữa
         for (let i = 0; i < 5; i++) await flush();
-        assert.strictEqual(balances.get('u3'), 1000);
         assert.strictEqual(ch.sent.length, 1);
     });
 
+    await t.test('bot tắt êm: sòng chưa ai cược thì đóng và không trừ ai', async () => {
+        balances.clear();
+        const ch = fakeChannel();
+        await openSession(ch);
+        await baucua.onShutdown();
+        assert.match(ch.sent[0].embeds[0].data.title, /HUỶ/);
+    });
+
     assert.ok(engine.LINH_THU.length === 6);
+});
+
+test('Bầu Cua: bắt đầu lắc là đóng cược, cược muộn không bị trừ tiền', async () => {
+    balances.clear();
+    const ch = fakeChannel();
+    const s = await openSession(ch);
+    assert.match(await bet(s, 'u1', 'bau', 100), /Thành công/);
+    await baucua.onShutdown(); // sòng có người cược → lắc ngay rồi đóng cược
+    const late = await bet(s, 'u2', 'cua', 500);
+    assert.match(late, /đóng cược/);
+    assert.equal(balances.get('u2') ?? 1000, 1000);
 });

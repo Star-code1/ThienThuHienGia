@@ -22,6 +22,7 @@ const client = new Client({
 // Collections để loader đăng ký commands & interactions
 client.commands = new Collection();
 client.interactions = new Collection();
+client.drainPrefixes = new Set(); // customId prefix của các nút vẫn hoạt động khi bot đang tắt êm
 client.shutdownHooks = []; // { name, fn } — chạy khi bot tắt (SIGTERM/SIGINT)
 client.roomListers = [];   // { name, fn(channelId) } — liệt kê bàn chơi đang mở (cho /banchoi)
 

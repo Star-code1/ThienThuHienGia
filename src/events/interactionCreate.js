@@ -7,10 +7,13 @@ module.exports = {
     async execute(interaction, client) {
         // Bot đang tắt để khởi động lại: không nhận thao tác mới (tránh mở ván / đặt cược rồi bị huỷ)
         if (client.shuttingDown) {
-            if (interaction.isRepliable()) {
+            // Nút của ván đang chơi vẫn chạy để ván kịp hoàn thành; mọi thứ khác bị từ chối
+            const prefix = interaction.customId ? interaction.customId.split(':')[0] : null;
+            const keepAlive = interaction.isMessageComponent?.() && prefix && client.drainPrefixes?.has(prefix);
+            if (!keepAlive && interaction.isRepliable()) {
                 await interaction.reply({ content: '🛠️ Hiền Giả đang khởi động lại, đạo hữu thử lại sau ít phút nhé!', flags: 64 }).catch(() => {});
             }
-            return;
+            if (!keepAlive) return;
         }
 
         try {
