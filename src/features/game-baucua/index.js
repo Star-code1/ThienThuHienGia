@@ -6,7 +6,8 @@ const {
     ButtonStyle,
     ModalBuilder,
     TextInputBuilder,
-    TextInputStyle
+    TextInputStyle,
+    PermissionFlagsBits,
 } = require('discord.js');
 const { generateBaucuaCommentary } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
@@ -15,10 +16,16 @@ const escrow = require('../../services/escrowService');
 const shutdown = require('../../shared/shutdownState');
 const { LINH_THU, rollDice, settleBets, totalOf } = require('./baucuaEngine');
 
-const BET_SECONDS = 30;
+// Sòng Bầu Cua chạy theo 3 bước do chủ sòng điều khiển bằng nút:
+//   1. 'betting'  – mọi người đặt cược (tiền trừ ngay)
+//   2. 'shaken'   – chủ sòng bấm "Lắc": đóng cược, 3 xúc xắc đã lắc xong nhưng còn úp trong bát
+//   3. 'done'     – chủ sòng bấm "Khui": mở bát, trả thưởng
+// Có hai "bảo hiểm" để tiền không treo vĩnh viễn nếu chủ sòng bỏ đi: quá hạn đặt cược mà chưa lắc
+// thì huỷ sòng và hoàn tiền; đã lắc mà quá hạn chưa khui thì tự khui.
+const BET_IDLE_MS = 10 * 60 * 1000;
+const SHAKEN_IDLE_MS = 5 * 60 * 1000;
 
-// Các sòng Bầu Cua đang mở: sessionId -> gameSession (một kênh có thể mở nhiều sòng cùng lúc)
-// Tiền cược được TRỪ NGAY khi đặt; khi lắc sẽ trả lại vốn + thưởng cho các cửa trúng.
+// Các sòng đang mở: sessionId -> session (một kênh có thể mở nhiều sòng cùng lúc)
 const activeBaucuaGames = new Map();
 
 const shortName = (beast) => beast.name.split(' ')[0];
@@ -34,33 +41,95 @@ function betButtons(sessionId, disabled = false) {
         new ActionRowBuilder().addComponents(LINH_THU.slice(0, 3).map(beastButton)),
         new ActionRowBuilder().addComponents(
             ...LINH_THU.slice(3, 6).map(beastButton),
-            new ButtonBuilder().setCustomId('bc_rules').setLabel('📖 Luật Chơi').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('bc_rules').setLabel('📖 Luật').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId(`bc_shake:${sessionId}`).setLabel('🎲 Lắc').setStyle(ButtonStyle.Success).setDisabled(disabled),
         ),
     ];
 }
 
-/** Khoá các nút cược trên tin nhắn mở sòng (khi sòng đã lắc hoặc bị huỷ) */
-async function lockSessionMessage(session) {
+function openButtons(sessionId, disabled = false) {
+    return [new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`bc_open:${sessionId}`).setLabel('🔓 Khui').setStyle(ButtonStyle.Danger).setDisabled(disabled),
+    )];
+}
+
+/** Đạo hữu được điều khiển sòng: chủ sòng hoặc người có quyền Quản lý tin nhắn */
+function canControl(session, interaction) {
+    return interaction.user.id === session.hostId ||
+        Boolean(interaction.memberPermissions?.has?.(PermissionFlagsBits.ManageMessages));
+}
+
+async function editSessionMessage(session, payload) {
     if (!session.message) return;
-    await session.message.edit({ components: betButtons(session.id, true) }).catch(() => {});
+    await session.message.edit(payload).catch(() => {});
 }
 
 async function sendToSession(session, payload) {
     if (session.messageId) {
         payload.reply = { messageReference: session.messageId, failIfNotExists: false };
     }
-    await session.channel.send(payload).catch(() => {});
+    return session.channel.send(payload).catch(() => null);
 }
 
-async function settleSession(sessionId) {
+function againButtons(sessionId, disabled = false) {
+    return [new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`bc_again:${sessionId}`).setLabel('🔁 Ván mới').setStyle(ButtonStyle.Primary).setDisabled(disabled),
+    )];
+}
+
+// Kết quả đã được bấm "Ván mới" (mỗi bảng kết quả chỉ mở được một sòng mới)
+const againUsed = new Set();
+
+function betsLine(session) {
+    const players = Object.keys(session.bets).length;
+    const pot = Object.values(session.bets).reduce((s, b) => s + totalOf(b.beastBets), 0);
+    return { players, pot };
+}
+
+function scheduleIdle(session, ms, fn) {
+    clearTimeout(session.timer);
+    session.timer = setTimeout(() => {
+        fn().catch((err) => console.error('❌ [BauCua] timer:', err));
+    }, ms);
+}
+
+/** Bước 2: chủ sòng lắc — đóng cược, xúc xắc đã có kết quả nhưng chưa lộ. Trả về false nếu không lắc được. */
+async function shakeSession(sessionId) {
     const session = activeBaucuaGames.get(sessionId);
-    if (!session) return;
+    if (!session || session.phase !== 'betting') return false;
+    session.phase = 'shaken';
     session.closed = true; // từ giây này không nhận thêm cược nào nữa
+    session.dice = rollDice();
+
+    const { players, pot } = betsLine(session);
+    const embed = new EmbedBuilder()
+        .setColor('#8E44AD')
+        .setTitle('🥣 HIỀN GIẢ ĐÃ LẮC — BÁT ĐANG ÚP 🥣')
+        .setDescription(
+            `🏮 Sòng của **${session.hostName}**\n\n` +
+            `🎲 Ba viên xúc xắc đã lắc xong, đang úp kín dưới bát:\n>>> **❓ ❓ ❓**\n\n` +
+            `🚫 **Đã đóng cược.**\n` +
+            `👥 ${players} đạo hữu cược · 💎 tổng \`${pot.toLocaleString()}\` Linh Thạch\n\n` +
+            `👉 **${session.hostName}** bấm nút **🔓 Khui** để mở bát và trả thưởng!`
+        )
+        .setFooter({ text: 'Chỉ chủ sòng (hoặc người có quyền Quản lý tin nhắn) mới khui được bát' })
+        .setTimestamp();
+    await editSessionMessage(session, { embeds: [embed], components: openButtons(sessionId) });
+
+    scheduleIdle(session, SHAKEN_IDLE_MS, () => revealSession(sessionId));
+    return true;
+}
+
+/** Bước 3: khui bát — công bố kết quả và trả thưởng */
+async function revealSession(sessionId) {
+    const session = activeBaucuaGames.get(sessionId);
+    if (!session || session.phase !== 'shaken') return false;
+    session.phase = 'done';
     clearTimeout(session.timer);
     activeBaucuaGames.delete(sessionId);
-    lockSessionMessage(session);
+    editSessionMessage(session, { components: openButtons(sessionId, true) });
 
-    const diceResults = rollDice();
+    const diceResults = session.dice;
     const diceIds = diceResults.map(d => d.id);
     const diceNames = diceResults.map(d => `${d.emoji} ${shortName(d)}`);
 
@@ -118,82 +187,117 @@ async function settleSession(sessionId) {
         .setFooter({ text: 'Thiên Thư Hiền Giả Ban Quẻ • Dùng /baucua để mở sòng mới' })
         .setTimestamp();
 
-    await sendToSession(session, { embeds: [resultEmbed] });
+    await sendToSession(session, { embeds: [resultEmbed], components: againButtons(sessionId) });
+    return true;
 }
 
-/** Huỷ mọi sòng đang mở và hoàn trả toàn bộ tiền cược (gọi khi bot tắt/khởi động lại) */
-async function cancelAllSessions(reason) {
-    const sessions = [...activeBaucuaGames.values()];
-    activeBaucuaGames.clear();
+/** Huỷ một sòng CHƯA lắc và hoàn trả toàn bộ tiền cược */
+async function cancelSession(session, reason) {
+    if (session.phase !== 'betting') return;
+    session.phase = 'cancelled';
+    session.closed = true;
+    clearTimeout(session.timer);
+    activeBaucuaGames.delete(session.id);
 
-    await Promise.all(sessions.map(async (session) => {
-        clearTimeout(session.timer);
-        const refunded = [];
-        for (const [userId, userBetObj] of Object.entries(session.bets)) {
-            const total = totalOf(userBetObj.beastBets);
-            if (total <= 0) continue;
-            try {
-                await escrow.payout(userId, 'baucua', session.id, { credit: total, discharge: total, closes: true });
-                refunded.push(`• **${userBetObj.username}**: hoàn \`${total.toLocaleString()}\` 💎`);
-            } catch (err) {
-                console.error(`❌ [BauCua] Lỗi hoàn cược cho ${userId}:`, err);
-            }
+    const refunded = [];
+    for (const [userId, userBetObj] of Object.entries(session.bets)) {
+        const total = totalOf(userBetObj.beastBets);
+        if (total <= 0) continue;
+        try {
+            await escrow.payout(userId, 'baucua', session.id, { credit: total, discharge: total, closes: true });
+            refunded.push(`• **${userBetObj.username}**: hoàn \`${total.toLocaleString()}\` 💎`);
+        } catch (err) {
+            console.error(`❌ [BauCua] Lỗi hoàn cược cho ${userId}:`, err);
         }
+    }
 
-        const embed = new EmbedBuilder()
-            .setColor('#95A5A6')
-            .setTitle('🎲 SÒNG BẦU CUA ĐÃ BỊ HUỶ')
-            .setDescription(
-                `⚠️ ${reason}\n\n` +
-                (refunded.length ? `💰 **Đã hoàn trả tiền cược:**\n${refunded.join('\n')}` : 'Chưa có ai đặt cược.')
-            );
-        await Promise.all([lockSessionMessage(session), sendToSession(session, { embeds: [embed] })]);
-    }));
+    const embed = new EmbedBuilder()
+        .setColor('#95A5A6')
+        .setTitle('🎲 SÒNG BẦU CUA ĐÃ BỊ HUỶ')
+        .setDescription(
+            `⚠️ ${reason}\n\n` +
+            (refunded.length ? `💰 **Đã hoàn trả tiền cược:**\n${refunded.join('\n')}` : 'Chưa có ai đặt cược.')
+        );
+    await Promise.all([
+        editSessionMessage(session, { components: betButtons(session.id, true) }),
+        sendToSession(session, { embeds: [embed] }),
+    ]);
+}
+
+/** Mở một sòng mới; `send(payload)` gửi tin nhắn mở sòng và trả về Message (hoặc null) */
+async function openSession({ channel, hostId, hostName, send }) {
+    const sessionId = `${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
+    const session = {
+        id: sessionId,
+        hostId,
+        hostName,
+        channel,
+        message: null,
+        messageId: null,
+        startTime: Date.now(),
+        phase: 'betting',
+        closed: false,
+        dice: null,
+        bets: {}, // userId -> { username, beastBets: { bau: 100, cua: 200... } }
+        timer: null,
+    };
+    activeBaucuaGames.set(sessionId, session);
+
+    const embed = new EmbedBuilder()
+        .setColor('#E67E22')
+        .setTitle('🎲 KHAI MỞ SÒNG BẦU CUA LỤC ĐẠI LINH THÚ 🎲')
+        .setDescription(
+            `🧙‍♂️ **Thiên Thư Hiền Giả** làm cái, sòng do **${hostName}** khai mở tại Thiên Thư Môn!
+
+` +
+            `👉 Bấm vào nút các **Linh Thú** bên dưới để nhập số Linh Thạch cược (có thể cược nhiều Linh Thú cùng lúc!).
+` +
+            `💎 Linh Thạch được trừ ngay khi đặt cược.
+
+` +
+            `🎲 Khi mọi người đã cược xong, **${hostName}** bấm **Lắc** (đóng cược) rồi bấm **Khui** để mở bát và trả thưởng.`
+        )
+        .setFooter({ text: 'Chủ sòng bấm 🎲 Lắc để đóng cược • Sau đó 🔓 Khui để xem kết quả' })
+        .setTimestamp();
+
+    session.message = await send({ embeds: [embed], components: betButtons(sessionId) });
+    session.messageId = session.message?.id || null;
+
+    scheduleIdle(session, BET_IDLE_MS, () =>
+        cancelSession(session, 'Chủ sòng không lắc sau 10 phút nên sòng được đóng lại.'));
+    return session;
 }
 
 const baucuaCommand = {
     data: new SlashCommandBuilder()
         .setName('baucua')
-        .setDescription('🎲 Khai mở sòng Bầu Cua 30s đếm ngược (Tùy chọn cược nhiều Linh Thú)'),
+        .setDescription('🎲 Khai mở sòng Bầu Cua — chủ sòng bấm nút Lắc rồi Khui'),
     async execute(interaction) {
         if (shutdown.isDraining()) return interaction.reply({ content: shutdown.MAINTENANCE_TEXT, flags: 64 });
-        const sessionId = `${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
-        const hostName = getDisplayName(interaction);
-
-        const session = {
-            id: sessionId,
-            hostName,
+        await openSession({
             channel: interaction.channel,
-            message: null,
-            messageId: null,
-            startTime: Date.now(),
-            bets: {}, // userId -> { username, beastBets: { bau: 100, cua: 200... } }
-            timer: null,
-        };
-        activeBaucuaGames.set(sessionId, session);
-
-        const endsAt = Math.floor((Date.now() + BET_SECONDS * 1000) / 1000);
-        const embed = new EmbedBuilder()
-            .setColor('#E67E22')
-            .setTitle('🎲 KHAI MỞ SÒNG BẦU CUA LỤC ĐẠI LINH THÚ 🎲')
-            .setDescription(
-                `🧙‍♂️ **Thiên Thư Hiền Giả** làm cái, sòng do **${hostName}** khai mở tại Thiên Thư Môn!\n\n` +
-                `⏱️ **Lắc xúc xắc:** <t:${endsAt}:R>\n` +
-                `👉 Bấm vào nút các **Linh Thú** bên dưới để nhập số Linh Thạch cược tùy ý (Có thể cược nhiều Linh Thú cùng lúc!).\n` +
-                `💎 Linh Thạch được trừ ngay khi đặt cược.`
-            )
-            .setFooter({ text: `Hết ${BET_SECONDS} giây Hiền Giả sẽ lắc 3 xúc xắc và trả thưởng!` })
-            .setTimestamp();
-
-        await interaction.reply({ embeds: [embed], components: betButtons(sessionId) });
-        session.message = await interaction.fetchReply().catch(() => null);
-        session.messageId = session.message?.id || null;
-
-        session.timer = setTimeout(() => {
-            settleSession(sessionId).catch(err => console.error('❌ [BauCua] settleSession:', err));
-        }, BET_SECONDS * 1000);
+            hostId: interaction.user.id,
+            hostName: getDisplayName(interaction),
+            send: async (payload) => {
+                await interaction.reply(payload);
+                return interaction.fetchReply().catch(() => null);
+            },
+        });
     }
 };
+
+const RULES_TEXT =
+    `🎲 **Quy tắc gieo quẻ:**\n` +
+    `• Chủ sòng mở sòng, mọi đạo hữu đặt cược bằng các nút Linh Thú.\n` +
+    `• Chủ sòng bấm **🎲 Lắc** → đóng cược ngay, xúc xắc được lắc và úp kín. Bấm **🔓 Khui** → mở bát, trả thưởng.\n` +
+    `• Có 6 Linh Thú: Bầu 🍈, Cua 🦀, Tôm 🦞, Cá 🐟, Gà 🐓, Nai 🦌.\n` +
+    `• Có thể cược nhiều Linh Thú cùng lúc. Linh Thạch được trừ ngay khi cược; sòng bị huỷ trước khi lắc sẽ hoàn tiền.\n` +
+    `• Chủ sòng bỏ đi: quá 10 phút chưa lắc → huỷ và hoàn tiền; đã lắc mà 5 phút chưa khui → bát tự mở.\n\n` +
+    `💰 **Trả thưởng:**\n` +
+    `• Ra 1 con trùng ➔ hoàn vốn + thưởng x1 tiền cược.\n` +
+    `• Ra 2 con trùng ➔ hoàn vốn + thưởng x2.\n` +
+    `• Ra 3 con trùng ➔ hoàn vốn + thưởng x3.\n` +
+    `• Không trúng ➔ mất số Linh Thạch đã cược vào linh thú đó.`;
 
 // Interaction handler cho Bầu Cua
 const handleBaucuaInteractions = async (interaction) => {
@@ -203,28 +307,52 @@ const handleBaucuaInteractions = async (interaction) => {
         const rulesEmbed = new EmbedBuilder()
             .setColor('#E67E22')
             .setTitle('📖 LUẬT CHƠI BẦU CUA LỤC ĐẠI LINH THÚ')
-            .setDescription(
-                `🎲 **Quy tắc gieo quẻ:**\n` +
-                `• Mỗi lượt chơi kéo dài ${BET_SECONDS} giây cho tất cả đạo hữu cùng tham gia đặt cược.\n` +
-                `• Có 6 Linh Thú: Bầu 🍈, Cua 🦀, Tôm 🦞, Cá 🐟, Gà 🐓, Nai 🦌.\n` +
-                `• Đạo hữu có thể chọn cược Linh Thạch vào một hoặc nhiều Linh Thú cùng lúc!\n` +
-                `• Linh Thạch được trừ ngay khi đặt cược. Nếu sòng bị huỷ, tiền cược được hoàn trả.\n\n` +
-                `💰 **Trả thưởng:**\n` +
-                `• Nếu 3 xúc xắc ra 1 con trùng khớp ➔ Hoàn tiền cược + Thưởng x1 tiền cược.\n` +
-                `• Nếu ra 2 con trùng khớp ➔ Hoàn tiền cược + Thưởng x2 tiền cược.\n` +
-                `• Nếu ra 3 con trùng khớp ➔ Hoàn tiền cược + Thưởng x3 tiền cược.\n` +
-                `• Nếu không trúng ➔ Mất số Linh Thạch đã cược vào linh thú đó.`
-            )
+            .setDescription(RULES_TEXT)
             .setFooter({ text: 'Thiên Thư Hiền Giả Ban Quẻ' });
-
         return interaction.reply({ embeds: [rulesEmbed], flags: 64 });
     }
 
     const [, sessionId, beastId] = customId.split(':');
     const session = activeBaucuaGames.get(sessionId);
 
+    if (customId.startsWith('bc_again:')) {
+        if (shutdown.isDraining()) return interaction.reply({ content: shutdown.MAINTENANCE_TEXT, flags: 64 });
+        if (againUsed.has(sessionId)) return interaction.reply({ content: '⚠️ Ván mới từ bảng kết quả này đã được mở rồi.', flags: 64 });
+        againUsed.add(sessionId);
+        if (againUsed.size > 500) againUsed.delete(againUsed.values().next().value);
+        await interaction.update({ components: againButtons(sessionId, true) }).catch(() => {});
+        await openSession({
+            channel: interaction.channel,
+            hostId: interaction.user.id,
+            hostName: getDisplayName(interaction),
+            send: (payload) => interaction.channel.send(payload).catch(() => null),
+        });
+        return;
+    }
+
+    if (customId.startsWith('bc_shake:') || customId.startsWith('bc_open:')) {
+        const isShake = customId.startsWith('bc_shake:');
+        if (!session) return interaction.reply({ content: '⚠️ Sòng này đã kết thúc. Dùng `/baucua` để mở sòng mới!', flags: 64 });
+        if (!canControl(session, interaction)) {
+            return interaction.reply({ content: `⚠️ Chỉ chủ sòng **${session.hostName}** (hoặc người có quyền Quản lý tin nhắn) mới ${isShake ? 'lắc' : 'khui'} được.`, flags: 64 });
+        }
+        if (isShake) {
+            if (session.phase !== 'betting') return interaction.reply({ content: '⚠️ Sòng này đã lắc rồi.', flags: 64 });
+            if (Object.keys(session.bets).length === 0) {
+                return interaction.reply({ content: '⚠️ Chưa có ai đặt cược, chưa thể lắc. Chờ đạo hữu đặt cược đã!', flags: 64 });
+            }
+            await interaction.deferUpdate().catch(() => {});
+            await shakeSession(sessionId);
+        } else {
+            if (session.phase !== 'shaken') return interaction.reply({ content: '⚠️ Sòng chưa lắc, chưa có gì để khui.', flags: 64 });
+            await interaction.deferUpdate().catch(() => {});
+            await revealSession(sessionId);
+        }
+        return;
+    }
+
     if (!session || session.closed) {
-        return interaction.reply({ content: '⚠️ Ván Bầu Cua này đã đóng cược (đang lắc hoặc đã lắc xong). Dùng `/baucua` để mở sòng mới!', flags: 64 });
+        return interaction.reply({ content: '⚠️ Ván Bầu Cua này đã đóng cược (chủ sòng đã lắc hoặc sòng đã kết thúc). Dùng `/baucua` để mở sòng mới!', flags: 64 });
     }
     if (shutdown.isDraining()) return interaction.reply({ content: shutdown.MAINTENANCE_TEXT, flags: 64 });
 
@@ -258,7 +386,7 @@ const handleBaucuaModalSubmit = async (interaction) => {
     const [, sessionId, beastId] = customId.split(':');
     const session = activeBaucuaGames.get(sessionId);
     if (!session || session.closed) {
-        return interaction.reply({ content: `⚠️ Ván Bầu Cua đã đóng cược (hết ${BET_SECONDS}s hoặc đang lắc), cược của đạo hữu chưa bị trừ.`, flags: 64 });
+        return interaction.reply({ content: '⚠️ Ván Bầu Cua đã đóng cược (chủ sòng đã lắc), cược của đạo hữu chưa bị trừ.', flags: 64 });
     }
     if (shutdown.isDraining()) return interaction.reply({ content: shutdown.MAINTENANCE_TEXT, flags: 64 });
 
@@ -283,11 +411,11 @@ const handleBaucuaModalSubmit = async (interaction) => {
         });
     }
 
-    // Sòng có thể đã bắt đầu lắc trong lúc chờ DB → hoàn lại ngay, không nhận cược muộn
+    // Chủ sòng có thể đã lắc trong lúc chờ DB → hoàn lại ngay, không nhận cược muộn
     if (session.closed || activeBaucuaGames.get(sessionId) !== session) {
         await escrow.payout(userId, 'baucua', sessionId, { credit: betAmount, discharge: betAmount })
             .catch(err => console.error('❌ [BauCua] Lỗi hoàn cược trễ:', err));
-        return interaction.reply({ content: `⚠️ Ván Bầu Cua vừa lắc xong, đã hoàn lại \`${betAmount.toLocaleString()}\` 💎 cho đạo hữu.`, flags: 64 });
+        return interaction.reply({ content: `⚠️ Chủ sòng vừa lắc xong, đã hoàn lại \`${betAmount.toLocaleString()}\` 💎 cho đạo hữu.`, flags: 64 });
     }
 
     if (!session.bets[userId]) {
@@ -309,13 +437,26 @@ module.exports = {
     interactions: {
         'bc_modal': handleBaucuaInteractions,
         'bc_rules': handleBaucuaInteractions,
+        'bc_shake': handleBaucuaInteractions,
+        'bc_open': handleBaucuaInteractions,
+        'bc_again': handleBaucuaInteractions,
         'bc_submit': handleBaucuaModalSubmit,
     },
-    // Bot tắt êm: sòng đã có người cược thì lắc NGAY để hoàn thành ván; sòng trống thì đóng
+    // Bot tắt êm: sòng đã có người cược thì lắc + khui NGAY để hoàn thành ván; sòng trống thì đóng
     onShutdown: async () => {
-        const withBets = [...activeBaucuaGames.values()].filter((s) => Object.keys(s.bets).length > 0);
-        await Promise.all(withBets.map((s) => settleSession(s.id).catch((err) => console.error('❌ [BauCua] settle khi tắt:', err))));
-        await cancelAllSessions('Bot đang khởi động lại để bảo trì.');
+        const sessions = [...activeBaucuaGames.values()];
+        await Promise.all(sessions.map(async (s) => {
+            try {
+                if (Object.keys(s.bets).length > 0) {
+                    await shakeSession(s.id);
+                    await revealSession(s.id);
+                } else {
+                    await cancelSession(s, 'Bot đang khởi động lại để bảo trì.');
+                }
+            } catch (err) {
+                console.error('❌ [BauCua] xử lý sòng khi tắt:', err);
+            }
+        }));
     },
     // Liệt kê sòng đang mở trong kênh (cho /banchoi)
     listRooms: (channelId) => [...activeBaucuaGames.values()]
@@ -323,8 +464,9 @@ module.exports = {
         .map(s => ({
             game: '🎲 Bầu Cua',
             title: `Sòng của ${s.hostName}`,
-            detail: `👥 ${Object.keys(s.bets).length} người đã cược · lắc <t:${Math.floor((s.startTime + BET_SECONDS * 1000) / 1000)}:R>`,
-            joinable: true,
+            detail: `👥 ${Object.keys(s.bets).length} người đã cược · ${s.phase === 'betting' ? 'đang nhận cược' : 'đã lắc, chờ khui'}`,
+            joinable: s.phase === 'betting',
             url: s.message?.url,
         })),
+    _internal: { activeBaucuaGames, shakeSession, revealSession },
 };
