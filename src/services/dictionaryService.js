@@ -1,12 +1,13 @@
 /**
- * Tra từ điển trực tuyến cho các game chữ.
- *  - Tiếng Việt: https://dict.minhqnd.com/api/v1/lookup?word=...
- *  - Tiếng Anh : https://api.dictionaryapi.dev/api/v2/entries/en/<word>  (+ dict.minhqnd.com để lấy nghĩa tiếng Việt)
+ * Tra từ điển trực tuyến cho các game chữ — gọi SONG SONG nhiều nguồn, nguồn nào xác nhận trước thì dùng ngay.
  *
- * Mỗi hàm trả về { status, meaning? }:
- *   'found'   — từ điển xác nhận có từ
- *   'missing' — từ điển trả 404 (chưa chắc là từ sai: thiếu biến thể, thuật ngữ game, danh từ riêng...)
- *   'error'   — lỗi mạng/timeout/giới hạn tần suất: không kết luận được
+ *  Tiếng Việt: dict.minhqnd.com  +  vi.wiktionary.org (MediaWiki API, có phần "Tiếng Việt")
+ *  Tiếng Anh : api.dictionaryapi.dev  +  dict.minhqnd.com (kèm nghĩa tiếng Việt)  +  api.datamuse.com (từ vựng, có tần suất)
+ *
+ * Mỗi hàm trả về { status, meaning?, definition? }:
+ *   'found'   — có nguồn xác nhận
+ *   'missing' — mọi nguồn đều trả "không có" (chưa chắc là từ sai: thuật ngữ game, tên riêng... → game nhờ AI xét tiếp)
+ *   'error'   — chưa kết luận được (có nguồn lỗi/timeout mà chưa nguồn nào xác nhận)
  * Chỉ gửi DUY NHẤT chuỗi từ cần tra ra ngoài, không kèm thông tin người chơi.
  */
 const { toKey } = require('../shared/utils/wordGame');
@@ -14,16 +15,25 @@ const { toKey } = require('../shared/utils/wordGame');
 const TIMEOUT_MS = 4000;
 const CACHE_MAX = 4000;
 const ERROR_COOLDOWN_MS = 30_000;
+const DATAMUSE_MIN_FREQ = 0.5; // lượt/triệu từ — lọc từ quá hiếm/lạ của Datamuse
 
-const MINH_URL = 'https://dict.minhqnd.com/api/v1/lookup';
-const EN_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+const URLS = {
+    minh: 'https://dict.minhqnd.com/api/v1/lookup',
+    dictapi: 'https://api.dictionaryapi.dev/api/v2/entries/en/',
+    muse: 'https://api.datamuse.com/words',
+    viwik: 'https://vi.wiktionary.org/w/api.php',
+};
 
-const cache = new Map(); // `${lang}:${key}` -> { status, meaning }  (chỉ lưu found/missing)
+const cache = new Map(); // `${lang}:${key}` -> kết quả found/missing
 let fetchImpl = (...args) => fetch(...args);
-let cooldownUntil = { minh: 0, en: 0 };
+const cooldownUntil = {};
 
 /** Cho test thay thế fetch. */
-function _setFetch(fn) { fetchImpl = fn; cooldownUntil = { minh: 0, en: 0 }; cache.clear(); }
+function _setFetch(fn) {
+    fetchImpl = fn;
+    for (const k of Object.keys(cooldownUntil)) delete cooldownUntil[k];
+    cache.clear();
+}
 
 function remember(key, value) {
     if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value);
@@ -31,7 +41,7 @@ function remember(key, value) {
 }
 
 async function getJson(url, source) {
-    if (Date.now() < cooldownUntil[source]) return { error: true };
+    if (Date.now() < (cooldownUntil[source] || 0)) return { error: true };
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     try {
@@ -52,11 +62,81 @@ const shorten = (text, max = 90) => {
     return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
 };
 
-/** Lấy nghĩa đầu tiên từ phản hồi của dict.minhqnd.com */
+/** Chạy các nguồn song song; trả ngay khi có nguồn 'found', nếu không thì tổng hợp missing/error. */
+function resolveSources(sources) {
+    return new Promise((resolve) => {
+        let pending = sources.length;
+        let anyError = false;
+        const finish = (r) => {
+            if (r.status === 'error') anyError = true;
+            if (r.status === 'found') return resolve(r);
+            if (--pending === 0) resolve({ status: anyError ? 'error' : 'missing' });
+        };
+        for (const run of sources) {
+            run().then(finish, () => finish({ status: 'error' }));
+        }
+    });
+}
+
+// ───────────────────────── Nguồn: dict.minhqnd.com ─────────────────────────
+
 function minhMeaning(data, langCode) {
     const result = (data?.results || []).find((r) => !langCode || r.lang_code === langCode) || data?.results?.[0];
     return shorten(result?.meanings?.[0]?.definition);
 }
+
+async function minhSource(key, langCode) {
+    const r = await getJson(`${URLS.minh}?word=${encodeURIComponent(key)}`, 'minh');
+    if (r.error) return { status: 'error' };
+    const has = !r.notFound && r.data?.exists && (r.data.results || []).some((x) => x.lang_code === langCode);
+    return has ? { status: 'found', meaning: minhMeaning(r.data, langCode) } : { status: 'missing' };
+}
+
+// ───────────────────────── Nguồn: vi.wiktionary.org ─────────────────────────
+
+/** Lấy dòng nghĩa đầu tiên ("# ...") từ wikitext và bỏ ký hiệu liên kết. */
+function wikiFirstDefinition(wikitext) {
+    const line = String(wikitext || '').split('\n').find((l) => /^#(?![:*#])/.test(l));
+    if (!line) return '';
+    return shorten(
+        line.replace(/^#\s*/, '')
+            .replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, '$1')
+            .replace(/\{\{[^}]*\}\}/g, '')
+            .replace(/'{2,}/g, '')
+            .replace(/<[^>]+>/g, '')
+    );
+}
+
+async function viWiktionarySource(key) {
+    const url = `${URLS.viwik}?action=query&format=json&formatversion=2&redirects=1&prop=revisions&rvprop=content&rvslots=main&titles=${encodeURIComponent(key)}`;
+    const r = await getJson(url, 'viwik');
+    if (r.error) return { status: 'error' };
+    const page = r.data?.query?.pages?.[0];
+    const content = page?.revisions?.[0]?.slots?.main?.content || '';
+    // Trang phải có mục tiếng Việt (nhiều từ nước ngoài cũng có trang trên vi.wiktionary)
+    const isVietnamese = !page?.missing && /\{\{-vie-\}\}|==\s*Tiếng Việt\s*==/i.test(content);
+    return isVietnamese ? { status: 'found', meaning: wikiFirstDefinition(content) } : { status: 'missing' };
+}
+
+// ───────────────────────── Nguồn tiếng Anh ─────────────────────────
+
+async function dictApiSource(key) {
+    const r = await getJson(`${URLS.dictapi}${encodeURIComponent(key)}`, 'dictapi');
+    if (r.error) return { status: 'error' };
+    if (!Array.isArray(r.data) || !r.data.length) return { status: 'missing' };
+    return { status: 'found', definition: shorten(r.data[0]?.meanings?.[0]?.definitions?.[0]?.definition) };
+}
+
+async function datamuseSource(key) {
+    const r = await getJson(`${URLS.muse}?sp=${encodeURIComponent(key)}&max=1&md=f`, 'muse');
+    if (r.error) return { status: 'error' };
+    const hit = Array.isArray(r.data) ? r.data[0] : null;
+    if (!hit || hit.word?.toLowerCase() !== key) return { status: 'missing' };
+    const freq = parseFloat((hit.tags || []).find((t) => t.startsWith('f:'))?.slice(2) ?? '0');
+    return freq >= DATAMUSE_MIN_FREQ ? { status: 'found' } : { status: 'missing' };
+}
+
+// ───────────────────────── API công khai ─────────────────────────
 
 /** Tra từ/cụm từ tiếng Việt (có dấu). */
 async function lookupVietnamese(word) {
@@ -64,21 +144,11 @@ async function lookupVietnamese(word) {
     const hit = cache.get(`vi:${key}`);
     if (hit) return hit;
 
-    const r = await getJson(`${MINH_URL}?word=${encodeURIComponent(key)}`, 'minh');
-    if (r.error) return { status: 'error' };
-    if (r.notFound || r.data?.exists === false) {
-        const out = { status: 'missing' };
-        remember(`vi:${key}`, out);
-        return out;
-    }
-    const hasVi = (r.data?.results || []).some((x) => x.lang_code === 'vi');
-    if (!r.data?.exists || !hasVi) {
-        const out = { status: 'missing' };
-        remember(`vi:${key}`, out);
-        return out;
-    }
-    const out = { status: 'found', meaning: minhMeaning(r.data, 'vi') };
-    remember(`vi:${key}`, out);
+    const out = await resolveSources([
+        () => minhSource(key, 'vi'),
+        () => viWiktionarySource(key),
+    ]);
+    if (out.status !== 'error') remember(`vi:${key}`, out);
     return out;
 }
 
@@ -88,27 +158,19 @@ async function lookupEnglish(word) {
     const hit = cache.get(`en:${key}`);
     if (hit) return hit;
 
-    const [en, vi] = await Promise.all([
-        getJson(`${EN_URL}${encodeURIComponent(key)}`, 'en'),
-        getJson(`${MINH_URL}?word=${encodeURIComponent(key)}`, 'minh'),
+    // Nghĩa tiếng Việt lấy riêng (không chặn kết quả): chỉ khi tìm được từ
+    const viMeaning = minhSource(key, 'en').catch(() => ({ status: 'error' }));
+    const out = await resolveSources([
+        () => dictApiSource(key),
+        () => viMeaning,
+        () => datamuseSource(key),
     ]);
-
-    const enFound = Array.isArray(en.data) && en.data.length > 0;
-    const viEntry = vi.data?.exists ? (vi.data.results || []).find((x) => x.lang_code === 'en') : null;
-
-    if (enFound || viEntry) {
-        const out = {
-            status: 'found',
-            meaning: viEntry ? minhMeaning(vi.data, 'en') : '',
-            definition: enFound ? shorten(en.data[0]?.meanings?.[0]?.definitions?.[0]?.definition) : '',
-        };
-        remember(`en:${key}`, out);
-        return out;
+    if (out.status === 'found') {
+        const vm = await Promise.race([viMeaning, new Promise((r) => setTimeout(() => r(null), 600))]);
+        out.meaning = out.meaning || (vm?.status === 'found' ? vm.meaning : '');
+        out.definition = out.definition || '';
     }
-    if (en.error && vi.error) return { status: 'error' };
-    if (en.error || vi.error) return { status: 'error' }; // một nguồn lỗi: chưa dám kết luận "không có"
-    const out = { status: 'missing' };
-    remember(`en:${key}`, out);
+    if (out.status !== 'error') remember(`en:${key}`, out);
     return out;
 }
 

@@ -152,6 +152,34 @@ const LEADERBOARDS = {
         filter: { 'stats.pokerGames': { $gt: 0 } },
         line: (p) => winRateLine(p.stats.pokerWins, p.stats.pokerGames),
     },
+    noitu: {
+        title: '🐲 NGUYÊN SOÁI NỐI TỪ',
+        sort: { 'stats.noituWins': -1 },
+        filter: { 'stats.noituWins': { $gt: 0 } },
+        rankField: 'noituWins',
+        line: (p) => '**' + p.stats.noituWins + '** từ nối đúng · kỷ lục chuỗi ' + (p.stats.noituBestStreak || 0),
+    },
+    noitu_chuoi: {
+        title: '🔥 CHUỖI NỐI TỪ DÀI NHẤT',
+        sort: { 'stats.noituBestStreak': -1, 'stats.noituWins': -1 },
+        filter: { 'stats.noituBestStreak': { $gt: 0 } },
+        rankField: 'noituBestStreak',
+        line: (p) => streakLine(p.stats.noituBestStreak) + ' · ' + (p.stats.noituWins || 0) + ' từ đúng',
+    },
+    vua: {
+        title: '👑 VUA TIẾNG VIỆT',
+        sort: { 'stats.vuatiengvietWins': -1 },
+        filter: { 'stats.vuatiengvietWins': { $gt: 0 } },
+        rankField: 'vuatiengvietWins',
+        line: (p) => '**' + p.stats.vuatiengvietWins + '** câu đúng · kỷ lục chuỗi ' + (p.stats.vuatiengvietBestStreak || 0),
+    },
+    vua_chuoi: {
+        title: '🔥 CHUỖI THẮNG VUA TIẾNG VIỆT',
+        sort: { 'stats.vuatiengvietBestStreak': -1, 'stats.vuatiengvietWins': -1 },
+        filter: { 'stats.vuatiengvietBestStreak': { $gt: 0 } },
+        rankField: 'vuatiengvietBestStreak',
+        line: (p) => streakLine(p.stats.vuatiengvietBestStreak) + ' · ' + (p.stats.vuatiengvietWins || 0) + ' câu đúng',
+    },
     baucua: {
         title: '🎲 ĐỔ VƯƠNG BẦU CUA',
         sort: { 'stats.baucuaWinLinhThach': -1 },
@@ -162,6 +190,8 @@ const LEADERBOARDS = {
         },
     },
 };
+
+const streakLine = (n = 0) => '🔥 chuỗi **' + n + '** liên tiếp';
 
 function winRateLine(wins = 0, games = 0) {
     const rate = games > 0 ? Math.round((wins / games) * 100) : 0;
@@ -181,6 +211,10 @@ const topLinhThachCommand = {
                     { name: '🃏 Xì Dách (thắng nhiều nhất)', value: 'xidach' },
                     { name: '♠️ Poker (thắng nhiều nhất)', value: 'poker' },
                     { name: '🎲 Bầu Cua (lãi ròng cao nhất)', value: 'baucua' },
+                    { name: '🐲 Nối Từ (nối đúng nhiều nhất)', value: 'noitu' },
+                    { name: '🔥 Nối Từ (chuỗi dài nhất)', value: 'noitu_chuoi' },
+                    { name: '👑 Vua Tiếng Việt (đoán đúng nhiều nhất)', value: 'vua' },
+                    { name: '🔥 Vua Tiếng Việt (chuỗi thắng dài nhất)', value: 'vua_chuoi' },
                 )
         ),
     async execute(interaction) {
@@ -205,7 +239,14 @@ const topLinhThachCommand = {
         if (me && !top.some(p => p.userId === me.userId)) {
             me.stats = me.stats || {};
             me.linhThach = me.linhThach || 0;
-            mine = `\n\n👤 **Đạo hữu:** ${board.line(me)}`;
+            // Hạng thật của người gọi lệnh trên các bảng game chữ (đếm số người đứng trên)
+            let rankText = '';
+            const myValue = board.rankField ? (me.stats[board.rankField] || 0) : 0;
+            if (myValue > 0) {
+                const ahead = await UserProfile.countDocuments({ ['stats.' + board.rankField]: { $gt: myValue } });
+                rankText = '`#' + (ahead + 1) + '` ';
+            }
+            mine = '\n\n👤 **Đạo hữu:** ' + rankText + board.line(me);
         }
 
         const embed = new EmbedBuilder()

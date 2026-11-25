@@ -83,6 +83,8 @@ const UserProfileSchema = new mongoose.Schema({
     stats: {
         noituWins: { type: Number, default: 0 },
         vuatiengvietWins: { type: Number, default: 0 },
+        noituBestStreak: { type: Number, default: 0 },
+        vuatiengvietBestStreak: { type: Number, default: 0 },
         baucuaGames: { type: Number, default: 0 },
         baucuaWinLinhThach: { type: Number, default: 0 },
         pokerGames: { type: Number, default: 0 },

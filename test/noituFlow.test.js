@@ -8,6 +8,7 @@ const aiPath = require.resolve(path.join(root, 'services', 'aiService'));
 const profilePath = require.resolve(path.join(root, 'shared', 'models', 'UserProfile'));
 
 const ledger = [];
+const bests = {};
 let aiVerdict = { valid: true, reason: 'Hay lắm' };
 let aiDelay = 0;
 
@@ -36,6 +37,8 @@ require.cache[profilePath] = {
     id: profilePath, filename: profilePath, loaded: true,
     exports: {
         getOrCreate: async (userId) => ({
+            stats: {},
+            set: (k, v) => { bests[userId + ':' + k] = v; },
             incLinhThach: async (d) => { ledger.push({ userId, d }); },
             addTuVi: () => 'Phàm Nhân',
             save: async () => {},
@@ -204,4 +207,36 @@ test('Một kênh không chạy đồng thời Nối Từ và Vua Tiếng Việt
     assert.equal(claimChannel('cx', 'noitu'), null);
     assert.equal(claimChannel('cx', 'vuatiengviet'), 'noitu');
     releaseChannel('cx', 'noitu');
+});
+
+test('Nối Từ: chuỗi thắng cộng thưởng (+5/bậc), sai từ thì đứt chuỗi, kỷ lục được ghi', async () => {
+    openGame('s1', 'Tu Tiên');
+    for (const w of ['tiên giới', 'giới hạn', 'hạn chế']) await handler(fakeMessage('s1', 'u1', w));
+    assert.deepEqual(ledger.map((l) => l.d), [15, 20, 25]);
+    assert.equal(bests['u1:stats.noituBestStreak'], 3);
+
+    aiVerdict = { valid: false, reason: 'vô nghĩa' };
+    await handler(fakeMessage('s1', 'u1', 'chế tạp'));                 // sai → đứt chuỗi
+    aiVerdict = { valid: true, reason: 'ok' };
+    await handler(fakeMessage('s1', 'u1', 'chế độ'));
+    assert.equal(ledger.at(-1).d, 15);
+});
+
+test('Vua Tiếng Việt: cùng người thắng liên tiếp được thưởng chuỗi, người khác thắng xen vào thì đứt', async () => {
+    const { activeVuaGames } = vua._internal;
+    const game = {
+        difficulty: 'de', originalWord: 'HOÀNG HÔN', scrambledLetters: 'x', structure: '2 tiếng', hint: 'h',
+        hintUsed: false, streak: 0, streakUserId: null, usedWords: ['HOÀNG HÔN'], authorId: 'u0',
+        consecutiveTimeouts: 0, timer: null, solving: false, askedAt: Date.now() - 40_000,
+    };
+    activeVuaGames.set('streak1', game);
+    const answers = [['u1', 'hoàng hôn'], ['u1', 'bình minh'], ['u2', 'giang hồ']];
+    for (const [uid, text] of answers) {
+        game.askedAt = Date.now() - 40_000;
+        await vuaHandler(fakeMessage('streak1', uid, text));
+        clearTimeout(game.timer);
+        game.solving = false;
+    }
+    assert.deepEqual(ledger.map((l) => l.d), [50, 55, 50]);
+    assert.equal(bests['u1:stats.vuatiengvietBestStreak'], 2);
 });

@@ -3,7 +3,7 @@ const { validateWordVI, validateWordEN, getRandomEnglishStartWord } = require('.
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
 const {
-    parseVietnameseWord, parseEnglishWord, splitSyllables, toKey,
+    parseVietnameseWord, parseEnglishWord, splitSyllables, toKey, streakBonus,
 } = require('../../shared/utils/wordGame');
 const { claimChannel, releaseChannel, gameLabel } = require('../../shared/channelGames');
 
@@ -63,6 +63,7 @@ function resetTurnTimer(channelId, channel) {
         if (current !== game) return;
 
         game.consecutiveTimeouts++;
+        game.streaks.clear();
 
         // Thưởng một lần cho người vừa nối từ thành công cuối cùng (chủ sòng chưa nối thì không có thưởng)
         const rewardee = game.lastPlayerId;
@@ -118,6 +119,7 @@ function newGame(lang, startWord) {
         lastWord: startWord,
         lastPlayerId: null,        // người nối thành công gần nhất (null: chưa ai / vừa hết giờ)
         players: new Set(),        // những người đã nối ít nhất 1 từ trong sòng
+        streaks: new Map(),        // userId -> số từ đúng liên tiếp (sai/trùng từ hoặc hết giờ thì về 0)
         usedWords: new Set([toKey(startWord)]),
         consecutiveTimeouts: 0,
         timer: null,
@@ -286,6 +288,7 @@ const handleNoituRules = async (interaction) => {
             `• Khi đã có từ 2 người chơi trở lên, không được nối **2 lượt liền nhau**.\n` +
             `• ⏱️ ${TURN_MS / 1000} giây/lượt. Quá giờ không ai nối sẽ đổi từ ngẫu nhiên (người nối cuối được +${TIMEOUT_BONUS} 💎). ${MAX_TIMEOUTS} lượt hết giờ liên tiếp sòng sẽ tự đóng.\n` +
             `• Tin nhắn trò chuyện thường (không giống một từ) sẽ được bỏ qua.\n\n` +
+            `🔥 **Chuỗi thắng:** nối đúng liên tiếp (không sai/trùng từ, không hết giờ) được thưởng thêm +5 💎 mỗi bậc từ chuỗi 2, tối đa +50 💎. Kỷ lục chuỗi được ghi vào bảng xếp hạng \`/top-linhthach\`.\n` +
             `🎁 **Thưởng:** +${REWARD_LINH_THACH} Linh Thạch & +${REWARD_TU_VI} Tu Vi cho mỗi từ đúng!`
         )
         .setFooter({ text: 'Thiên Thư Hiền Giả Ban Luật' });
@@ -322,6 +325,7 @@ const onMessageCreate = {
         }
 
         if (game.usedWords.has(key)) {
+            game.streaks.set(message.author.id, 0);
             await message.react('❌').catch(() => {});
             return reply(message, `⚠️ ${isVi ? 'Từ' : 'The word'} **"${word}"** ${isVi ? 'đã được dùng trước đó rồi! Đạo hữu hãy chọn từ khác.' : 'was already used! Pick another one.'}`);
         }
@@ -355,6 +359,7 @@ const onMessageCreate = {
         }
 
         if (!res.valid) {
+            if (!res.unavailable) game.streaks.set(message.author.id, 0); // lỗi hệ thống thì không phạt người chơi
             await message.react(res.unavailable ? '⚠️' : '❌').catch(() => {});
             return reply(message, `${res.unavailable ? '⚠️' : '❌'} ${res.reason}`);
         }
@@ -368,10 +373,15 @@ const onMessageCreate = {
         resetTurnTimer(message.channelId, message.channel);
 
         const authorName = getDisplayName(message);
+        const streak = (game.streaks.get(message.author.id) || 0) + 1;
+        game.streaks.set(message.author.id, streak);
+        const bonus = streakBonus(streak);
+        const reward = REWARD_LINH_THACH + bonus;
         try {
             const profile = await UserProfile.getOrCreate(message.author.id, authorName);
-            await profile.incLinhThach(REWARD_LINH_THACH, { inc: { 'stats.noituWins': 1 } });
+            await profile.incLinhThach(reward, { inc: { 'stats.noituWins': 1 } });
             profile.addTuVi(REWARD_TU_VI);
+            if (streak > (profile.stats?.noituBestStreak || 0)) profile.set('stats.noituBestStreak', streak);
             await profile.save();
         } catch (err) {
             console.error('❌ [NoiTu] Lỗi trả thưởng:', err.message);
@@ -385,10 +395,12 @@ const onMessageCreate = {
             .setDescription(
                 (isVi
                     ? `✨ **Nối từ thành công:** "${word}"\n💬 *Hiền Giả:* "${res.reason}"\n` +
-                      `🎁 Thưởng: **+${REWARD_LINH_THACH} 💎 Linh Thạch** | **+${REWARD_TU_VI} ✨ Tu Vi**\n` +
+                      `🎁 Thưởng: **+${reward} 💎 Linh Thạch** | **+${REWARD_TU_VI} ✨ Tu Vi**\n` +
+                      (streak >= 2 ? `🔥 **Chuỗi ${streak} từ liên tiếp**${bonus ? ` (+${bonus} 💎 thưởng chuỗi)` : ''}\n` : '') +
                       `👉 Từ tiếp theo phải bắt đầu bằng tiếng: **"${nextHintOf(game)}"**`
                     : `✨ **Word Accepted:** "${word}" (${res.meaning})\n💬 *Hiền Giả:* "${res.reason}"\n` +
-                      `🎁 Reward: **+${REWARD_LINH_THACH} 💎 Linh Thạch** | **+${REWARD_TU_VI} ✨ Tu Vi**\n` +
+                      `🎁 Reward: **+${reward} 💎 Linh Thạch** | **+${REWARD_TU_VI} ✨ Tu Vi**\n` +
+                      (streak >= 2 ? `🔥 **Streak x${streak}**${bonus ? ` (+${bonus} 💎 streak bonus)` : ''}\n` : '') +
                       `👉 Next word must start with letter: **"${nextHintOf(game)}"**`)
             );
 

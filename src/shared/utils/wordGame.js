@@ -73,7 +73,13 @@ function matchesAnswer(guess, answer) {
     return toKey(g) === toKey(answer) || toPlainKey(g) === toPlainKey(answer);
 }
 
+/** Thưởng thêm theo chuỗi thắng: từ chuỗi thứ 2 trở đi +5 💎 mỗi bậc (không tính bậc đầu), tối đa +50 💎. */
+const STREAK_BONUS_STEP = 5;
+const STREAK_BONUS_MAX = 50;
+const streakBonus = (streak) => Math.min(Math.max(0, streak - 1) * STREAK_BONUS_STEP, STREAK_BONUS_MAX);
+
 module.exports = {
+    streakBonus,
     normalizeText,
     toKey,
     toPlainKey,

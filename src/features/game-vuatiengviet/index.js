@@ -9,7 +9,7 @@ const {
 const { generateVuaTiengVietQuestion } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
-const { matchesAnswer } = require('../../shared/utils/wordGame');
+const { matchesAnswer, streakBonus } = require('../../shared/utils/wordGame');
 const { claimChannel, releaseChannel, gameLabel } = require('../../shared/channelGames');
 
 const GAME_TYPE = 'vuatiengviet';
@@ -100,6 +100,8 @@ function startQuestionTimer(channelId, channel) {
         game.solving = true; // chặn đáp án lọt vào giữa lúc chuyển câu
 
         game.consecutiveTimeouts++;
+        game.streak = 0; // không ai đoán được → đứt chuỗi
+        game.streakUserId = null;
 
         if (game.consecutiveTimeouts >= MAX_TIMEOUTS) {
             endGame(channelId);
@@ -170,6 +172,8 @@ const vuatiengvietCommand = {
             structure: '',
             hint: '',
             hintUsed: false,
+            streak: 0,           // chuỗi thắng hiện tại của người đang dẫn
+            streakUserId: null,
             usedWords: [],
             authorId: interaction.user.id,
             consecutiveTimeouts: 0,
@@ -214,7 +218,11 @@ const onMessageCreate = {
         const elapsed = (Date.now() - game.askedAt) / 1000;
         const base = game.hintUsed ? REWARD_AFTER_HINT : REWARD;
         const bonus = !game.hintUsed && elapsed <= FAST_SECONDS ? FAST_BONUS : 0;
-        const linhThach = base.linhThach + bonus;
+        // Chuỗi thắng: cùng một người đoán đúng liên tiếp nhiều câu (người khác thắng xen vào thì đứt)
+        game.streak = game.streakUserId === message.author.id ? (game.streak || 0) + 1 : 1;
+        game.streakUserId = message.author.id;
+        const streakExtra = streakBonus(game.streak);
+        const linhThach = base.linhThach + bonus + streakExtra;
         const answer = game.originalWord;
 
         const authorName = getDisplayName(message);
@@ -223,6 +231,7 @@ const onMessageCreate = {
             const profile = await UserProfile.getOrCreate(message.author.id, authorName);
             await profile.incLinhThach(linhThach, { inc: { 'stats.vuatiengvietWins': 1 } });
             newRealm = profile.addTuVi(base.tuVi);
+            if (game.streak > (profile.stats?.vuatiengvietBestStreak || 0)) profile.set('stats.vuatiengvietBestStreak', game.streak);
             await profile.save();
         } catch (err) {
             console.error('❌ [VuaTiengViet] Lỗi trả thưởng:', err.message);
@@ -239,6 +248,7 @@ const onMessageCreate = {
                 `🎁 Phần thưởng: **+${linhThach} 💎 Linh Thạch** | **+${base.tuVi} ✨ Tu Vi**` +
                 (bonus ? ` *(thưởng nhanh +${bonus})*` : '') +
                 (game.hintUsed ? ' *(đã dùng gợi ý)*' : '') + '\n' +
+                (game.streak >= 2 ? `🔥 **Chuỗi thắng x${game.streak}**${streakExtra ? ` (+${streakExtra} 💎 thưởng chuỗi)` : ''} — giữ vững phong độ!\n` : '') +
                 `🔮 Cảnh giới hiện tại: **${newRealm}**\n\n` +
                 `🔄 **Thiên Thư Hiền Giả** đang luận giải câu đố tiếp theo...`
             )
@@ -260,6 +270,7 @@ const RULES_EMBED = () => new EmbedBuilder()
         `👉 **Cách chơi:** Nhắn đáp án có dấu hoặc không dấu vào kênh chat. Người đúng đầu tiên thắng.\n` +
         `⏱️ **Thời gian:** ${QUESTION_MS / 1000} giây/câu. Hết giờ sẽ đổi câu mới; bỏ trống ${MAX_TIMEOUTS} câu liên tiếp game kết thúc.\n` +
         `🎁 **Thưởng:** +${REWARD.linhThach} Linh Thạch & +${REWARD.tuVi} Tu Vi; đoán trong ${FAST_SECONDS}s được thêm +${FAST_BONUS} 💎.\n` +
+        `🔥 **Chuỗi thắng:** thắng liên tiếp nhiều câu bởi cùng một người được thưởng thêm +5 💎 mỗi bậc từ chuỗi 2 (tối đa +50 💎); người khác thắng xen vào hoặc hết giờ thì đứt chuỗi.\n` +
         `💡 **Gợi ý:** dùng gợi ý thì thưởng giảm còn +${REWARD_AFTER_HINT.linhThach} Linh Thạch & +${REWARD_AFTER_HINT.tuVi} Tu Vi (không có thưởng nhanh).\n` +
         `🏳️ **Đầu hàng:** chỉ người mở trò chơi hoặc người có quyền quản lý tin nhắn mới được kết thúc game.`
     )
