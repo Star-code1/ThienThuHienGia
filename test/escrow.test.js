@@ -31,6 +31,8 @@ const UserProfile = {
     },
 };
 mock('../src/shared/models/UserProfile.js', UserProfile);
+const fakeEscrow = require('./helpers/fakeEscrowModel');
+mock('../src/shared/models/GameEscrow.js', fakeEscrow);
 mock('../src/services/aiService.js', { generatePokerCommentary: async () => 'Lời bình' });
 mock('../src/shared/utils/nameHelper.js', { getDisplayName: (i) => i.user.name });
 
@@ -176,4 +178,96 @@ test('Poker: kết thúc ván rồi rời/giải tán — Linh Thạch = số d�
         await new Promise((r) => setImmediate(r)); // cho lệnh hoàn chip chạy xong
         assert.equal(balances.get('p1'), 5000 + net, `vòng ${round}`);
     }
+});
+
+// ───────────── Sổ tiền đang giữ + khôi phục khi bot sập + nhiều room ─────────────
+
+const escrowService = require('../src/services/escrowService');
+
+test.beforeEach(() => fakeEscrow.reset());
+
+test('sổ tiền: giữ khi vào bàn, xoá sạch khi ván xong / rời bàn / giải tán', async () => {
+    await bjOpen(bjInteraction('a', ''));
+    const [table] = blackjack._internal.tables.values();
+    assert.deepEqual(fakeEscrow.docs.map((d) => [d.userId, d.game, d.amount]), [['a', 'xidach', 200]]);
+    await bjHandler(bjInteraction('a', `bj_start:${table.id}`));
+    for (let g = 0; g < 10 && blackjack._internal.tables.has(table.id); g++) {
+        await bjHandler(bjInteraction(table.players[table.turn].id, `bj_stand:${table.id}`));
+    }
+    assert.equal(fakeEscrow.docs.length, 0);
+
+    balances.set('p1', 5000);
+    await poker.commands[0].execute(pkInteraction('p1', ''));
+    assert.deepEqual(fakeEscrow.docs.map((d) => [d.game, d.amount]), [['poker', 2000]]);
+    await poker.onShutdown();
+    assert.equal(fakeEscrow.docs.length, 0);
+});
+
+test('một người mở/ngồi nhiều room cùng lúc (Xì Dách & Poker), tiền giữ riêng từng room', async () => {
+    balances.set('a', 5000);
+    await bjOpen(bjInteraction('a', ''));
+    await bjOpen(bjInteraction('a', ''));
+    assert.equal(blackjack._internal.tables.size, 2);
+    assert.equal(balances.get('a'), 4600);
+    const [t1, t2] = blackjack._internal.tables.values();
+    await bjHandler(bjInteraction('b', `bj_join:${t1.id}`));
+    await bjHandler(bjInteraction('b', `bj_join:${t2.id}`));
+    assert.equal(t1.players.length, 2);
+    assert.equal(t2.players.length, 2);
+    assert.equal(fakeEscrow.docs.length, 4);
+
+    await poker.commands[0].execute(pkInteraction('a', ''));
+    await poker.commands[0].execute(pkInteraction('a', ''));
+    assert.equal(poker._internal.tables.size, 2);
+    assert.equal(balances.get('a'), 4600 - 4000);
+
+    await blackjack.onShutdown();
+    await poker.onShutdown();
+    assert.equal(balances.get('a'), 5000);
+    assert.equal(balances.get('b'), 1000);
+    assert.equal(fakeEscrow.docs.length, 0);
+});
+
+test('bot sập giữa ván → hoàn tiền + đền bù 10.000 và báo tin cho từng người', async () => {
+    balances.set('a', 5000);
+    await bjOpen(bjInteraction('a', ''));                         // giữ 200
+    const [table] = blackjack._internal.tables.values();
+    await bjHandler(bjInteraction('b', `bj_join:${table.id}`));    // b giữ 200
+    await poker.commands[0].execute(pkInteraction('a', ''));       // a giữ thêm 2000 chip
+    assert.equal(balances.get('a'), 5000 - 200 - 2000);
+    assert.equal(balances.get('b'), 800);
+
+    // "Sập": không chạy onShutdown, tiến trình biến mất → tim ngừng đập
+    const longAgo = new Date(Date.now() - escrowService.STALE_MS - 5000);
+    for (const d of fakeEscrow.docs) d.heartbeatAt = longAgo;
+    blackjack._internal.tables.clear();
+
+    const dms = []; const channelMsgs = [];
+    const client = {
+        users: { fetch: async (id) => ({ send: async (t) => { if (id === 'b') throw new Error('DM closed'); dms.push([id, t]); } }) },
+        channels: { fetch: async () => ({ send: async (p) => { channelMsgs.push(p); } }) },
+    };
+    const n = await escrowService.recoverStale(client);
+    assert.equal(n, 2);
+    assert.equal(balances.get('a'), 5000 + escrowService.COMPENSATION);   // hoàn đủ + 10.000, mỗi người MỘT lần đền bù
+    assert.equal(balances.get('b'), 1000 + escrowService.COMPENSATION);
+    assert.equal(fakeEscrow.docs.length, 0);
+    assert.equal(dms.length, 1);
+    assert.match(dms[0][1], /Xì Dách/);
+    assert.match(dms[0][1], /Poker/);
+    assert.match(dms[0][1], /10\.000/);
+    assert.equal(channelMsgs.length, 1);                                  // b đóng DM → báo ở kênh
+    assert.match(channelMsgs[0].content, /<@b>/);
+
+    assert.equal(await escrowService.recoverStale(client), 0);            // không trả lần hai
+    assert.equal(balances.get('a'), 5000 + escrowService.COMPENSATION);
+
+    await poker.onShutdown();
+});
+
+test('khôi phục chỉ áp dụng cho dòng đã mất heartbeat, không đụng ván đang chạy', async () => {
+    await bjOpen(bjInteraction('a', ''));
+    assert.equal(await escrowService.recoverStale({}), 0);
+    assert.equal(balances.get('a'), 800);
+    await blackjack.onShutdown();
 });

@@ -10,6 +10,7 @@ const { evaluate7Cards } = require('./pokerEngine');
 const { generatePokerCommentary } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
+const escrow = require('../../services/escrowService');
 
 const TURN_TIMEOUT_MS = 60_000;
 const LOBBY_TIMEOUT_MS = 5 * 60_000;
@@ -19,7 +20,6 @@ const BOT_NAMES = ['Thiên Thư Hiền Giả', 'Kiếm Khách Vô Danh', 'Hồ L
 const COLOR = { table: 0x9B59B6, lobby: 0x5865F2, win: 0x2ECC71, lose: 0xE74C3C, closed: 0x95A5A6 };
 
 const tables = new Map();   // tableId -> table
-const userTable = new Map(); // userId -> tableId (mỗi người chỉ ngồi 1 bàn)
 
 const fmt = (n) => Number(n).toLocaleString('vi-VN');
 const cardStr = (cards) => cards.map(String).join('  ');
@@ -49,7 +49,7 @@ function cashOutSeat(table, p) {
     const amount = chipsOwed(table, p);
     p.stack = 0;
     p.total = 0;
-    return cashOutAmount(p.id, amount);
+    return cashOutAmount(p.id, amount).then(() => escrow.release(p.id, 'poker', table.id));
 }
 
 // ── Khóa tuần tự mỗi bàn (tránh 2 click xử lý chồng nhau) ─────────────────────
@@ -103,15 +103,16 @@ function renderPlaying(table) {
         )
         .setFooter({ text: `⏳ Lượt của ${actor.name} • ${TURN_TIMEOUT_MS / 1000} giây • Tố cố định +${fmt(T.raiseSize(table))}` });
 
-    const row = new ActionRowBuilder();
-    if (table.mode !== 'solo') row.addComponents(btn(table, 'view', '🂠 Xem bài', ButtonStyle.Secondary));
-    row.addComponents(
+    const row = new ActionRowBuilder().addComponents(
         btn(table, 'call', legal.canCheck ? '✋ Xem' : `📥 Theo ${fmt(legal.toCall)}`, ButtonStyle.Success),
         btn(table, 'raise', `🔥 Tố lên ${fmt(actor.bet + legal.raiseCost)}`, ButtonStyle.Primary, !legal.canRaise),
-        btn(table, 'fold', '🏳️ Bỏ bài', ButtonStyle.Danger),
-        btn(table, 'rules', '📖 Luật', ButtonStyle.Secondary)
+        btn(table, 'allin', `💥 All-in ${fmt(legal.allInTo)}`, ButtonStyle.Danger, !legal.canAllIn),
+        btn(table, 'fold', '🏳️ Bỏ bài', ButtonStyle.Secondary)
     );
-    return { content: actor.isBot ? '' : `🎯 <@${actor.id}> tới lượt bạn!`, embeds: [embed], components: [row] };
+    const row2 = new ActionRowBuilder();
+    if (table.mode !== 'solo') row2.addComponents(btn(table, 'view', '🂠 Xem bài', ButtonStyle.Secondary));
+    row2.addComponents(btn(table, 'rules', '📖 Luật', ButtonStyle.Secondary));
+    return { content: actor.isBot ? '' : `🎯 <@${actor.id}> tới lượt bạn!`, embeds: [embed], components: [row, row2] };
 }
 
 function resultLines(result) {
@@ -177,7 +178,6 @@ const render = (table) => (isPlaying(table) ? renderPlaying(table) : renderLobby
 function closeTable(table, reason) {
     clearTimeout(table.timer);
     tables.delete(table.id);
-    for (const p of humans(table)) if (userTable.get(p.id) === table.id) userTable.delete(p.id);
     const payload = render(table);
     payload.components = [];
     payload.content = '';
@@ -223,6 +223,7 @@ async function afterAction(table) {
 }
 
 async function settleHand(table) {
+    for (const p of humans(table)) await escrow.setAmount(p.id, 'poker', table.id, p.stack);
     for (const row of table.lastResult.rows) {
         if (row.isBot) continue;
         try {
@@ -266,7 +267,6 @@ async function refreshStacks(table) {
             kicked.push(p.name);
             await cashOutSeat(table, p); // trả nốt phần chip lẻ
             T.removePlayer(table, p.id);
-            userTable.delete(p.id);
         }
     }
     return kicked;
@@ -306,23 +306,17 @@ const pokerCommand = {
         const userId = interaction.user.id;
         const displayName = getDisplayName(interaction);
 
-        if (userTable.has(userId)) {
-            return interaction.reply({ content: '⚠️ Đạo hữu đang ngồi ở một bàn Poker khác. Rời bàn đó trước nhé!', flags: 64 });
-        }
+        // Một người được mở/ngồi nhiều bàn cùng lúc — chip mua riêng cho từng bàn
         const buyIn = bet * BUY_IN_MULTIPLIER;
         const profile = await UserProfile.getOrCreate(userId, displayName);
         if (await profile.incLinhThach(-buyIn, { requireFunds: true }) === null) {
             return interaction.reply({ content: `⚠️ Không đủ Linh Thạch! Hiện có **${fmt(profile.linhThach)}** 💎, cần **${fmt(buyIn)}** 💎 mua chip (${BUY_IN_MULTIPLIER}× mức cược).`, flags: 64 });
         }
-        if (userTable.has(userId)) {
-            await cashOutAmount(userId, buyIn);
-            return interaction.reply({ content: '⚠️ Đạo hữu đang ngồi ở một bàn Poker khác. Rời bàn đó trước nhé!', flags: 64 });
-        }
 
         const table = T.createTable({ id: interaction.id, mode, bet, hostId: userId });
         T.addPlayer(table, { id: userId, name: displayName, stack: buyIn });
         tables.set(table.id, table);
-        userTable.set(userId, table.id);
+        await escrow.hold(userId, 'poker', table.id, buyIn, interaction.channelId);
 
         if (mode === 'solo') {
             for (let i = 0; i < botCount; i++) addBot(table);
@@ -358,6 +352,7 @@ const RULES_EMBED = new EmbedBuilder()
         '✋ **Xem** — không cược thêm (khi chưa ai tố)\n' +
         '📥 **Theo** — bỏ bằng số người đang tố cao nhất\n' +
         '🔥 **Tố** — nâng cược: +1× (Preflop/Flop), +2× (Turn/River), tối đa 4 lần/vòng\n' +
+        '💥 **All-in** — dồn TOÀN BỘ chip còn lại bất cứ lúc nào (kể cả khi đã hết lượt tố); phần tiền thừa so với người còn lại được chia pot phụ đúng luật\n' +
         '🏳️ **Bỏ bài** — mất phần đã cược\n' +
         `⏳ Quá ${TURN_TIMEOUT_MS / 1000}s không bấm: tự Xem (nếu được) hoặc Bỏ bài.\n` +
         'Thiếu tiền để theo → tự **All-in**, pot phụ được chia đúng luật.\n\n' +
@@ -393,7 +388,7 @@ async function handlePokerButtons(interaction) {
     await withLock(table, async () => {
         if (!tables.has(table.id)) return reply('Bàn Poker này đã giải tán.');
 
-        if (['fold', 'call', 'raise'].includes(action)) {
+        if (['fold', 'call', 'raise', 'allin'].includes(action)) {
             if (!isPlaying(table)) return reply('Ván này đã kết thúc.');
             const err = T.act(table, userId, action);
             if (err) return reply(err);
@@ -406,28 +401,26 @@ async function handlePokerButtons(interaction) {
         switch (action) {
             case 'join': {
                 if (seat) return reply('Đạo hữu đã ngồi bàn này rồi.');
-                if (userTable.has(userId)) return reply('Đạo hữu đang ngồi ở một bàn khác.');
                 const name = getDisplayName(interaction);
                 const buyIn = buyInOf(table);
                 const profile = await UserProfile.getOrCreate(userId, name);
                 if (await profile.incLinhThach(-buyIn, { requireFunds: true }) === null) {
                     return reply(`Cần **${fmt(buyIn)}** 💎 để mua chip vào bàn (${BUY_IN_MULTIPLIER}× mức cược). Đạo hữu đang có **${fmt(profile.linhThach)}** 💎.`);
                 }
-                const err = tables.has(table.id) && !userTable.has(userId)
+                const err = tables.has(table.id)
                     ? T.addPlayer(table, { id: userId, name, stack: buyIn })
                     : 'Không thể vào bàn lúc này.';
                 if (err) {
                     await cashOutAmount(userId, buyIn);
                     return reply(`${err} Tiền mua chip đã được hoàn lại.`);
                 }
-                userTable.set(userId, table.id);
+                await escrow.hold(userId, 'poker', table.id, buyIn, interaction.channelId);
                 break;
             }
             case 'leave': {
                 if (!seat) return reply('Đạo hữu không ngồi ở bàn này.');
                 await cashOutSeat(table, seat); // trả chip còn lại
                 T.removePlayer(table, userId);
-                userTable.delete(userId);
                 if (table.hostId === userId) {
                     const next = humans(table)[0];
                     if (!next) return interaction.editReply(closeTable(table, 'Chủ bàn đã rời, bàn giải tán'));

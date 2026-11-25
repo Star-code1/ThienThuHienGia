@@ -11,6 +11,7 @@ const {
 const { generateBaucuaCommentary } = require('../../services/aiService');
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
+const escrow = require('../../services/escrowService');
 const { LINH_THU, rollDice, settleBets, totalOf } = require('./baucuaEngine');
 
 const BET_SECONDS = 30;
@@ -74,6 +75,7 @@ async function settleSession(sessionId) {
             await UserProfile.incLinhThachById(userId, payout, {
                 inc: { 'stats.baucuaGames': 1, 'stats.baucuaWinLinhThach': net },
             });
+            await escrow.release(userId, 'baucua', sessionId);
         } catch (err) {
             console.error(`❌ [BauCua] Lỗi trả thưởng cho ${userId}:`, err);
         }
@@ -127,6 +129,7 @@ async function cancelAllSessions(reason) {
             if (total <= 0) continue;
             try {
                 await UserProfile.incLinhThachById(userId, total);
+                await escrow.release(userId, 'baucua', session.id);
                 refunded.push(`• **${userBetObj.username}**: hoàn \`${total.toLocaleString()}\` 💎`);
             } catch (err) {
                 console.error(`❌ [BauCua] Lỗi hoàn cược cho ${userId}:`, err);
@@ -285,6 +288,7 @@ const handleBaucuaModalSubmit = async (interaction) => {
     session.bets[userId].username = displayName;
     const userBetsObj = session.bets[userId].beastBets;
     userBetsObj[beastId] = (userBetsObj[beastId] || 0) + betAmount;
+    await escrow.hold(userId, 'baucua', sessionId, betAmount, session.channel?.id);
 
     await interaction.reply({
         content: `✅ **Thành công:** Đạo hữu **${displayName}** đã cược **${betAmount.toLocaleString()} Linh Thạch** vào **${beast.emoji} ${beast.name}**!\n` +

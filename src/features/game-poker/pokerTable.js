@@ -142,11 +142,13 @@ function legalActions(table) {
         canCheck: toCall === 0,
         canRaise: table.raiseCount < MAX_RAISES_PER_ROUND && p.stack > toCall,
         raiseCost: Math.min(raiseTo - p.bet, p.stack),
+        canAllIn: p.stack > 0,
+        allInTo: p.bet + p.stack, // tổng tiền đã đặt ở vòng này sau khi All-in
     };
 }
 
 /**
- * Người chơi hành động. action: 'fold' | 'check' | 'call' | 'raise'.
+ * Người chơi hành động. action: 'fold' | 'check' | 'call' | 'raise' | 'allin'.
  * Trả về lỗi (string) hoặc null.
  */
 function act(table, playerId, action) {
@@ -158,6 +160,7 @@ function act(table, playerId, action) {
     if (action === 'check' && !legal.canCheck) action = 'call';
     if (action === 'call' && legal.canCheck) action = 'check';
     if (action === 'raise' && !legal.canRaise) return 'Không thể tố thêm ở vòng này.';
+    if (action === 'allin' && !legal.canAllIn) return 'Đạo hữu đã hết chip để All-in.';
 
     switch (action) {
         case 'fold':
@@ -180,6 +183,19 @@ function act(table, playerId, action) {
                 for (const o of table.players) if (o !== p && canAct(o)) o.acted = false;
             }
             pushLog(table, `🔥 **${p.name}** tố lên **${p.bet}**${p.allIn ? ' (All-in)' : ''}`);
+            break;
+        }
+        case 'allin': {
+            // Dồn hết chip: nếu vượt mức cược hiện tại thì là một cú tố (mở lại lượt cho người khác), không thì là theo All-in
+            const paid = commit(p, p.stack);
+            if (p.bet > table.currentBet) {
+                table.currentBet = p.bet;
+                table.raiseCount += 1;
+                for (const o of table.players) if (o !== p && canAct(o)) o.acted = false;
+                pushLog(table, `💥 **${p.name}** ALL-IN lên **${p.bet}**`);
+            } else {
+                pushLog(table, `💥 **${p.name}** ALL-IN theo **${paid}**`);
+            }
             break;
         }
         default:

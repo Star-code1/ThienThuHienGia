@@ -118,3 +118,46 @@ test('máy tự đánh tới khi hết ván, không treo', () => {
         assert.strictEqual(t.players.reduce((s, p) => s + p.stack, 0), 9000);
     }
 });
+
+test('All-in: dồn hết chip, tố vượt thì mở lại lượt, đủ pot phụ và bảo toàn tiền', () => {
+    for (let r = 0; r < 30; r++) {
+        const t = T.createTable({ id: 't', mode: 'chung', bet: 100, hostId: 'a' });
+        T.addPlayer(t, { id: 'a', name: 'A', stack: 1000 });
+        T.addPlayer(t, { id: 'b', name: 'B', stack: 400 });
+        T.addPlayer(t, { id: 'c', name: 'C', stack: 5000 });
+        T.startHand(t);
+        const first = t.players[t.toAct];
+        const legal = T.legalActions(t);
+        assert.ok(legal.canAllIn);
+        assert.strictEqual(legal.allInTo, first.bet + first.stack);
+        assert.strictEqual(T.act(t, first.id, 'allin'), null);
+        assert.strictEqual(first.allIn, true);
+        assert.strictEqual(first.stack, 0);
+        let guard = 0;
+        while (t.stage !== 'lobby' && guard++ < 60) {
+            const p = t.players[t.toAct];
+            const l = T.legalActions(t);
+            assert.strictEqual(T.act(t, p.id, l.canCheck ? 'check' : (guard % 3 === 0 ? 'allin' : 'call')), null);
+        }
+        assert.strictEqual(t.stage, 'lobby');
+        assert.strictEqual(t.players.reduce((s, p) => s + p.stack, 0), 6400);
+    }
+});
+
+test('All-in bị từ chối khi hết chip, và tố All-in ngắn hơn mức cược chỉ tính là theo', () => {
+    const t = T.createTable({ id: 't', mode: 'chung', bet: 100, hostId: 'a' });
+    T.addPlayer(t, { id: 'a', name: 'A', stack: 5000 });
+    T.addPlayer(t, { id: 'b', name: 'B', stack: 130 });
+    T.startHand(t); // b còn 30 chip sau ante
+    const order = [t.players[t.toAct]];
+    if (order[0].id === 'a') {
+        T.act(t, 'a', 'raise');
+        assert.strictEqual(T.act(t, 'b', 'allin'), null); // 30 < 100 phải theo → chỉ theo All-in
+        assert.strictEqual(t.players[1].allIn, true);
+        assert.strictEqual(t.currentBet, 100);
+    } else {
+        assert.strictEqual(T.act(t, 'b', 'allin'), null);
+        assert.strictEqual(t.players[1].stack, 0);
+        assert.match(T.act(t, 'b', 'allin') || '', /lượt|bắt đầu|kết thúc|hết chip/);
+    }
+});

@@ -32,6 +32,8 @@ const UserProfile = {
     },
 };
 mock('../src/shared/models/UserProfile.js', UserProfile);
+const fakeEscrow = require('./helpers/fakeEscrowModel');
+mock('../src/shared/models/GameEscrow.js', fakeEscrow);
 mock('../src/services/aiService.js', { generateBaucuaCommentary: async () => 'Lời bình thử nghiệm' });
 mock('../src/shared/utils/nameHelper.js', { getDisplayName: (i) => i.user.name });
 

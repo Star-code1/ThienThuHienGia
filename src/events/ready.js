@@ -1,5 +1,6 @@
 const { Events } = require('discord.js');
 const { pruneOldVectors } = require('../services/qdrantService');
+const { startEscrowService } = require('../services/escrowService');
 
 const PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
@@ -13,5 +14,8 @@ module.exports = {
     const prune = () => pruneOldVectors().catch(err => console.warn('⚠️ Lỗi dọn vector cũ:', err.message));
     prune();
     setInterval(prune, PRUNE_INTERVAL_MS).unref();
+
+    // Hoàn tiền + đền bù cho người chơi có ván dang dở khi bot sập lần trước
+    startEscrowService(client);
   },
 };
