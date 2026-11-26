@@ -105,7 +105,7 @@ test('Nối Từ: nối đúng được thưởng, sai tiếng nối chỉ thả
     await handler(ok);
     assert.deepEqual(ok.calls.reacts, ['✅']);
     assert.equal(g.lastWord, 'tiên giới');
-    assert.deepEqual(ledger, [{ userId: 'u1', d: 15 }]);
+    assert.deepEqual(ledger, [{ userId: 'u1', d: 50 }]);
 });
 
 test('Nối Từ: từ trùng bị chặn kể cả khác kiểu gõ hoa/thường', async () => {
@@ -146,7 +146,7 @@ test('Nối Từ: chỉ một người thắng khi hai tin đến cùng lúc (kh
     const b = fakeMessage('c6', 'u2', 'tiên nhân');
     await Promise.all([handler(a), handler(b)]);
     assert.equal(ledger.length, 1);
-    assert.equal(ledger[0].d, 15);
+    assert.equal(ledger[0].d, 50);
     assert.ok(['tiên giới', 'tiên nhân'].includes(g.lastWord));
 });
 
@@ -199,7 +199,7 @@ test('Vua Tiếng Việt: thưởng nhanh và giảm thưởng khi dùng gợi �
     activeVuaGames.set('v3', hinted);
     await vuaHandler(fakeMessage('v3', 'u1', 'giang hồ'));
     clearTimeout(hinted.timer);
-    assert.equal(ledger.at(-1).d, 35);
+    assert.equal(ledger.at(-1).d, 50);
 });
 
 test('Một kênh không chạy đồng thời Nối Từ và Vua Tiếng Việt', async () => {
@@ -209,17 +209,17 @@ test('Một kênh không chạy đồng thời Nối Từ và Vua Tiếng Việt
     releaseChannel('cx', 'noitu');
 });
 
-test('Nối Từ: chuỗi thắng cộng thưởng (+5/bậc), sai từ thì đứt chuỗi, kỷ lục được ghi', async () => {
+test('Nối Từ: chuỗi thắng cộng thưởng (+30/bậc), sai từ thì đứt chuỗi, kỷ lục được ghi', async () => {
     openGame('s1', 'Tu Tiên');
     for (const w of ['tiên giới', 'giới hạn', 'hạn chế']) await handler(fakeMessage('s1', 'u1', w));
-    assert.deepEqual(ledger.map((l) => l.d), [15, 20, 25]);
+    assert.deepEqual(ledger.map((l) => l.d), [50, 80, 110]);
     assert.equal(bests['u1:stats.noituBestStreak'], 3);
 
     aiVerdict = { valid: false, reason: 'vô nghĩa' };
     await handler(fakeMessage('s1', 'u1', 'chế tạp'));                 // sai → đứt chuỗi
     aiVerdict = { valid: true, reason: 'ok' };
     await handler(fakeMessage('s1', 'u1', 'chế độ'));
-    assert.equal(ledger.at(-1).d, 15);
+    assert.equal(ledger.at(-1).d, 50);
 });
 
 test('Vua Tiếng Việt: cùng người thắng liên tiếp được thưởng chuỗi, người khác thắng xen vào thì đứt', async () => {
@@ -237,6 +237,6 @@ test('Vua Tiếng Việt: cùng người thắng liên tiếp được thưởng
         clearTimeout(game.timer);
         game.solving = false;
     }
-    assert.deepEqual(ledger.map((l) => l.d), [50, 55, 50]);
+    assert.deepEqual(ledger.map((l) => l.d), [50, 80, 50]);
     assert.equal(bests['u1:stats.vuatiengvietBestStreak'], 2);
 });

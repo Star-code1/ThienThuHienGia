@@ -16,7 +16,7 @@ const GAME_TYPE = 'vuatiengviet';
 const QUESTION_MS = 60_000;
 const MAX_TIMEOUTS = 5;
 const REWARD = { linhThach: 50, tuVi: 25 };
-const REWARD_AFTER_HINT = { linhThach: 35, tuVi: 15 };
+const REWARD_AFTER_HINT = { linhThach: 50, tuVi: 15 };
 const FAST_SECONDS = 15;
 const FAST_BONUS = 15;
 const NO_MENTIONS = { parse: [] };
@@ -270,7 +270,7 @@ const RULES_EMBED = () => new EmbedBuilder()
         `👉 **Cách chơi:** Nhắn đáp án có dấu hoặc không dấu vào kênh chat. Người đúng đầu tiên thắng.\n` +
         `⏱️ **Thời gian:** ${QUESTION_MS / 1000} giây/câu. Hết giờ sẽ đổi câu mới; bỏ trống ${MAX_TIMEOUTS} câu liên tiếp game kết thúc.\n` +
         `🎁 **Thưởng:** +${REWARD.linhThach} Linh Thạch & +${REWARD.tuVi} Tu Vi; đoán trong ${FAST_SECONDS}s được thêm +${FAST_BONUS} 💎.\n` +
-        `🔥 **Chuỗi thắng:** thắng liên tiếp nhiều câu bởi cùng một người được thưởng thêm +5 💎 mỗi bậc từ chuỗi 2 (tối đa +50 💎); người khác thắng xen vào hoặc hết giờ thì đứt chuỗi.\n` +
+        `🔥 **Chuỗi thắng:** thắng liên tiếp nhiều câu bởi cùng một người được thưởng thêm +30 💎 mỗi bậc từ chuỗi 2 (tối đa +300 💎); người khác thắng xen vào hoặc hết giờ thì đứt chuỗi.\n` +
         `💡 **Gợi ý:** dùng gợi ý thì thưởng giảm còn +${REWARD_AFTER_HINT.linhThach} Linh Thạch & +${REWARD_AFTER_HINT.tuVi} Tu Vi (không có thưởng nhanh).\n` +
         `🏳️ **Đầu hàng:** chỉ người mở trò chơi hoặc người có quyền quản lý tin nhắn mới được kết thúc game.`
     )
