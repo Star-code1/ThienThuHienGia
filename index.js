@@ -9,6 +9,7 @@ const { loadFeatures, registerCoreEvents, runShutdownHooks } = require('./src/co
 const { startEventScheduler } = require('./src/services/eventScheduler');
 const { startLineupWatcher } = require('./src/services/lineupWatcher');
 const { startMemberSync } = require('./src/services/memberSyncService');
+const { startEventRoleSync } = require('./src/services/eventRoleService');
 
 // ── Global Error Handlers ─────────────────────────────────────────────────────
 process.on('unhandledRejection', (reason, promise) => {
@@ -69,4 +70,7 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   // Khởi động bộ theo dõi lưu đội hình (Watcher qua MongoDB)
   startLineupWatcher(client);
+
+  // Cấp/gỡ role Bang Chiến & Scrim theo vote sự kiện mới nhất (hết hạn Chủ nhật)
+  startEventRoleSync(client);
 })();
