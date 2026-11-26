@@ -126,17 +126,14 @@ test('Nối Từ: AI lỗi KHÔNG tự duyệt từ và không phát thưởng',
     assert.equal(ledger.length, 0);
 });
 
-test('Nối Từ: không được nối 2 lượt liền khi đã có ≥2 người chơi', async () => {
+test('Nối Từ: một người được nối nhiều lượt liên tiếp dù đã có ≥2 người chơi', async () => {
     const g = openGame('c5', 'Tu Tiên');
     g.players.add('u1'); g.players.add('u2');
     g.lastPlayerId = 'u1';
     const m = fakeMessage('c5', 'u1', 'tiên giới');
     await handler(m);
-    assert.equal(g.lastWord, 'Tu Tiên');
-    assert.equal(ledger.length, 0);
-    const m2 = fakeMessage('c5', 'u2', 'tiên giới');
-    await handler(m2);
     assert.equal(g.lastWord, 'tiên giới');
+    assert.equal(g.lastPlayerId, 'u1');
 });
 
 test('Nối Từ: chỉ một người thắng khi hai tin đến cùng lúc (khoá busy)', async () => {

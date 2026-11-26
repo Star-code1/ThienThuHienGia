@@ -285,7 +285,7 @@ const handleNoituRules = async (interaction) => {
             `  *Ví dụ:* "Drago**n**" ➔ "**N**irvana" ➔ "**A**rcane".\n\n` +
             `📏 **Luật chung:**\n` +
             `• Không dùng lại từ đã xuất hiện trong sòng.\n` +
-            `• Khi đã có từ 2 người chơi trở lên, không được nối **2 lượt liền nhau**.\n` +
+            `• Một người được phép nối **nhiều lượt liên tiếp**.\n` +
             `• ⏱️ ${TURN_MS / 1000} giây/lượt. Quá giờ không ai nối sẽ đổi từ ngẫu nhiên (người nối cuối được +${TIMEOUT_BONUS} 💎). ${MAX_TIMEOUTS} lượt hết giờ liên tiếp sòng sẽ tự đóng.\n` +
             `• Tin nhắn trò chuyện thường (không giống một từ) sẽ được bỏ qua.\n\n` +
             `🔥 **Chuỗi thắng:** nối đúng liên tiếp (không sai/trùng từ, không hết giờ) được thưởng thêm +5 💎 mỗi bậc từ chuỗi 2, tối đa +30 💎. Kỷ lục chuỗi được ghi vào bảng xếp hạng \`/top-linhthach\`.\n` +
@@ -328,13 +328,6 @@ const onMessageCreate = {
             game.streaks.set(message.author.id, 0);
             await message.react('❌').catch(() => {});
             return reply(message, `⚠️ ${isVi ? 'Từ' : 'The word'} **"${word}"** ${isVi ? 'đã được dùng trước đó rồi! Đạo hữu hãy chọn từ khác.' : 'was already used! Pick another one.'}`);
-        }
-
-        if (game.lastPlayerId === message.author.id && game.players.size >= 2) {
-            await message.react('⏳').catch(() => {});
-            return reply(message, isVi
-                ? '⚠️ Đạo hữu vừa nối xong, hãy nhường lượt cho người khác nhé!'
-                : '⚠️ You just played — let someone else take the next turn!');
         }
 
         // Đang thẩm định từ khác → chặn chen ngang (tránh 2 người cùng "nối thành công" một lượt)
