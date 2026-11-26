@@ -209,10 +209,10 @@ test('Một kênh không chạy đồng thời Nối Từ và Vua Tiếng Việt
     releaseChannel('cx', 'noitu');
 });
 
-test('Nối Từ: chuỗi thắng cộng thưởng (+30/bậc), sai từ thì đứt chuỗi, kỷ lục được ghi', async () => {
+test('Nối Từ: chuỗi thắng cộng thưởng (+5/bậc), sai từ thì đứt chuỗi, kỷ lục được ghi', async () => {
     openGame('s1', 'Tu Tiên');
     for (const w of ['tiên giới', 'giới hạn', 'hạn chế']) await handler(fakeMessage('s1', 'u1', w));
-    assert.deepEqual(ledger.map((l) => l.d), [50, 80, 110]);
+    assert.deepEqual(ledger.map((l) => l.d), [50, 55, 60]);
     assert.equal(bests['u1:stats.noituBestStreak'], 3);
 
     aiVerdict = { valid: false, reason: 'vô nghĩa' };
@@ -237,6 +237,6 @@ test('Vua Tiếng Việt: cùng người thắng liên tiếp được thưởng
         clearTimeout(game.timer);
         game.solving = false;
     }
-    assert.deepEqual(ledger.map((l) => l.d), [50, 80, 50]);
+    assert.deepEqual(ledger.map((l) => l.d), [50, 55, 50]);
     assert.equal(bests['u1:stats.vuatiengvietBestStreak'], 2);
 });

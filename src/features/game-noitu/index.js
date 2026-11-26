@@ -288,7 +288,7 @@ const handleNoituRules = async (interaction) => {
             `• Khi đã có từ 2 người chơi trở lên, không được nối **2 lượt liền nhau**.\n` +
             `• ⏱️ ${TURN_MS / 1000} giây/lượt. Quá giờ không ai nối sẽ đổi từ ngẫu nhiên (người nối cuối được +${TIMEOUT_BONUS} 💎). ${MAX_TIMEOUTS} lượt hết giờ liên tiếp sòng sẽ tự đóng.\n` +
             `• Tin nhắn trò chuyện thường (không giống một từ) sẽ được bỏ qua.\n\n` +
-            `🔥 **Chuỗi thắng:** nối đúng liên tiếp (không sai/trùng từ, không hết giờ) được thưởng thêm +30 💎 mỗi bậc từ chuỗi 2, tối đa +300 💎. Kỷ lục chuỗi được ghi vào bảng xếp hạng \`/top-linhthach\`.\n` +
+            `🔥 **Chuỗi thắng:** nối đúng liên tiếp (không sai/trùng từ, không hết giờ) được thưởng thêm +5 💎 mỗi bậc từ chuỗi 2, tối đa +30 💎. Kỷ lục chuỗi được ghi vào bảng xếp hạng \`/top-linhthach\`.\n` +
             `🎁 **Thưởng:** +${REWARD_LINH_THACH} Linh Thạch & +${REWARD_TU_VI} Tu Vi cho mỗi từ đúng!`
         )
         .setFooter({ text: 'Thiên Thư Hiền Giả Ban Luật' });

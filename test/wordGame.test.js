@@ -105,7 +105,7 @@ test('validateWordVI/EN: từ chối ngay (không gọi AI) khi sai hình thức
     assert.equal((await validateWordEN('Dragon', 'not a word')).valid, false);       // nhiều từ
 });
 
-test('streakBonus: +30 mỗi bậc từ chuỗi 2, tối đa +300', () => {
+test('streakBonus: +5 mỗi bậc từ chuỗi 2, tối đa +30', () => {
     const { streakBonus } = require('../src/shared/utils/wordGame');
-    assert.deepEqual([0, 1, 2, 3, 5, 11, 12, 100].map(streakBonus), [0, 0, 30, 60, 120, 300, 300, 300]);
+    assert.deepEqual([0, 1, 2, 3, 5, 11, 12, 100].map(streakBonus), [0, 0, 5, 10, 20, 30, 30, 30]);
 });
