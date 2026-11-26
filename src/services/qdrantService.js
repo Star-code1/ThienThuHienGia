@@ -103,10 +103,31 @@ async function generateEmbedding(text) {
 /**
  * Khởi tạo Collection trong Qdrant nếu chưa tồn tại
  */
+/**
+ * Qdrant chỉ lọc theo khoảng thời gian (pruneOldVectors) khi trường đó có payload index kiểu datetime.
+ * Tạo index idempotent: collection cũ chưa có thì bổ sung, đã có thì Qdrant trả OK.
+ */
+async function ensureCreatedAtIndex() {
+    try {
+        const res = await qdrantFetch(`/collections/${COLLECTION_NAME}/index?wait=true`, {
+            method: 'PUT',
+            body: JSON.stringify({ field_name: 'createdAt', field_schema: 'datetime' })
+        });
+        if (!res.ok) {
+            console.warn('⚠️ Không thể tạo payload index createdAt:', res.status, (await res.text()).slice(0, 300));
+        }
+    } catch (e) {
+        console.warn('⚠️ Không thể tạo payload index createdAt:', e.message);
+    }
+}
+
 async function ensureQdrantCollection() {
     try {
         const checkRes = await qdrantFetch(`/collections/${COLLECTION_NAME}`);
-        if (checkRes.ok) return true;
+        if (checkRes.ok) {
+            await ensureCreatedAtIndex();
+            return true;
+        }
 
         const createRes = await qdrantFetch(`/collections/${COLLECTION_NAME}`, {
             method: 'PUT',
@@ -115,6 +136,7 @@ async function ensureQdrantCollection() {
 
         if (createRes.ok) {
             console.log(`✅ Qdrant Collection "${COLLECTION_NAME}" (size: ${VECTOR_SIZE}) đã khởi tạo thành công.`);
+            await ensureCreatedAtIndex();
             return true;
         }
         console.warn('⚠️ Không thể khởi tạo Qdrant Collection:', (await createRes.text()).slice(0, 300));
