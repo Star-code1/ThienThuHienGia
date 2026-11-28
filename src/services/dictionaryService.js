@@ -1,7 +1,7 @@
 /**
  * Tra từ điển trực tuyến cho các game chữ — gọi SONG SONG nhiều nguồn, nguồn nào xác nhận trước thì dùng ngay.
  *
- *  Tiếng Việt: dict.minhqnd.com  +  vi.wiktionary.org (MediaWiki API, có phần "Tiếng Việt")
+ *  Tiếng Việt: dict.minhqnd.com  +  vi.wiktionary.org (MediaWiki API, có phần "Tiếng Việt")  +  api.tracau.vn (mục từ điển "tratu")
  *  Tiếng Anh : api.dictionaryapi.dev  +  dict.minhqnd.com (kèm nghĩa tiếng Việt)  +  api.datamuse.com (từ vựng, có tần suất)
  *
  * Mỗi hàm trả về { status, meaning?, definition? }:
@@ -22,7 +22,10 @@ const URLS = {
     dictapi: 'https://api.dictionaryapi.dev/api/v2/entries/en/',
     muse: 'https://api.datamuse.com/words',
     viwik: 'https://vi.wiktionary.org/w/api.php',
+    tracau: 'https://api.tracau.vn',
 };
+// Key mặc định được Tra Câu công khai trên trang API; đổi được qua biến môi trường TRACAU_API_KEY
+const TRACAU_KEY = process.env.TRACAU_API_KEY || 'WBBcwnwQpV89';
 
 const cache = new Map(); // `${lang}:${key}` -> kết quả found/missing
 let fetchImpl = (...args) => fetch(...args);
@@ -118,6 +121,34 @@ async function viWiktionarySource(key) {
     return isVietnamese ? { status: 'found', meaning: wikiFirstDefinition(content) } : { status: 'missing' };
 }
 
+// ───────────────────────── Nguồn: api.tracau.vn ─────────────────────────
+
+const stripHtml = (html) => String(html || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, ' ');
+
+/** Lấy nghĩa đầu tiên trong mục "Việt - Việt" (dạng "<k>từ</k><br>- d. Nghĩa..."), không có thì lấy mục Việt - Anh. */
+function tracauMeaning(fulltext) {
+    const html = String(fulltext || '');
+    const vv = html.match(/<k>[^<]*<\/k>([\s\S]*?)(?:<\/div>|$)/);
+    if (vv) {
+        // Bỏ gạch đầu dòng và nhãn từ loại kiểu "d.", "tt", "đgt", kèm phần chú nguồn "(H. ...)"
+        const text = stripHtml(vv[1]).replace(/\s+/g, ' ')
+            .replace(/^[\s-]*(?:[a-zđ]{1,3}\.?\s+)?(?:\([^)]*\)\s*:?\s*)?(?:1\.\s*)?/i, '').trim();
+        // Cắt ở nghĩa thứ 2 ("2. ...") hoặc hết câu đầu
+        const first = text.split(/\s+2\.\s|(?<=[^\d]\.)\s/)[0];
+        if (first) return shorten(first);
+    }
+    const en = html.match(/■<\/font><\/td><td[^>]*>([\s\S]*?)<\/td>/);
+    return en ? shorten(stripHtml(en[1])) : '';
+}
+
+async function tracauSource(key) {
+    const r = await getJson(`${URLS.tracau}/${TRACAU_KEY}/s/${encodeURIComponent(key)}/vi`, 'tracau');
+    if (r.error) return { status: 'error' };
+    // Chỉ tính mục từ điển (tratu) khớp đúng từ — câu ví dụ (sentences) khớp từng tiếng rời nên không dùng
+    const entry = (r.data?.tratu || []).find((t) => toKey(t?.fields?.word || '') === key);
+    return entry ? { status: 'found', meaning: tracauMeaning(entry.fields.fulltext) } : { status: 'missing' };
+}
+
 // ───────────────────────── Nguồn tiếng Anh ─────────────────────────
 
 async function dictApiSource(key) {
@@ -147,6 +178,7 @@ async function lookupVietnamese(word) {
     const out = await resolveSources([
         () => minhSource(key, 'vi'),
         () => viWiktionarySource(key),
+        () => tracauSource(key),
     ]);
     if (out.status !== 'error') remember(`vi:${key}`, out);
     return out;

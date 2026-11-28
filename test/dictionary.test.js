@@ -13,11 +13,14 @@ const route = (handlers) => async (url) => {
 const wiki = (title, content) => json(200, { query: { pages: [content === null ? { title, missing: true } : { title, revisions: [{ slots: { main: { content } } }] }] } });
 const viMinh = (def) => json(200, { exists: true, results: [{ lang_code: 'vi', meanings: [{ definition: def }] }] });
 const noMinh = () => json(404, { exists: false });
+const noTracau = () => json(200, { language: 'vi', sentences: [], suggestions: [], tratu: [] });
+const tracau = (word, vv) => json(200, { language: 'vi', sentences: [], tratu: [{ fields: { word, kinds: 'vv', fulltext: `<article><div id="vv"><div class="dict--content"><k>${word}</k><br>${vv}</div></div></article>` } }] });
 
 test('tiếng Việt: dict.minhqnd.com có từ → found (kèm nghĩa), cache giữ kết quả', async () => {
     dict._setFetch(route([
         ['minhqnd', () => viMinh('sông và hồ')],
         ['vi.wiktionary', () => wiki('giang hồ', null)],
+        ['tracau', noTracau],
     ]));
     calls.length = 0;
     const found = await dict.lookupVietnamese('Giang Hồ');
@@ -32,6 +35,7 @@ test('tiếng Việt: dict.minhqnd.com không có nhưng vi.wiktionary có mục
     dict._setFetch(route([
         ['minhqnd', noMinh],
         ['vi.wiktionary', () => wiki('hoàng hôn', "{{-vie-}}\n\n{{-noun-}}\n# [[lúc|Lúc]] [[mặt trời]] '''lặn'''.\n")],
+        ['tracau', noTracau],
     ]));
     const r = await dict.lookupVietnamese('hoàng hôn');
     assert.equal(r.status, 'found');
@@ -40,6 +44,7 @@ test('tiếng Việt: dict.minhqnd.com không có nhưng vi.wiktionary có mục
     dict._setFetch(route([
         ['minhqnd', noMinh],
         ['vi.wiktionary', () => wiki('hello', '==Tiếng Anh==\n# xin chào\n')],
+        ['tracau', noTracau],
     ]));
     assert.equal((await dict.lookupVietnamese('hello')).status, 'missing');
 });
@@ -48,15 +53,37 @@ test('tiếng Việt: mọi nguồn 404 → missing; một nguồn lỗi → err
     dict._setFetch(route([
         ['minhqnd', noMinh],
         ['vi.wiktionary', () => wiki('linh thạch', null)],
+        ['tracau', noTracau],
     ]));
     assert.equal((await dict.lookupVietnamese('linh thạch')).status, 'missing');
 
     let n = 0;
-    dict._setFetch(async (url) => { n++; return String(url).includes('minhqnd') ? json(500, {}) : wiki('x', null); });
+    dict._setFetch(async (url) => { n++; return String(url).includes('minhqnd') ? json(500, {}) : String(url).includes('tracau') ? noTracau() : wiki('x', null); });
     assert.equal((await dict.lookupVietnamese('tiên giới')).status, 'error');
     const first = n;
     await dict.lookupVietnamese('giới hạn');
-    assert.ok(n - first <= 1, 'nguồn đang lỗi phải được nghỉ');
+    assert.ok(n - first <= 2, 'nguồn đang lỗi phải được nghỉ (chỉ gọi 2 nguồn còn lại)');
+});
+
+test('tiếng Việt: chỉ api.tracau.vn có mục từ điển khớp đúng từ → found (kèm nghĩa Việt - Việt)', async () => {
+    dict._setFetch(route([
+        ['minhqnd', noMinh],
+        ['vi.wiktionary', () => wiki('giang hồ', null)],
+        ['tracau', () => tracau('giang hồ', '- tt (H. giang: sông; hồ: hồ nước) 1. Nơi người thích đến ngoạn cảnh 2. Nói người đàn bà quen thói giăng hoa')],
+    ]));
+    calls.length = 0;
+    const r = await dict.lookupVietnamese('Giang Hồ');
+    assert.equal(r.status, 'found');
+    assert.equal(r.meaning, 'Nơi người thích đến ngoạn cảnh');
+    assert.ok(calls.some((u) => u.startsWith('https://api.tracau.vn/WBBcwnwQpV89/s/giang%20h%E1%BB%93/vi')));
+
+    // Mục từ điển của từ khác (hoặc chỉ có câu ví dụ khớp từng tiếng rời) không tính
+    dict._setFetch(route([
+        ['minhqnd', noMinh],
+        ['vi.wiktionary', () => wiki('hồ giang', null)],
+        ['tracau', () => json(200, { sentences: [{ fields: { vi: '<em>giang</em> <em>hồ</em>' } }], tratu: [{ fields: { word: 'giang hồ', fulltext: '' } }] })],
+    ]));
+    assert.equal((await dict.lookupVietnamese('hồ giang')).status, 'missing');
 });
 
 test('tiếng Anh: chỉ cần một nguồn xác nhận (dictionaryapi / minhqnd / datamuse)', async () => {
@@ -97,6 +124,7 @@ test('validateWordVI/EN: từ điển xác nhận → hợp lệ ngay, không c�
         ['dictionaryapi.dev', () => json(200, [{ word: 'nirvana', meanings: [{ definitions: [{ definition: 'Bliss.' }] }] }])],
         ['datamuse', () => json(200, [])],
         ['vi.wiktionary', () => wiki('x', null)],
+        ['tracau', noTracau],
     ]));
     const vi = await validateWordVI('Tu Tiên', 'Tiên Giới');
     assert.equal(vi.valid, true);
