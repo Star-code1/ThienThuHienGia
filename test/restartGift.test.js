@@ -46,7 +46,7 @@ const UserProfile = {
 mock('../src/shared/models/BotState.js', BotState);
 mock('../src/shared/models/UserProfile.js', UserProfile);
 
-process.env.RESTART_GIFT_CHANNEL_ID = 'gift-ch';
+delete process.env.RESTART_GIFT_CHANNEL_ID; // dùng kênh mặc định
 const gift = require('../src/services/restartGiftService');
 
 const fakeClient = () => {
@@ -67,7 +67,7 @@ test('khởi động lại → mọi người chơi +10.000 Linh Thạch và có
     assert.deepEqual(r, { given: true, count: 3 });
     assert.deepEqual([...balances.values()], [10_000, 10_500, 11_000]);
     assert.equal(client.sent.length, 1);
-    assert.equal(client.sent[0].id, 'gift-ch');
+    assert.equal(client.sent[0].id, '1534508222407245965');
     assert.match(client.sent[0].content, /10\.000/);
     assert.deepEqual(client.sent[0].allowedMentions, { parse: [] });
 });

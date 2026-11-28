@@ -5,7 +5,7 @@
  * - "Giành" lượt phát bằng một thao tác nguyên tử trên BotState → nhiều tiến trình cùng khởi động
  *   (lúc deploy) cũng chỉ phát MỘT lần.
  * - Giữa hai lần phát tối thiểu COOLDOWN_MS, tránh bot sập-khởi động liên tục làm lạm phát Linh Thạch.
- * - Báo tin ở kênh RESTART_GIFT_CHANNEL_ID (nếu có cấu hình).
+ * - Báo tin ở kênh DEFAULT_CHANNEL_ID (hoặc RESTART_GIFT_CHANNEL_ID nếu có cấu hình).
  */
 const BotState = require('../shared/models/BotState');
 const UserProfile = require('../shared/models/UserProfile');
@@ -13,6 +13,8 @@ const UserProfile = require('../shared/models/UserProfile');
 const RESTART_GIFT = 10_000;
 const COOLDOWN_MS = Number(process.env.RESTART_GIFT_COOLDOWN_MS) || 30 * 60_000;
 const STATE_ID = 'restart-gift';
+// Kênh thông báo quà đền bù (đổi được qua RESTART_GIFT_CHANNEL_ID)
+const DEFAULT_CHANNEL_ID = '1534508222407245965';
 
 const fmt = (n) => Number(n).toLocaleString('vi-VN');
 
@@ -53,7 +55,7 @@ async function grantRestartGift(client, { now = Date.now() } = {}) {
     }
 
     console.log(`🎁 [RestartGift] Đã cộng ${RESTART_GIFT} Linh Thạch cho ${count} người chơi.`);
-    const channelId = process.env.RESTART_GIFT_CHANNEL_ID;
+    const channelId = process.env.RESTART_GIFT_CHANNEL_ID || DEFAULT_CHANNEL_ID;
     if (client && channelId && count > 0) {
         try {
             const channel = await client.channels.fetch(channelId);
