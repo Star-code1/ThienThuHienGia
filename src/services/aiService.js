@@ -147,10 +147,10 @@ function cacheVerdict(key, verdict) {
  * - AI chỉ xét nghĩa. AI lỗi → trả `unavailable: true` (KHÔNG tự duyệt bừa, tránh farm thưởng bằng từ rác).
  */
 async function validateWordVI(lastWord, currentWord) {
-    const { parseVietnameseWord, splitSyllables, toKey } = require('../shared/utils/wordGame');
-    const parsed = parseVietnameseWord(currentWord);
+    const { parseVietnameseWord, NOITU_VI_SHAPE, splitSyllables, toKey } = require('../shared/utils/wordGame');
+    const parsed = parseVietnameseWord(currentWord, NOITU_VI_SHAPE);
     if (!parsed.ok) {
-        return { valid: false, reason: 'Phải là từ ghép tiếng Việt gồm từ 2 đến 4 tiếng, chỉ có chữ cái!', nextWord: '' };
+        return { valid: false, reason: 'Phải là từ ghép tiếng Việt gồm đúng 2 tiếng, chỉ có chữ cái!', nextWord: '' };
     }
     const cleanCurr = parsed.text;
     const cleanLast = (lastWord || '').trim();

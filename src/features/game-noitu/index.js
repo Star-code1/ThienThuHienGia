@@ -3,7 +3,7 @@ const { validateWordVI, validateWordEN, getRandomEnglishStartWord } = require('.
 const UserProfile = require('../../shared/models/UserProfile');
 const { getDisplayName } = require('../../shared/utils/nameHelper');
 const {
-    parseVietnameseWord, parseEnglishWord, splitSyllables, toKey, streakBonus,
+    parseVietnameseWord, NOITU_VI_SHAPE, parseEnglishWord, splitSyllables, toKey, streakBonus,
 } = require('../../shared/utils/wordGame');
 const { claimChannel, releaseChannel, gameLabel } = require('../../shared/channelGames');
 
@@ -145,7 +145,7 @@ const noituViCommand = {
         .setDescription('🐲 Khai mở sòng Nối Từ Tiếng Việt (Nghịch Thủy Hàn & Tu Tiên)')
         .addStringOption(option =>
             option.setName('tudau')
-                .setDescription('Từ khởi đầu, từ ghép 2–4 tiếng (Để trống sẽ chọn ngẫu nhiên)')
+                .setDescription('Từ khởi đầu, từ ghép 2 tiếng (Để trống sẽ chọn ngẫu nhiên)')
                 .setRequired(false)
         ),
     async execute(interaction) {
@@ -160,10 +160,10 @@ const noituViCommand = {
         const inputWord = interaction.options.getString('tudau');
         let startWord;
         if (inputWord) {
-            const parsed = parseVietnameseWord(inputWord);
+            const parsed = parseVietnameseWord(inputWord, NOITU_VI_SHAPE);
             if (!parsed.ok) {
                 return interaction.reply({
-                    content: '⚠️ Từ khởi đầu phải là từ ghép tiếng Việt gồm 2–4 tiếng, chỉ có chữ cái (ví dụ: `Tu Tiên`).',
+                    content: '⚠️ Từ khởi đầu phải là từ ghép tiếng Việt gồm đúng 2 tiếng, chỉ có chữ cái (ví dụ: `Tu Tiên`).',
                     flags: 64
                 });
             }
@@ -276,7 +276,7 @@ const handleNoituRules = async (interaction) => {
         .setTitle('📖 HƯỚNG DẪN & LUẬT CHƠI NỐI TỪ')
         .setDescription(
             `🐲 **NỐI TỪ TIẾNG VIỆT (\`/noitu-vi\`):**\n` +
-            `• Nhắn trực tiếp một từ ghép **2–4 tiếng** có nghĩa vào kênh.\n` +
+            `• Nhắn trực tiếp một từ ghép **2 tiếng** có nghĩa vào kênh.\n` +
             `• Tiếng đầu của từ bạn nhắn phải TRÙNG (cả dấu thanh) với tiếng cuối của từ trước.\n` +
             `  *Ví dụ:* "Tu **Tiên**" ➔ "**Tiên** Giới" ➔ "**Giới** Hạn".\n\n` +
             `🐉 **ENGLISH WORD CHAIN (\`/noitu-en\`):**\n` +
@@ -309,7 +309,7 @@ const onMessageCreate = {
         if (!game) return;
 
         const isVi = game.lang === 'vi';
-        const parsed = isVi ? parseVietnameseWord(message.content) : parseEnglishWord(message.content);
+        const parsed = isVi ? parseVietnameseWord(message.content, NOITU_VI_SHAPE) : parseEnglishWord(message.content);
         // Tin nhắn không giống một lượt nối từ → là trò chuyện thường, bỏ qua im lặng
         if (!parsed.ok) return;
 

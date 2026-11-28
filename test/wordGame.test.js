@@ -99,6 +99,7 @@ test('sổ kênh: một kênh chỉ một game chữ', () => {
 
 test('validateWordVI/EN: từ chối ngay (không gọi AI) khi sai hình thức hoặc sai luật nối', async () => {
     assert.equal((await validateWordVI('Tu Tiên', 'Tiên')).valid, false);            // 1 tiếng
+    assert.equal((await validateWordVI('Tu Tiên', 'Tiên Phong Đạo Cốt')).valid, false); // nối từ chỉ nhận 2 tiếng
     assert.equal((await validateWordVI('Tu Tiên', 'Giới Hạn')).valid, false);        // sai tiếng nối
     assert.equal((await validateWordVI('Tu Tiên', 'Tien Giới')).valid, false);       // thiếu dấu → khác tiếng
     assert.equal((await validateWordEN('Dragon', 'apple')).valid, false);            // sai chữ nối

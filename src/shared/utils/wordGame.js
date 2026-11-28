@@ -44,6 +44,9 @@ function parseVietnameseWord(input, { minSyllables = 2, maxSyllables = 4 } = {})
     return { ok: true, text, syllables };
 }
 
+/** Nối Từ tiếng Việt chỉ nhận từ ghép đúng 2 tiếng. */
+const NOITU_VI_SHAPE = Object.freeze({ minSyllables: 2, maxSyllables: 2 });
+
 /** Phân tích một lượt nối từ tiếng Anh: đúng 1 từ, chỉ chữ cái, 2–30 ký tự. */
 function parseEnglishWord(input) {
     const text = normalizeText(input);
@@ -86,6 +89,7 @@ module.exports = {
     splitSyllables,
     isVietnameseSyllable,
     parseVietnameseWord,
+    NOITU_VI_SHAPE,
     parseEnglishWord,
     hintLeaksAnswer,
     syllableLengths,

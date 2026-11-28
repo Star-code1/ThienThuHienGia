@@ -108,6 +108,22 @@ test('Nối Từ: nối đúng được thưởng, sai tiếng nối chỉ thả
     assert.deepEqual(ledger, [{ userId: 'u1', d: 50 }]);
 });
 
+test('Nối Từ tiếng Việt: chỉ nhận từ đúng 2 tiếng, từ 3–4 tiếng bị bỏ qua', async () => {
+    const g = openGame('c2b', 'Tu Tiên');
+    for (const text of ['tiên giới đại', 'tiên phong đạo cốt']) {
+        const m = fakeMessage('c2b', 'u1', text);
+        await handler(m);
+        assert.deepEqual(m.calls.reacts, [], text);
+        assert.deepEqual(m.calls.replies, [], text);
+    }
+    assert.equal(g.lastWord, 'Tu Tiên');
+    assert.equal(ledger.length, 0);
+
+    const ok = fakeMessage('c2b', 'u1', 'tiên phong');
+    await handler(ok);
+    assert.deepEqual(ok.calls.reacts, ['✅']);
+});
+
 test('Nối Từ: từ trùng bị chặn kể cả khác kiểu gõ hoa/thường', async () => {
     const g = openGame('c3', 'Tu Tiên');
     g.usedWords.add('tiên giới');
